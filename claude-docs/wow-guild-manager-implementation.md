@@ -1772,7 +1772,7 @@ export default App;
 3. Click on "Create Client"
 4. Fill in the required information:
    - Name: WoW Guild Manager
-   - Redirect URL: http://localhost:5000/api/auth/callback (for development)
+   - Redirect URL: <http://localhost:5000/api/auth/callback> (for development)
    - Service URL: Your app's URL
 5. Select the required OAuth scopes:
    - wow.profile
@@ -1790,22 +1790,26 @@ BATTLE_NET_CLIENT_SECRET=your_client_secret
 ## Implementation Timeline
 
 ### Phase 1: Setup & Authentication (Week 1)
+
 - [x] Set up project structure
 - [x] Initialize database schema
 - [x] Implement Battle.net OAuth
 - [x] Create user authentication system
 
 ### Phase 2: Guild Management (Week 2)
+
 - [ ] Implement guild selection and storage
 - [ ] Create guild member display
 - [ ] Integrate with Battle.net API for roster
 
 ### Phase 3: Event Calendar (Week 3)
+
 - [ ] Build event creation functionality
 - [ ] Implement calendar interface
 - [ ] Add event subscription system
 
 ### Phase 4: Testing & Deployment (Week 4)
+
 - [ ] Test all features
 - [ ] Fix bugs and optimize
 - [ ] Set up self-hosted deployment

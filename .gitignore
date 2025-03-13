@@ -1,0 +1,39 @@
+# Node.js
+**/node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+.npm/
+.pnp.*
+
+# Build files
+dist/
+build/
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs/
+*.log
+
+# Bun
+bun.lockb
+
+# History files
+.history/
+
+# Cache
+.cache/
