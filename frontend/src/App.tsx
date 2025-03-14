@@ -7,13 +7,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
+import GuildPage from './pages/GuildPage';
+import EventDetailsPage from './pages/EventDetailsPage';
+import CreateEventPage from './pages/CreateEventPage';
+import EditEventPage from './pages/EditEventPage';
 
 const queryClient = new QueryClient();
-
-const GuildPage = () => <div>Guild Page Coming Soon</div>;
-const EventDetailsPage = () => <div>Event Details Page Coming Soon</div>;
-const CreateEventPage = () => <div>Create Event Page Coming Soon</div>;
-const EditEventPage = () => <div>Edit Event Page Coming Soon</div>;
 
 const App: React.FC = () => {
   return (

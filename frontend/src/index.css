@@ -18,3 +18,97 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* React Big Calendar custom styles */
+.rbc-calendar {
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.rbc-toolbar {
+  margin-bottom: 10px;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rbc-toolbar button {
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  color: #333;
+  border-radius: 4px;
+  padding: 5px 10px;
+  margin-right: 5px;
+}
+
+.rbc-toolbar button:hover {
+  background-color: #e9ecef;
+}
+
+.rbc-toolbar button.rbc-active {
+  background-color: #007bff;
+  color: white;
+}
+
+.rbc-event {
+  background-color: #3174ad;
+  border-radius: 3px;
+  color: #fff;
+  padding: 2px 5px;
+  margin: 1px 0;
+}
+
+.rbc-event.rbc-selected {
+  background-color: #265985;
+}
+
+.rbc-day-bg.rbc-today {
+  background-color: rgba(255, 220, 40, 0.2);
+}
+
+.rbc-date-cell {
+  text-align: center;
+  padding: 5px;
+}
+
+.rbc-off-range-bg {
+  background-color: #f8f9fa;
+}
+
+.rbc-month-view, .rbc-week-view, .rbc-day-view {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.rbc-header {
+  padding: 10px 3px;
+  font-weight: bold;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Ensure buttons are styled correctly */
+button {
+  cursor: pointer;
+}
+
+/* Calendar event color overrides */
+.rbc-event.event-raid {
+  background-color: #e53e3e;
+}
+
+.rbc-event.event-dungeon {
+  background-color: #38a169;
+}
+
+.rbc-event.event-special {
+  background-color: #805ad5;
+}
+
+.rbc-event.event-test {
+  background-color: #dd6b20;
+}

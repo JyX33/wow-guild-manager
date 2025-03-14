@@ -34,6 +34,24 @@ export default {
     }
   },
   
+  getGuildById: async (req: Request, res: Response) => {
+    try {
+      const { guildId } = req.params;
+      
+      // Get guild from database
+      const guild = await guildModel.findById(parseInt(guildId));
+      
+      if (!guild) {
+        return res.status(404).json({ error: 'Guild not found' });
+      }
+      
+      res.json(guild);
+    } catch (error) {
+      console.error('Get guild by ID error:', error);
+      res.status(500).json({ error: 'Failed to get guild information' });
+    }
+  },
+  
   getGuildMembers: async (req: Request, res: Response) => {
     try {
       const { guildId } = req.params;

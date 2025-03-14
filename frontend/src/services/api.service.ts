@@ -23,6 +23,9 @@ export const guildApi = {
   getGuildByName: (region: string, realm: string, name: string) => 
     apiClient.get(`/guilds/${region}/${realm}/${name}`),
   
+  getGuildById: (guildId: number) =>
+    apiClient.get(`/guilds/id/${guildId}`),
+  
   getGuildMembers: (guildId: number) => 
     apiClient.get(`/guilds/${guildId}/members`)
 };
@@ -31,6 +34,9 @@ export const eventApi = {
   getGuildEvents: (guildId: number) => 
     apiClient.get(`/events/guild/${guildId}`),
   
+  getEventById: (eventId: number) =>
+    apiClient.get(`/events/${eventId}`),
+    
   createEvent: (eventData: any) => 
     apiClient.post('/events', eventData),
   

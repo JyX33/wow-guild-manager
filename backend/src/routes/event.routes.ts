@@ -7,6 +7,9 @@ const router = express.Router();
 // Get all events for a guild
 router.get('/guild/:guildId', authMiddleware.authenticate, eventController.getGuildEvents);
 
+// Get a specific event by ID
+router.get('/:eventId', authMiddleware.authenticate, eventController.getEventById);
+
 // Create a new event
 router.post('/', authMiddleware.authenticate, eventController.createEvent);
 

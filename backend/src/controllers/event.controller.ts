@@ -3,6 +3,23 @@ import eventModel from '../models/event.model';
 import subscriptionModel from '../models/subscription.model';
 
 export default {
+  getEventById: async (req: Request, res: Response) => {
+    try {
+      const { eventId } = req.params;
+      
+      const event = await eventModel.findById(parseInt(eventId));
+      
+      if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+      
+      res.json(event);
+    } catch (error) {
+      console.error('Get event by ID error:', error);
+      res.status(500).json({ error: 'Failed to get event' });
+    }
+  },
+  
   getGuildEvents: async (req: Request, res: Response) => {
     try {
       const { guildId } = req.params;
@@ -18,12 +35,18 @@ export default {
   
   createEvent: async (req: Request, res: Response) => {
     try {
+      console.log('Creating event with data:', req.body);
+      
       const eventData = {
         ...req.body,
-        created_by: req.user.id
+        created_by: req.user.id,
+        // Initialize empty event_details if not provided
+        event_details: req.body.event_details || {}
       };
       
+      console.log('Processed event data:', eventData);
       const event = await eventModel.create(eventData);
+      console.log('Event created successfully:', event);
       
       res.status(201).json(event);
     } catch (error) {
