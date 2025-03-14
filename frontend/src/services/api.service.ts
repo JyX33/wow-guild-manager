@@ -1,57 +1,155 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Create Axios client
 const apiClient = axios.create({
   baseURL: API_URL,
-  withCredentials: true
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
 });
 
+// Response interceptor for API calls
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    const message = 
+      error.response?.data?.message || 
+      error.message || 
+      'Unknown error occurred';
+    
+    console.error('API Error:', message);
+    
+    // Handle authentication errors
+    if (error.response?.status === 401) {
+      // Redirect to login or refresh token logic could be added here
+      console.log('Authentication error - redirecting to login');
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Generic API request function
+const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>> => {
+  try {
+    const response: AxiosResponse = await apiClient(config);
+    
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    const apiError: ApiError = {
+      status: error instanceof AxiosError ? (error.response?.status || 500) : 500,
+      message: error instanceof AxiosError ? 
+        (error.response?.data?.message || error.message) : 
+        'Unknown error occurred'
+    };
+    
+    return {
+      success: false,
+      error: apiError
+    };
+  }
+};
+
+// Authentication API
 export const authApi = {
   login: (region: string) => 
-    apiClient.get(`/auth/login?region=${region}`),
+    apiRequest<{ url: string }>({
+      method: 'GET',
+      url: `/auth/login?region=${region}`
+    }),
   
   getCurrentUser: () => 
-    apiClient.get('/auth/me'),
+    apiRequest<User>({
+      method: 'GET',
+      url: '/auth/me'
+    }),
   
   logout: () => 
-    apiClient.get('/auth/logout')
+    apiRequest<{ message: string }>({
+      method: 'GET',
+      url: '/auth/logout'
+    })
 };
 
+// Guild API
 export const guildApi = {
   getGuildByName: (region: string, realm: string, name: string) => 
-    apiClient.get(`/guilds/${region}/${realm}/${name}`),
+    apiRequest<Guild>({
+      method: 'GET',
+      url: `/guilds/${region}/${realm}/${name}`
+    }),
   
   getGuildById: (guildId: number) =>
-    apiClient.get(`/guilds/id/${guildId}`),
+    apiRequest<Guild>({
+      method: 'GET',
+      url: `/guilds/id/${guildId}`
+    }),
   
   getGuildMembers: (guildId: number) => 
-    apiClient.get(`/guilds/${guildId}/members`)
+    apiRequest<Array<any>>({
+      method: 'GET',
+      url: `/guilds/${guildId}/members`
+    })
 };
 
+// Event API
 export const eventApi = {
   getGuildEvents: (guildId: number) => 
-    apiClient.get(`/events/guild/${guildId}`),
+    apiRequest<Event[]>({
+      method: 'GET',
+      url: `/events/guild/${guildId}`
+    }),
   
   getEventById: (eventId: number) =>
-    apiClient.get(`/events/${eventId}`),
+    apiRequest<Event>({
+      method: 'GET',
+      url: `/events/${eventId}`
+    }),
     
-  createEvent: (eventData: any) => 
-    apiClient.post('/events', eventData),
+  createEvent: (eventData: Partial<Event>) => 
+    apiRequest<Event>({
+      method: 'POST',
+      url: '/events',
+      data: eventData
+    }),
   
-  updateEvent: (eventId: number, eventData: any) => 
-    apiClient.put(`/events/${eventId}`, eventData),
+  updateEvent: (eventId: number, eventData: Partial<Event>) => 
+    apiRequest<Event>({
+      method: 'PUT',
+      url: `/events/${eventId}`,
+      data: eventData
+    }),
   
   deleteEvent: (eventId: number) => 
-    apiClient.delete(`/events/${eventId}`),
+    apiRequest<{ message: string }>({
+      method: 'DELETE',
+      url: `/events/${eventId}`
+    }),
   
-  subscribeToEvent: (eventId: number, subscriptionData: any) => 
-    apiClient.post(`/events/${eventId}/subscribe`, subscriptionData),
+  subscribeToEvent: (eventId: number, subscriptionData: Partial<EventSubscription>) => 
+    apiRequest<EventSubscription>({
+      method: 'POST',
+      url: `/events/${eventId}/subscribe`,
+      data: subscriptionData
+    }),
   
-  updateSubscription: (eventId: number, subscriptionData: any) => 
-    apiClient.put(`/events/${eventId}/subscribe`, subscriptionData),
+  updateSubscription: (eventId: number, subscriptionData: Partial<EventSubscription>) => 
+    apiRequest<EventSubscription>({
+      method: 'PUT',
+      url: `/events/${eventId}/subscribe`,
+      data: subscriptionData
+    }),
   
   getEventSubscribers: (eventId: number) => 
-    apiClient.get(`/events/${eventId}/subscribers`)
+    apiRequest<EventSubscription[]>({
+      method: 'GET',
+      url: `/events/${eventId}/subscribers`
+    })
 };

@@ -9,10 +9,10 @@ A web application for World of Warcraft guild management, enabling guild leaders
 
 ## Tech Stack
 
-- **Frontend**: React with Vite (TypeScript)
+- **Frontend**: React with Vite (TypeScript), TailwindCSS
 - **Backend**: Node.js with Bun runtime
 - **Database**: PostgreSQL (utilizing JSON data types for flexibility)
-- **Deployment**: Self-hosted
+- **Authentication**: Battle.net OAuth
 
 ## Project Structure
 
@@ -25,6 +25,7 @@ A web application for World of Warcraft guild management, enabling guild leaders
   │   │   ├── services/        # API services
   │   │   ├── hooks/           # Custom hooks
   │   │   ├── context/         # Context providers
+  │   │   ├── types/           # TypeScript interfaces and types
   │   │   └── assets/          # Static assets
   │   ├── public/              # Public assets
   │   └── index.html           # Entry HTML
@@ -32,12 +33,15 @@ A web application for World of Warcraft guild management, enabling guild leaders
   └── backend/                 # Bun/Node.js server
       ├── src/
       │   ├── controllers/     # Route controllers
-      │   ├── models/          # Database models
+      │   ├── db/              # Database connection and base models
+      │   ├── models/          # Data models
       │   ├── routes/          # API routes
       │   ├── services/        # Business logic
       │   ├── middleware/      # Custom middleware
+      │   ├── types/           # TypeScript interfaces and types
+      │   ├── config/          # Configuration management
       │   └── utils/           # Utility functions
-      ├── config/              # Configuration files
+      ├── certs/               # SSL certificates for local HTTPS
       └── index.ts             # Entry point
 ```
 
@@ -45,24 +49,46 @@ A web application for World of Warcraft guild management, enabling guild leaders
 
 ### Prerequisites
 
-- Node.js
-- Bun runtime
-- PostgreSQL or Docker
+- Node.js v18+ or Bun runtime
+- PostgreSQL 14+
 - Battle.net Developer Account
+- Git
+
+### Environment Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/wow-guild-manager.git
+   cd wow-guild-manager
+   ```
+
+2. Create SSL certificates for local HTTPS:
+   ```bash
+   mkdir -p certs
+   openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem -days 365 -nodes -subj '/CN=localhost'
+   ```
+
+3. Create environment configuration files:
+   ```bash
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   ```
+
+4. Update the environment variables with your specific configuration
 
 ### Database Setup
 
-#### Option 1: Using Docker
+#### Using Docker
 
 ```bash
 # Start PostgreSQL using Docker
-docker-compose up -d
+docker-compose up -d db
 
-# Verify database is running
-docker ps | grep wow_guild_manager_db
+# Apply database schema
+docker exec -i wow_guild_manager_db psql -U postgres -d wow_guild_manager < backend/database/schema.sql
 ```
 
-#### Option 2: Manual Setup
+#### Manual Setup
 
 ```bash
 # Create PostgreSQL database
@@ -76,19 +102,21 @@ psql -d wow_guild_manager -f backend/database/schema.sql
 
 1. Go to the [Battle.net Developer Portal](https://develop.battle.net/access/clients)
 2. Create a new client with the following:
-   - Redirect URL: `http://localhost:5000/api/auth/callback`
+   - Redirect URL: `https://localhost:5000/api/auth/callback`
    - Scope: `wow.profile`
-3. Update the `.env` file with your Client ID and Client Secret
+3. Update the `backend/.env` file with your Client ID and Client Secret
 
 ### Backend Setup
 
 ```bash
 cd backend
 
-# Install dependencies
-bun install
+# Using npm
+npm install
+npm run dev
 
-# Start development server
+# OR using Bun
+bun install
 bun run dev
 ```
 
@@ -97,11 +125,13 @@ bun run dev
 ```bash
 cd frontend
 
-# Install dependencies
+# Using npm
 npm install
-
-# Start development server
 npm run dev
+
+# OR using Bun
+bun install
+bun run dev
 ```
 
 ## Features
@@ -113,27 +143,69 @@ npm run dev
 - **Event Calendar**: Create and manage guild events
 - **Event Subscription**: Allow members to join planned activities
 
-### User Flow
+### Development Features
 
-1. User logs in with Battle.net account
-2. User selects region and guild
-3. User can view guild members and event calendar
-4. User can create events (if authorized) or subscribe to existing events
+- **Type Safety**: Strong TypeScript typing throughout the codebase
+- **Consistent Error Handling**: Standardized error responses and handling
+- **API Client**: Robust API service for frontend-backend communication
+- **Database Abstraction**: Reusable data access patterns
 
-## Environment Variables
+## Scripts
 
-Create a `.env` file in the backend directory with the following variables:
+### Backend
 
-```
-PORT=5000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=wow_guild_manager
-DB_USER=postgres
-DB_PASSWORD=postgres  # Use 'postgres' if using Docker setup
-BATTLE_NET_CLIENT_ID=your_client_id
-BATTLE_NET_CLIENT_SECRET=your_client_secret
-BATTLE_NET_REDIRECT_URI=http://localhost:5000/api/auth/callback
-FRONTEND_URL=http://localhost:5173
-JWT_SECRET=your_secure_jwt_secret
-```
+- `npm run dev` - Start development server with auto-reload
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Lint code
+- `npm run typecheck` - Check TypeScript errors
+
+### Frontend
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+- `npm run lint` - Lint code
+
+## API Documentation
+
+### Authentication Endpoints
+
+- `GET /api/auth/login?region={region}` - Initiates Battle.net login
+- `GET /api/auth/callback` - Battle.net OAuth callback
+- `GET /api/auth/me` - Get current authenticated user
+- `GET /api/auth/logout` - Logout current user
+
+### Guild Endpoints
+
+- `GET /api/guilds/{region}/{realm}/{name}` - Get guild by name
+- `GET /api/guilds/id/{guildId}` - Get guild by ID
+- `GET /api/guilds/{guildId}/members` - Get guild members
+
+### Event Endpoints
+
+- `GET /api/events/guild/{guildId}` - Get guild events
+- `GET /api/events/{eventId}` - Get event by ID
+- `POST /api/events` - Create new event
+- `PUT /api/events/{eventId}` - Update event
+- `DELETE /api/events/{eventId}` - Delete event
+- `POST /api/events/{eventId}/subscribe` - Subscribe to event
+- `PUT /api/events/{eventId}/subscribe` - Update subscription
+- `GET /api/events/{eventId}/subscribers` - Get event subscribers
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/your-feature-name`
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- Blizzard Entertainment for the Battle.net API
+- The World of Warcraft community
