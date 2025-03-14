@@ -1,11 +1,12 @@
-import { defineConfig } from 'vite';
+import tailwindcss from "@tailwindcss/vite";
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
+import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   server: {
     host: '0.0.0.0',  // Make server accessible from outside
     port: 5173,

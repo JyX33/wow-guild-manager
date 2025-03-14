@@ -32,15 +32,15 @@
   }
 
   .simple-calendar-day.today {
-    @apply bg-yellow-100/20;
+    @apply bg-yellow-100 bg-opacity-20;
   }
 
   .simple-calendar-day-number {
-    @apply absolute top-1.5 right-1.5 text-sm text-gray-600;
+    @apply absolute inset-y-1.5 right-1.5 text-sm text-gray-600;
   }
 
   .simple-calendar-event {
-    @apply mt-5 mb-0.5 py-0.5 px-1.5 rounded text-xs text-white truncate cursor-pointer;
+    @apply mt-5 mb-0.5 py-0.5 px-1.5 rounded text-xs text-white truncate hover:cursor-pointer;
   }
 
   .simple-calendar-event.raid {
