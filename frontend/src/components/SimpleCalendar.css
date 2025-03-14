@@ -1,61 +1,99 @@
 @layer components {
   .simple-calendar-container {
-    @apply border border-gray-200 rounded bg-white p-5;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 0.25rem;
+    background-color: white;
+    padding: 1.25rem;
   }
 
   .simple-calendar-header {
-    @apply flex justify-between items-center mb-5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
   }
 
   .simple-calendar-nav {
-    @apply flex gap-2.5;
+    display: flex;
+    gap: 0.625rem;
   }
 
   .simple-calendar-nav button {
-    @apply bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5 cursor-pointer hover:bg-gray-100;
+    background-color: var(--color-gray-50);
+    border: 1px solid var(--color-gray-200);
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.625rem;
+    cursor: pointer;
+  }
+  
+  .simple-calendar-nav button:hover {
+    background-color: var(--color-gray-100);
   }
 
   .simple-calendar-title {
-    @apply text-lg font-bold;
+    font-size: 1.125rem;
+    font-weight: bold;
   }
 
   .simple-calendar-days {
-    @apply grid grid-cols-7 gap-1;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
   }
 
   .simple-calendar-day-header {
-    @apply text-center font-bold p-1.5 border-b border-gray-100;
+    text-align: center;
+    font-weight: bold;
+    padding: 0.375rem;
+    border-bottom: 1px solid var(--color-gray-100);
   }
 
   .simple-calendar-day {
-    @apply h-20 border border-gray-100 rounded p-1.5 relative;
+    height: 5rem;
+    border: 1px solid var(--color-gray-100);
+    border-radius: 0.25rem;
+    padding: 0.375rem;
+    position: relative;
   }
 
   .simple-calendar-day.today {
-    @apply bg-yellow-100 bg-opacity-20;
+    background-color: color-mix(in srgb, var(--color-yellow-100) 20%, transparent);
   }
 
   .simple-calendar-day-number {
-    @apply absolute inset-y-1.5 right-1.5 text-sm text-gray-600;
+    position: absolute;
+    top: 0.375rem;
+    right: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
   }
 
   .simple-calendar-event {
-    @apply mt-5 mb-0.5 py-0.5 px-1.5 rounded text-xs text-white truncate hover:cursor-pointer;
+    margin-top: 1.25rem;
+    margin-bottom: 0.125rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
   }
 
   .simple-calendar-event.raid {
-    @apply bg-red-600;
+    background-color: var(--color-red-600);
   }
 
   .simple-calendar-event.dungeon {
-    @apply bg-green-600;
+    background-color: var(--color-green-600);
   }
 
   .simple-calendar-event.special {
-    @apply bg-purple-600;
+    background-color: var(--color-purple-600);
   }
 
   .simple-calendar-event.test {
-    @apply bg-orange-600;
+    background-color: var(--color-orange-600);
   }
 }

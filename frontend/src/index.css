@@ -1,93 +1,77 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 
+ * Import theme variables first
+ * This ensures your custom CSS variables are available
+ * when Tailwind processes the CSS
+ */
+ @import "./theme.css";
 
-@layer base {
-  html {
-    @apply antialiased;
-    font-synthesis: none;
-  }
-
-  body {
-    margin: 0;
-    @apply min-w-320px min-h-screen font-sans bg-gray-100;
-    font-weight: normal;
-    line-height: normal;
-  }
-
-  #root {
-    @apply min-h-screen bg-gray-100;
-  }
-
-  button {
-    cursor: pointer;
-  }
-}
-
-@layer components {
-  .rbc-calendar {
-    @apply w-full border border-gray-200 rounded bg-white;
-    @apply shadow-sm;
-  }
-
-  .rbc-toolbar {
-    @apply mb-2.5 p-2.5 border-b border-gray-100 flex justify-between items-center;
-  }
-
-  .rbc-toolbar button {
-    @apply bg-gray-50 border border-gray-200 text-gray-700 rounded px-2.5 py-1.5 mr-1.5;
-  }
-  
-  .rbc-toolbar button:hover {
-    @apply bg-gray-100;
-  }
-
-  .rbc-toolbar button.rbc-active {
-    @apply bg-blue-500 text-white;
-  }
-
-  .rbc-event {
-    @apply bg-blue-600 rounded text-white py-0.5 px-1.5 my-0.5;
-  }
-
-  .rbc-event.rbc-selected {
-    @apply bg-blue-700;
-  }
-
-  .rbc-day-bg.rbc-today {
-    @apply bg-yellow-100/20;
-  }
-
-  .rbc-date-cell {
-    @apply text-center p-1.5;
-  }
-
-  .rbc-off-range-bg {
-    @apply bg-gray-50;
-  }
-
-  .rbc-month-view, .rbc-week-view, .rbc-day-view {
-    @apply border border-gray-200 rounded;
-  }
-
-  .rbc-header {
-    @apply py-2.5 px-1 font-bold border-b border-gray-200;
-  }
-
-  /* Calendar event color overrides */
-  .rbc-event.event-raid {
-    @apply bg-red-600;
-  }
-
-  .rbc-event.event-dungeon {
-    @apply bg-green-600;
-  }
-
-  .rbc-event.event-special {
-    @apply bg-purple-600;
-  }
-
-  .rbc-event.event-test {
-    @apply bg-orange-600;
-  }
-}
+ /* 
+  * Import Tailwind CSS framework 
+  * In v4, this is simplified to a single import
+  */
+ @import "tailwindcss";
+ 
+ /* 
+  * Then add your custom styles, building on
+  * both your theme variables and Tailwind's utilities
+  */
+ @layer base {
+   html {
+     -webkit-font-smoothing: antialiased;
+     -moz-osx-font-smoothing: grayscale;
+     font-synthesis: none;
+   }
+ 
+   body {
+     margin: 0;
+     min-width: 320px;
+     min-height: 100vh;
+     font-family: var(--font-sans);
+     background-color: var(--color-gray-100);
+     font-weight: normal;
+     line-height: normal;
+   }
+ 
+   #root {
+     min-height: 100vh;
+     background-color: var(--color-gray-100);
+   }
+ }
+ 
+ /* Component styles */
+ @layer components {
+   .btn {
+     padding: var(--spacing-2) var(--spacing-4);
+     border-radius: var(--radius);
+     font-weight: 500;
+   }
+   
+   .btn-primary {
+     background-color: var(--color-blue-500);
+     color: white;
+   }
+   
+   .btn-primary:hover {
+     background-color: var(--color-blue-600);
+   }
+   
+   /* You can also use nesting now */
+   .card {
+     background-color: white;
+     border-radius: var(--radius-lg);
+     box-shadow: var(--shadow);
+     padding: var(--spacing-4);
+     
+     h2 {
+       color: var(--color-gray-900);
+       margin-bottom: var(--spacing-2);
+     }
+     
+     p {
+       color: var(--color-gray-600);
+     }
+   }
+ }
+ 
+ /* You can also import other component-specific CSS files */
+ @import "./components/SimpleCalendar.css";
