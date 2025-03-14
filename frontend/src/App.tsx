@@ -19,7 +19,10 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
+          <div className="min-h-screen bg-gray-100 text-gray-900">
+            <div className="min-h-screen">
+              <main className="min-h-screen">
+                <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             
@@ -69,7 +72,10 @@ const App: React.FC = () => {
             />
             
             <Route path="/" element={<Navigate to="/dashboard" />} />
-          </Routes>
+                </Routes>
+              </main>
+            </div>
+          </div>
         </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>
