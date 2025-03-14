@@ -12,7 +12,7 @@ export default {
   battlenet: {
     clientId: process.env.BATTLE_NET_CLIENT_ID,
     clientSecret: process.env.BATTLE_NET_CLIENT_SECRET,
-    redirectUri: process.env.BATTLE_NET_REDIRECT_URI || 'http://localhost:5000/api/auth/callback',
+    redirectUri: process.env.BATTLE_NET_REDIRECT_URI || 'https://localhost:5000/api/auth/callback',
     regions: {
       eu: {
         authBaseUrl: 'https://eu.battle.net/oauth',

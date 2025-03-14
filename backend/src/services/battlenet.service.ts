@@ -5,8 +5,14 @@ class BattleNetService {
   async getAuthorizationUrl(region: string, state: string) {
     const regionConfig = config.battlenet.regions[region] || config.battlenet.regions.eu;
     
-    return `${regionConfig.authBaseUrl}/authorize?client_id=${config.battlenet.clientId}&scope=wow.profile&state=${state}&redirect_uri=${config.battlenet.redirectUri}&response_type=code`;
-  }
+    // Make sure all parameters are properly separated with &
+    return `${regionConfig.authBaseUrl}/authorize?` + 
+    `client_id=${encodeURIComponent(config.battlenet.clientId)}` +
+    `&scope=${encodeURIComponent('wow.profile')}` +
+    `&state=${encodeURIComponent(state)}` +
+    `&redirect_uri=${encodeURIComponent(config.battlenet.redirectUri)}` +
+    `&response_type=code`;
+}
 
   async getAccessToken(region: string, code: string) {
     const regionConfig = config.battlenet.regions[region] || config.battlenet.regions.eu;

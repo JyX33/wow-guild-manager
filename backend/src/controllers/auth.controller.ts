@@ -19,6 +19,7 @@ export default {
       req.session.region = region;
       
       const authUrl = await battleNetService.getAuthorizationUrl(region as string, state);
+      console.log('Authorization URL:', authUrl);
       res.json({ authUrl });
     } catch (error) {
       console.error('Login error:', error);
@@ -79,7 +80,7 @@ export default {
       });
       
       // Redirect to frontend
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback`);
+      res.redirect(`${process.env.FRONTEND_URL || 'https://localhost:5173'}/auth/callback`);
     } catch (error) {
       console.error('Callback error:', error);
       res.status(500).json({ error: 'Authentication failed' });

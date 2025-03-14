@@ -6,6 +6,7 @@ yarn-error.log
 .pnpm-debug.log
 .npm/
 .pnp.*
+**/package-lock.json
 
 # Build files
 dist/
@@ -37,3 +38,6 @@ bun.lockb
 
 # Cache
 .cache/
+
+# Temporary files
+**/*.pid
