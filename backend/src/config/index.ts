@@ -37,9 +37,12 @@ const config: AppConfig = {
     password: process.env.DB_PASSWORD || 'postgres'
   },
   auth: {
-    jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
-    cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || '86400000')
+    jwtSecret: process.env.JWT_SECRET || 'your-access-token-secret-key',
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-token-secret-key',
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+    jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+    cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || '3600000'), // 1 hour
+    refreshCookieMaxAge: parseInt(process.env.REFRESH_COOKIE_MAX_AGE || '604800000') // 7 days
   },
   battlenet: {
     clientId: process.env.BATTLE_NET_CLIENT_ID || '',

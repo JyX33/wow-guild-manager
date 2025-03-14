@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiError, ApiResponse, Event, EventSubscription, Guild, User } from '../types';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -15,18 +15,52 @@ const apiClient = axios.create({
 // Response interceptor for API calls
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
     const message = 
+      error.response?.data?.error?.message || 
       error.response?.data?.message || 
       error.message || 
       'Unknown error occurred';
     
-    console.error('API Error:', message);
+    // Don't log auth/me 401 errors to avoid console spam
+    const isAuthMe401 = error.config?.url === '/auth/me' && error.response?.status === 401;
+    if (!isAuthMe401) {
+      console.error('API Error:', message);
+    }
     
     // Handle authentication errors
     if (error.response?.status === 401) {
-      // Redirect to login or refresh token logic could be added here
-      console.log('Authentication error - redirecting to login');
+      // Don't redirect to login for /auth/me request failures
+      // This is expected behavior when not logged in
+      const isAuthMeRequest = error.config?.url === '/auth/me';
+      
+      // Check if token expired
+      if (error.response.data?.error?.details?.expired) {
+        try {
+          // Attempt to refresh the token
+          const refreshResponse = await axios.get(`${API_URL}/auth/refresh`, {
+            withCredentials: true
+          });
+          
+          if (refreshResponse.data.success) {
+            // Retry the original request
+            const originalRequest = error.config;
+            if (originalRequest) {
+              return apiClient(originalRequest);
+            }
+          }
+        } catch (refreshError) {
+          console.error('Token refresh failed:', refreshError);
+          // If refresh fails, only redirect to login for non-auth/me requests
+          if (!isAuthMeRequest) {
+            window.location.href = '/login';
+          }
+        }
+      } else if (!isAuthMeRequest) {
+        // If not expired but still unauthorized, redirect to login
+        // but only for non-auth/me requests
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);
@@ -38,16 +72,26 @@ const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>
   try {
     const response: AxiosResponse = await apiClient(config);
     
-    return {
-      success: true,
-      data: response.data
-    };
+    // Handle API response format
+    if (response.data.success !== undefined) {
+      // Server returns our ApiResponse format
+      return response.data as ApiResponse<T>;
+    } else {
+      // Transform into our standard API response format
+      return {
+        success: true,
+        data: response.data
+      };
+    }
   } catch (error) {
     const apiError: ApiError = {
       status: error instanceof AxiosError ? (error.response?.status || 500) : 500,
       message: error instanceof AxiosError ? 
-        (error.response?.data?.message || error.message) : 
-        'Unknown error occurred'
+        (error.response?.data?.error?.message || 
+         error.response?.data?.message || 
+         error.message) : 
+        'Unknown error occurred',
+      details: error instanceof AxiosError ? error.response?.data?.error?.details : undefined
     };
     
     return {
@@ -60,7 +104,7 @@ const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>
 // Authentication API
 export const authApi = {
   login: (region: string) => 
-    apiRequest<{ url: string }>({
+    apiRequest<{ authUrl: string }>({
       method: 'GET',
       url: `/auth/login?region=${region}`
     }),
@@ -75,6 +119,19 @@ export const authApi = {
     apiRequest<{ message: string }>({
       method: 'GET',
       url: '/auth/logout'
+    }),
+  
+  refreshToken: () => 
+    apiRequest<{ message: string }>({
+      method: 'GET',
+      url: '/auth/refresh'
+    }),
+    
+  updateUserRole: (userId: number, role: UserRole) => 
+    apiRequest<User>({
+      method: 'PUT',
+      url: '/auth/role',
+      data: { userId, role }
     })
 };
 

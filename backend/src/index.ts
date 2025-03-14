@@ -37,8 +37,15 @@ app.use(session({
   }
 }));
 
-// API Health check route
+// API Health check routes
 app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/healthcheck', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString()

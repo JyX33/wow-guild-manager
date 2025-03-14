@@ -1,3 +1,6 @@
+-- Create type for user roles
+CREATE TYPE user_role AS ENUM ('user', 'guild_leader', 'admin');
+
 -- Create users table
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -8,7 +11,8 @@ CREATE TABLE users (
   token_expires_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  user_data JSONB -- For storing additional Battle.net user data
+  user_data JSONB, -- For storing additional Battle.net user data
+  role user_role DEFAULT 'user'
 );
 
 -- Create guilds table
@@ -17,6 +21,7 @@ CREATE TABLE guilds (
   name VARCHAR(255) NOT NULL,
   realm VARCHAR(255) NOT NULL,
   region VARCHAR(50) NOT NULL,
+  leader_id INTEGER REFERENCES users(id),
   last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   guild_data JSONB, -- For storing guild data from API
   UNIQUE(name, realm, region)

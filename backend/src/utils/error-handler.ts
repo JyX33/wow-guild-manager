@@ -20,11 +20,14 @@ export const errorHandlerMiddleware = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error('Error:', err);
-  
   const status = 'status' in err ? err.status : 500;
   const message = err.message || 'Something went wrong';
   const details = 'details' in err ? err.details : undefined;
+  
+  // Only log errors that aren't 401 authentication errors since those are expected
+  if (status !== 401) {
+    console.error('Error:', err);
+  }
   
   res.status(status).json({
     success: false,

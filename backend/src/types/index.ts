@@ -1,5 +1,11 @@
 // Type definitions for the WoW Guild Manager application
 
+export enum UserRole {
+  USER = 'user',
+  GUILD_LEADER = 'guild_leader',
+  ADMIN = 'admin'
+}
+
 export interface User {
   id: number;
   battle_net_id: string;
@@ -9,7 +15,15 @@ export interface User {
   token_expires_at?: Date;
   created_at?: Date;
   updated_at?: Date;
-  user_data?: any; // This will be replaced with a proper type in the future
+  user_data?: BattleNetUserProfile;
+  role?: UserRole;
+}
+
+export interface BattleNetUserProfile {
+  id: string;
+  battletag: string;
+  sub: string;
+  [key: string]: any; // For any additional fields returned by Battle.net API
 }
 
 export interface Guild {
@@ -77,8 +91,11 @@ export interface ServerConfig {
 
 export interface AuthConfig {
   jwtSecret: string;
+  jwtRefreshSecret: string;
   jwtExpiresIn: string;
+  jwtRefreshExpiresIn: string;
   cookieMaxAge: number;
+  refreshCookieMaxAge: number;
 }
 
 export interface BattleNetRegionConfig {
