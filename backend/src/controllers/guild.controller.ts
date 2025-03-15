@@ -14,7 +14,7 @@ export default {
       
       if (!guild) {
         // Get user for access token
-        const user = await userModel.findByBattleNetId(req.user.id);
+        const user = await userModel.findById(req.user.id);
         
         // Fetch guild data from Battle.net API
         const guildData = await battleNetService.getGuildMembers(region, realm, name, user.access_token);
