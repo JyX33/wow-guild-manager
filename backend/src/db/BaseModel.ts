@@ -8,6 +8,9 @@ export default class BaseModel<T> {
     this.tableName = tableName;
   }
   
+  /**
+   * Find a single record by ID
+   */
   async findById(id: number): Promise<T | null> {
     try {
       const result = await db.query(
@@ -20,6 +23,9 @@ export default class BaseModel<T> {
     }
   }
   
+  /**
+   * Find all records matching conditions
+   */
   async findAll(conditions?: Record<string, any>): Promise<T[]> {
     try {
       if (!conditions || Object.keys(conditions).length === 0) {
@@ -42,6 +48,9 @@ export default class BaseModel<T> {
     }
   }
   
+  /**
+   * Create a new record
+   */
   async create(data: Partial<T>): Promise<T> {
     try {
       const keys = Object.keys(data);
@@ -61,6 +70,9 @@ export default class BaseModel<T> {
     }
   }
   
+  /**
+   * Update an existing record
+   */
   async update(id: number, data: Partial<T>): Promise<T | null> {
     try {
       const keys = Object.keys(data);
@@ -79,6 +91,9 @@ export default class BaseModel<T> {
     }
   }
   
+  /**
+   * Delete a record
+   */
   async delete(id: number): Promise<boolean> {
     try {
       const result = await db.query(
@@ -92,6 +107,9 @@ export default class BaseModel<T> {
     }
   }
   
+  /**
+   * Find a single record by conditions
+   */
   async findOne(conditions: Record<string, any>): Promise<T | null> {
     try {
       const keys = Object.keys(conditions);
@@ -107,6 +125,29 @@ export default class BaseModel<T> {
       return result.rows[0] || null;
     } catch (error) {
       throw new AppError(`Error finding ${this.tableName}: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+  
+  /**
+   * Count records matching conditions
+   */
+  async count(conditions?: Record<string, any>): Promise<number> {
+    try {
+      let query = `SELECT COUNT(*) FROM ${this.tableName}`;
+      let values: any[] = [];
+      
+      if (conditions && Object.keys(conditions).length > 0) {
+        const keys = Object.keys(conditions);
+        values = Object.values(conditions);
+        
+        const whereClause = keys.map((key, index) => `${key} = $${index + 1}`).join(' AND ');
+        query += ` WHERE ${whereClause}`;
+      }
+      
+      const result = await db.query(query, values);
+      return parseInt(result.rows[0].count);
+    } catch (error) {
+      throw new AppError(`Error counting ${this.tableName}: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 }
