@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
+import { guildApi } from '../services/api.service';
 import EventForm from '../components/EventForm';
-import withAuth from '../components/withAuth';
-import { Event } from '../types';
+import withAuth from '../components/WithAuth';
+import { Event, Guild } from '../types';
 
 interface LocationState {
   startTime?: string;
@@ -20,9 +21,9 @@ const CreateEventPage: React.FC = () => {
   const state = location.state as LocationState;
   
   // Get guild details to show guild name in the page
-  const { data: guild, loading: guildLoading } = useApi({
-    url: `/guilds/id/${guildId}`,
-    method: 'GET',
+  const { data: guild, loading: guildLoading } = useApi<Guild>({
+    apiFn: guildApi.getGuildById,
+    args: [parseInt(guildId || '0')],
     deps: [guildId]
   });
   
@@ -37,7 +38,7 @@ const CreateEventPage: React.FC = () => {
   const initialValues = {
     title: '',
     description: '',
-    event_type: 'Raid',
+    event_type: 'Raid' as const,
     start_time: startTime,
     end_time: endTime,
     max_participants: 25,

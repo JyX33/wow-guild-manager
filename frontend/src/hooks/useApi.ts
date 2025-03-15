@@ -1,70 +1,61 @@
 import { useState, useEffect, useCallback } from 'react';
-import axios, { AxiosRequestConfig, AxiosError } from 'axios';
 import { ApiError, ApiResponse } from '../types';
 
-interface UseApiOptions<T> {
-  url: string;
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  body?: any;
-  headers?: Record<string, string>;
+interface UseApiOptions<T, P extends any[]> {
+  // The API function to call
+  apiFn: (...args: P) => Promise<ApiResponse<T>>;
+  // Initial arguments for the API function
+  args?: P;
+  // Dependencies for re-fetching
   deps?: any[];
+  // Whether to call the API function immediately
   immediate?: boolean;
 }
 
-interface UseApiResult<T> {
+interface UseApiResult<T, P extends any[]> {
   data: T | null;
   loading: boolean;
   error: ApiError | null;
-  execute: () => Promise<ApiResponse<T>>;
+  execute: (...args: P) => Promise<ApiResponse<T>>;
+  setData: (data: T | null) => void;
+  reset: () => void;
 }
 
 /**
- * Custom hook for making API requests with built-in loading, error handling, and response formatting
- * @param options API request options
- * @returns Object containing data, loading state, error state, and execute function
+ * Custom hook for making API requests with built-in loading and error states
+ * @param options Configuration options for the API hook
  */
-export function useApi<T>(options: UseApiOptions<T>): UseApiResult<T> {
+export function useApi<T, P extends any[] = any[]>(
+  options: UseApiOptions<T, P>
+): UseApiResult<T, P> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(options.immediate !== false);
   const [error, setError] = useState<ApiError | null>(null);
 
-  const execute = useCallback(async (): Promise<ApiResponse<T>> => {
+  const execute = useCallback(async (...args: P): Promise<ApiResponse<T>> => {
     try {
       setLoading(true);
       setError(null);
 
-      const config: AxiosRequestConfig = {
-        url: options.url,
-        method: options.method || 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers
-        },
-      };
-
-      if (options.body && (options.method === 'POST' || options.method === 'PUT')) {
-        config.data = options.body;
+      // Use the provided arguments or fall back to the initial args
+      const finalArgs = args.length > 0 ? args : options.args || [] as unknown as P;
+      
+      // Call the API function with the arguments
+      const response = await options.apiFn(...finalArgs);
+      
+      if (response.success && response.data) {
+        setData(response.data);
+      } else if (response.error) {
+        setError(response.error);
       }
-
-      const response = await axios(config);
-      const responseData = response.data;
       
-      // Handle different API response formats
-      const result = responseData.success !== undefined 
-        ? responseData 
-        : { success: true, data: responseData };
-      
-      setData(result.data);
-      
-      return result;
+      return response;
     } catch (err) {
-      const axiosError = err as AxiosError;
+      console.error('Error in useApi hook:', err);
+      
       const apiError: ApiError = {
-        status: axiosError.response?.status || 500,
-        message: axiosError.response?.data?.error?.message || 
-                axiosError.response?.data?.message || 
-                axiosError.message || 
-                'Unknown error'
+        status: 500,
+        message: err instanceof Error ? err.message : 'Unknown error occurred'
       };
       
       setError(apiError);
@@ -76,13 +67,28 @@ export function useApi<T>(options: UseApiOptions<T>): UseApiResult<T> {
     } finally {
       setLoading(false);
     }
-  }, [options.url, options.method, options.body, JSON.stringify(options.headers)]);
+  }, [options.apiFn]);
 
+  // Reset function to clear data and errors
+  const reset = useCallback(() => {
+    setData(null);
+    setError(null);
+    setLoading(false);
+  }, []);
+
+  // Call the API function on mount if immediate is true
   useEffect(() => {
-    if (options.immediate !== false) {
-      execute();
+    if (options.immediate !== false && options.args) {
+      execute(...options.args);
     }
-  }, options.deps || [execute]);
+  }, options.deps || []);
 
-  return { data, loading, error, execute };
+  return { 
+    data, 
+    loading, 
+    error, 
+    execute, 
+    setData,
+    reset
+  };
 }

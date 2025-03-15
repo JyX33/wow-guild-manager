@@ -4,6 +4,7 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { Guild } from '../types';
 import { useApi } from '../hooks/useApi';
+import { guildApi } from '../services/api.service';
 import FormStatus from './FormStatus';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -38,8 +39,8 @@ const GuildSelector: React.FC = () => {
   const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
   
   // Use the useApi hook for searching guilds, with immediate set to false
-  const { loading, error, execute } = useApi<Guild>({
-    method: 'GET',
+  const { loading, error, execute } = useApi<Guild, [string, string, string]>({
+    apiFn: guildApi.getGuildByName,
     immediate: false
   });
 
@@ -52,9 +53,13 @@ const GuildSelector: React.FC = () => {
   const handleSubmit = async (values: GuildSelectorFormValues) => {
     const { region, realm, guildName } = values;
     
-    const response = await execute({
-      url: `/guilds/${region}/${encodeURIComponent(realm)}/${encodeURIComponent(guildName)}`
-    });
+    // Log the request
+    console.log(`Searching for guild: ${guildName} on ${realm}-${region}`);
+    
+    // Execute API call using the hook
+    const response = await execute(region, realm, guildName);
+    
+    console.log('API Response:', response);
     
     if (response.success && response.data) {
       // Validate that we have a valid guild ID before navigating
@@ -133,11 +138,11 @@ const GuildSelector: React.FC = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                disabled={isSubmitting || !isValid || !dirty}
+                disabled={isSubmitting || !isValid || !dirty || loading}
                 className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 
-                  ${(isSubmitting || !isValid || !dirty) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  ${(isSubmitting || !isValid || !dirty || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isSubmitting ? <LoadingSpinner size="sm" message="Searching..." /> : 'Find Guild'}
+                {loading ? <LoadingSpinner size="sm" message="Searching..." /> : 'Find Guild'}
               </button>
             </div>
             

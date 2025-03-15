@@ -1,9 +1,22 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../types';
+import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User } from '../types';
 
+type UserRole = 'admin' | 'user' | 'moderator';
+
+// Type augmentation for Vite's ImportMeta
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_API_URL: string
+  }
+  interface ImportMeta {
+    readonly env: ImportMetaEnv
+  }
+}
+
+// Use environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-// Create Axios client
+// Create Axios client with proper configuration
 const apiClient = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -12,54 +25,21 @@ const apiClient = axios.create({
   }
 });
 
-// Response interceptor for API calls
+// Axios response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const message = 
-      error.response?.data?.error?.message || 
-      error.response?.data?.message || 
-      error.message || 
-      'Unknown error occurred';
+  async (error) => {
+    console.error('API Error:', error.response?.data?.error || error.message);
     
-    // Don't log auth/me 401 errors to avoid console spam
-    const isAuthMe401 = error.config?.url === '/auth/me' && error.response?.status === 401;
-    if (!isAuthMe401) {
-      console.error('API Error:', message);
-    }
-    
-    // Handle authentication errors
-    if (error.response?.status === 401) {
-      // Don't redirect to login for /auth/me request failures
-      // This is expected behavior when not logged in
-      const isAuthMeRequest = error.config?.url === '/auth/me';
-      
-      // Check if token expired
-      if (error.response.data?.error?.details?.expired) {
-        try {
-          // Attempt to refresh the token
-          const refreshResponse = await axios.get(`${API_URL}/auth/refresh`, {
-            withCredentials: true
-          });
-          
-          if (refreshResponse.data.success) {
-            // Retry the original request
-            const originalRequest = error.config;
-            if (originalRequest) {
-              return apiClient(originalRequest);
-            }
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          // If refresh fails, only redirect to login for non-auth/me requests
-          if (!isAuthMeRequest) {
-            window.location.href = '/login';
-          }
-        }
-      } else if (!isAuthMeRequest) {
-        // If not expired but still unauthorized, redirect to login
-        // but only for non-auth/me requests
-        window.location.href = '/login';
+    // If token expired, attempt refresh
+    if (error.response?.status === 401 && error.response?.data?.error?.details?.expired) {
+      try {
+        // Attempt token refresh
+        await axios.get(`${API_URL}/auth/refresh`, { withCredentials: true });
+        // Retry the original request
+        return apiClient(error.config);
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
       }
     }
     

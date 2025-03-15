@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 import { Event } from '../types';
 import { useApi } from '../hooks/useApi';
+import { eventApi } from '../services/api.service';
 
 interface CalendarEvent extends Event {
   start: Date;
@@ -27,8 +28,8 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
 
   // Use our custom hook to fetch events
   const { data: eventsData, loading, error } = useApi<Event[]>({
-    url: `/events/guild/${guildId}`,
-    method: 'GET',
+    apiFn: eventApi.getGuildEvents,
+    args: [guildId],
     deps: [guildId]
   });
 
@@ -102,8 +103,6 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
         return "bg-green-600 text-white";
       case 'special':
         return "bg-purple-600 text-white";
-      case 'test':
-        return "bg-orange-500 text-white";
       default:
         return "bg-blue-500 text-white";
     }
@@ -115,7 +114,7 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
     id: 9999,
     title: 'Test Event',
     description: 'Test event to verify calendar functionality',
-    event_type: 'Test',
+    event_type: 'Special',
     start_time: today.toISOString(),
     end_time: new Date(today.getTime() + 60 * 60 * 1000).toISOString(),
     created_by: 1,

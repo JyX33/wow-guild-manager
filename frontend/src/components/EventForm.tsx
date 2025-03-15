@@ -4,11 +4,13 @@ import * as Yup from 'yup';
 import { Event } from '../types';
 import FormStatus from './FormStatus';
 import { useApi } from '../hooks/useApi';
+import { eventApi } from '../services/api.service';
+import LoadingSpinner from './LoadingSpinner';
 
 interface EventFormValues {
   title: string;
   description: string;
-  event_type: string;
+  event_type: 'Raid' | 'Dungeon' | 'Special';
   start_time: string;
   end_time: string;
   max_participants: number;
@@ -62,11 +64,12 @@ const EventForm: React.FC<EventFormProps> = ({
 }) => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   
-  // We'll use our custom useApi hook but set immediate to false since
-  // we want to control when the API call is made
-  const { loading, error, execute } = useApi<Event>({
-    url: mode === 'create' ? '/events' : `/events/${eventId}`,
-    method: mode === 'create' ? 'POST' : 'PUT',
+  // Use our custom useApi hook with the appropriate API function
+  const { loading, error, execute } = useApi<Event, [Partial<Event>]>({
+    apiFn: mode === 'create' ? eventApi.createEvent : 
+          (mode === 'edit' && eventId) ? 
+            (data: Partial<Event>) => eventApi.updateEvent(eventId, data) :
+            eventApi.createEvent,
     immediate: false
   });
 
@@ -75,7 +78,7 @@ const EventForm: React.FC<EventFormProps> = ({
     { setSubmitting, resetForm }: FormikHelpers<EventFormValues>
   ) => {
     try {
-      const response = await execute();
+      const response = await execute(values);
       
       if (response.success && response.data) {
         setFormSubmitted(true);
@@ -196,11 +199,11 @@ const EventForm: React.FC<EventFormProps> = ({
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={isSubmitting || !isValid || !dirty}
+                disabled={isSubmitting || !isValid || !dirty || loading}
                 className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 
-                  ${(isSubmitting || !isValid || !dirty) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  ${(isSubmitting || !isValid || !dirty || loading) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {isSubmitting ? 'Submitting...' : buttonText}
+                {loading ? <LoadingSpinner size="sm" message="Submitting..." /> : buttonText}
               </button>
             </div>
             
