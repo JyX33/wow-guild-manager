@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { eventApi } from '../services/api.service';
-import { useAuth } from '../context/AuthContext';
+import { Event } from '../../../shared/types/index';
 import EventForm from '../components/EventForm';
+import { useAuth } from '../context/AuthContext';
+import { eventApi } from '../services/api.service';
 
 const EditEventPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -20,7 +21,7 @@ const EditEventPage: React.FC = () => {
         setEvent(response.data);
         
         // Check if user is authorized to edit
-        if (response.data.created_by !== user?.id) {
+        if (response?.data?.created_by !== user?.id) {
           navigate(`/event/${eventId}`);
         }
       } catch (error) {
@@ -34,15 +35,8 @@ const EditEventPage: React.FC = () => {
     fetchEvent();
   }, [eventId, user?.id, navigate]);
 
-  const handleSubmit = async (values: any) => {
-    try {
-      if (!eventId) return;
-      
-      await eventApi.updateEvent(parseInt(eventId), values);
-      navigate(`/event/${eventId}`);
-    } catch (error) {
-      console.error('Failed to update event:', error);
-    }
+  const handleSubmitSuccess = (updatedEvent: Event) => {
+    navigate(`/event/${eventId}`);
   };
 
   if (loading) {
@@ -96,8 +90,10 @@ const EditEventPage: React.FC = () => {
         
         <EventForm 
           initialValues={initialValues}
-          onSubmit={handleSubmit}
+          onSubmitSuccess={handleSubmitSuccess}
           buttonText="Update Event"
+          mode="edit"
+          eventId={parseInt(eventId || '0')}
         />
       </div>
     </div>

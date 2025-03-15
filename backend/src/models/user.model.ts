@@ -34,8 +34,8 @@ class UserModel extends BaseModel<User> {
       return await this.update(id, {
         access_token: accessToken,
         refresh_token: refreshToken,
-        token_expires_at: expiresAt,
-        updated_at: new Date()
+        token_expires_at: expiresAt.toISOString(),
+        updated_at: new Date().toISOString()
       });
     } catch (error) {
       throw new AppError(`Error updating user tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
@@ -44,7 +44,7 @@ class UserModel extends BaseModel<User> {
 
   async updateRole(id: number, role: UserRole): Promise<User | null> {
     try {
-      return await this.update(id, { role, updated_at: new Date() });
+      return await this.update(id, { role, updated_at: new Date().toISOString() });
     } catch (error) {
       throw new AppError(`Error updating user role: ${error instanceof Error ? error.message : String(error)}`, 500);
     }

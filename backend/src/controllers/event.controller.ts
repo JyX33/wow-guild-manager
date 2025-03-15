@@ -94,7 +94,7 @@ export default {
         return res.status(403).json({ error: 'Permission denied' });
       }
       
-      const deletedEvent = await eventModel.delete(parseInt(eventId));
+      const deletedEvent = await eventModel.deleteEvent(parseInt(eventId));
       
       res.json(deletedEvent);
     } catch (error) {

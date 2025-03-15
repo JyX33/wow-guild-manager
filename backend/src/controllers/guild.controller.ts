@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../utils/error-handler';
 import { AppError } from '../utils/error-handler';
 import battleNetService from '../services/battlenet.service';
 import guildModel from '../models/guild.model';
@@ -15,7 +14,7 @@ export default {
       
       if (!guild) {
         // Get user for access token
-        const user = await userModel.findById(req.user.id);
+        const user = await userModel.findByBattleNetId(req.user.id);
         
         // Fetch guild data from Battle.net API
         const guildData = await battleNetService.getGuildMembers(region, realm, name, user.access_token);

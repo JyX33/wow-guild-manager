@@ -11,7 +11,7 @@ const pool = new Pool({
 });
 
 // Test the connection
-pool.query('SELECT NOW()', (err, res) => {
+pool.query('SELECT NOW()', (err: Error | null) => {
   if (err) {
     console.error('Error connecting to the database:', err);
   } else {
