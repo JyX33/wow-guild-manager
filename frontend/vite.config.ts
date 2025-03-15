@@ -7,6 +7,13 @@ import { defineConfig } from 'vite';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  resolve: {
+    extensions: ['.js', '.ts', '.jsx', '.tsx', '.json'],
+    alias: {
+      '@': '/src',
+      '@shared': '../shared'
+    }
+  },
   server: {
     host: '0.0.0.0',  // Make server accessible from outside
     port: 5173,

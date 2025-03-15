@@ -1,17 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authService } from '../services/api';
-import { User, UserRole } from '../types';
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  login: (region: string) => Promise<void>;
-  logout: () => Promise<void>;
-  isAuthenticated: boolean;
-  hasRole: (roles: UserRole | UserRole[]) => boolean;
-  refreshUser: () => Promise<void>;
-}
+import { User, UserRole } from '../../../shared/types/user';
+import { AuthContextType } from '../../../shared/types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 

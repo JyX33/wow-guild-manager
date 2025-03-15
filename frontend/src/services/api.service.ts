@@ -1,5 +1,5 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../types';
+import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../../../shared/types/index';
 
 // Type augmentation for Vite's ImportMeta
 declare global {

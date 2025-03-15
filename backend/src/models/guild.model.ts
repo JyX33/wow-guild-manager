@@ -1,5 +1,5 @@
+import { Guild } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
-import { Guild } from '../types';
 import { AppError } from '../utils/error-handler';
 
 class GuildModel extends BaseModel<Guild> {

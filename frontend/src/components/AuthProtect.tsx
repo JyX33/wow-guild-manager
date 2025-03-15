@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { UserRole } from '../types';
+import { UserRole } from '../../../shared/types/user';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import LoadingSpinner from './LoadingSpinner';
 

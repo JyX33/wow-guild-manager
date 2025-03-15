@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import config from '../config';
 import battleNetService from '../services/battlenet.service';
 import userModel from '../models/user.model';
-import { User, UserRole, BattleNetUserProfile } from '../types';
+import { User, UserRole, BattleNetUserProfile } from '../../../shared/types/index';
 import { AppError } from '../utils/error-handler';
 import { asyncHandler } from '../utils/error-handler';
 

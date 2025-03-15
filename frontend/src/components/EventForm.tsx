@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { Event } from '../types';
+import { Event } from '../../../shared/types/event';
+import { EventFormValues } from '../../../shared/types/event';
 import { EventBasicFields } from './forms/EventBasicFields';
 import { EventTimeFields } from './forms/EventTimeFields';
 import { EventParticipantsField } from './forms/EventParticipantsField';
@@ -9,16 +10,6 @@ import FormStatus from './FormStatus';
 import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api.service';
 import LoadingSpinner from './LoadingSpinner';
-
-interface EventFormValues {
-  title: string;
-  description: string;
-  event_type: 'Raid' | 'Dungeon' | 'Special';
-  start_time: string;
-  end_time: string;
-  max_participants: number;
-  guild_id: number;
-}
 
 interface EventFormProps {
   initialValues: EventFormValues;

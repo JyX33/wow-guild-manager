@@ -12,7 +12,7 @@ This document outlines a step-by-step plan to simplify and improve the WoW Guild
 
 ```typescript
 import dotenv from 'dotenv';
-import { AppConfig } from '../types';
+import { AppConfig } from '../../../shared/types/index';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -162,7 +162,7 @@ export default App;
 
 ```typescript
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../types';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../../../shared/types/index';
 
 // Type augmentation for Vite's ImportMeta
 declare global {
@@ -358,7 +358,7 @@ export const eventApi = {
 
 ```typescript
 import { useState, useEffect, useCallback } from 'react';
-import { ApiError, ApiResponse } from '../types';
+import { ApiError, ApiResponse } from '../../../shared/types/index';
 
 interface UseApiOptions<T, P extends any[]> {
   // The API function to call
@@ -494,7 +494,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { Guild } from '../types';
+import { Guild } from '../../../shared/types/index';
 import { useApi } from '../hooks/useApi';
 import { guildApi } from '../services/api.service';
 import FormStatus from './FormStatus';
@@ -687,7 +687,7 @@ export default class BaseModel<T> {
 
 ```typescript
 import BaseModel from '../db/BaseModel';
-import { Guild } from '../types';
+import { Guild } from '../../../shared/types/index';
 import { AppError } from '../utils/error-handler';
 
 class GuildModel extends BaseModel<Guild> {
@@ -721,7 +721,7 @@ export default new GuildModel();
 
 ```typescript
 import BaseModel from '../db/BaseModel';
-import { Event } from '../types';
+import { Event } from '../../../shared/types/index';
 import { AppError } from '../utils/error-handler';
 import db from './db';
 
@@ -781,7 +781,7 @@ export default new EventModel();
 
 ```typescript
 import BaseModel from '../db/BaseModel';
-import { EventSubscription } from '../types';
+import { EventSubscription } from '../../../shared/types/index';
 import { AppError } from '../utils/error-handler';
 import db from './db';
 

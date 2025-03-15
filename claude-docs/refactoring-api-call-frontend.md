@@ -26,7 +26,7 @@ We'll refactor the code to establish a clear separation of concerns:
 // File: frontend/src/services/api.service.ts
 
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../types';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../../../shared/types/index';
 
 // Use environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -213,7 +213,7 @@ export const eventApi = {
 // File: frontend/src/hooks/useApi.ts
 
 import { useState, useEffect, useCallback } from 'react';
-import { ApiResponse, ApiError } from '../types';
+import { ApiResponse, ApiError } from '../../../shared/types/index';
 
 interface UseApiOptions<T, P extends any[]> {
   // The API function to call
@@ -317,7 +317,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { Guild } from '../types';
+import { Guild } from '../../../shared/types/index';
 import { guildApi } from '../services/api.service';
 import { useApi } from '../hooks/useApi';
 import FormStatus from './FormStatus';
@@ -556,7 +556,7 @@ export default GuildPage;
 import React, { useState, useEffect } from 'react';
 import { eventApi } from '../services/api.service';
 import { useApi } from '../hooks/useApi';
-import { Event } from '../types';
+import { Event } from '../../../shared/types/index';
 import LoadingSpinner from './LoadingSpinner';
 
 // Keep the rest of your component implementation...

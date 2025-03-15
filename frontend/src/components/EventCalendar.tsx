@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
-import { Event } from '../types';
+import { Event } from '../../../shared/types/index';
 import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api.service';
 

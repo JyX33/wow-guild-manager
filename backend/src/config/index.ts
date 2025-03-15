@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { AppConfig } from '../types';
+import { AppConfig } from '../../../shared/types/index';
 
 // Load environment variables from .env file
 dotenv.config();

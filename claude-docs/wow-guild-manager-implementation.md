@@ -183,8 +183,8 @@ DB_USER=postgres
 DB_PASSWORD=your_password
 BATTLE_NET_CLIENT_ID=your_client_id
 BATTLE_NET_CLIENT_SECRET=your_client_secret
-BATTLE_NET_REDIRECT_URI=http://localhost:5000/api/auth/callback
-FRONTEND_URL=http://localhost:5173
+BATTLE_NET_REDIRECT_URI=https://localhost:5000/api/auth/callback
+FRONTEND_URL=https://localhost:5173
 JWT_SECRET=your_secure_jwt_secret
 ```
 
@@ -205,7 +205,7 @@ export default {
   battlenet: {
     clientId: process.env.BATTLE_NET_CLIENT_ID,
     clientSecret: process.env.BATTLE_NET_CLIENT_SECRET,
-    redirectUri: process.env.BATTLE_NET_REDIRECT_URI || 'http://localhost:5000/api/auth/callback',
+    redirectUri: process.env.BATTLE_NET_REDIRECT_URI || 'https://localhost:5000/api/auth/callback',
     regions: {
       eu: {
         authBaseUrl: 'https://eu.battle.net/oauth',
@@ -712,7 +712,7 @@ export default {
       });
       
       // Redirect to frontend
-      res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback`);
+      res.redirect(`${process.env.FRONTEND_URL || 'https://localhost:5173'}/auth/callback`);
     } catch (error) {
       console.error('Callback error:', error);
       res.status(500).json({ error: 'Authentication failed' });
@@ -1061,7 +1061,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || 'https://localhost:5173',
   credentials: true
 }));
 
@@ -1091,7 +1091,7 @@ app.listen(PORT, () => {
 ```typescript
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = 'https://localhost:5000/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -1772,7 +1772,7 @@ export default App;
 3. Click on "Create Client"
 4. Fill in the required information:
    - Name: WoW Guild Manager
-   - Redirect URL: <http://localhost:5000/api/auth/callback> (for development)
+   - Redirect URL: <https://localhost:5000/api/auth/callback> (for development)
    - Service URL: Your app's URL
 5. Select the required OAuth scopes:
    - wow.profile

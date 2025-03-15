@@ -1,10 +1,10 @@
 import React from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useApi } from '../hooks/useApi';
-import { guildApi } from '../services/api.service';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Event, Guild } from '../../../shared/types/index';
 import EventForm from '../components/EventForm';
 import withAuth from '../components/withAuth';
-import { Event, Guild } from '../types';
+import { useApi } from '../hooks/useApi';
+import { guildApi } from '../services/api.service';
 
 interface LocationState {
   startTime?: string;

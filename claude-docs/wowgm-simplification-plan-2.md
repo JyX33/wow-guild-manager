@@ -27,7 +27,7 @@ src/services/api/
 2. Core API utilities (`core.ts`):
 ```typescript
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { ApiError, ApiResponse } from '../types';
+import { ApiError, ApiResponse } from '../../../shared/types/index';
 
 // Use environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -100,7 +100,7 @@ export const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResp
 
 3. Domain-specific service example (`auth.service.ts`):
 ```typescript
-import { User, UserRole } from '../types';
+import { User, UserRole } from '../../../shared/types/index';
 import { apiRequest } from './core';
 
 export const authService = {
@@ -158,7 +158,7 @@ export * from './event.service';
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../types';
+import { UserRole } from '../../../shared/types/index';
 
 /**
  * Hook to protect routes that require authentication
@@ -197,7 +197,7 @@ export function useRequireAuth(requiredRoles?: UserRole | UserRole[]) {
 2. Create an authentication protection component (`AuthProtect.tsx`):
 ```typescript
 import React, { ReactNode } from 'react';
-import { UserRole } from '../types';
+import { UserRole } from '../../../shared/types/index';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -411,7 +411,7 @@ export const EventTimeFields: React.FC = () => {
 import React, { useState } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { Event } from '../types';
+import { Event } from '../../../shared/types/index';
 import { EventBasicFields } from './forms/EventBasicFields';
 import { EventTimeFields } from './forms/EventTimeFields';
 import { EventParticipantsField } from './forms/EventParticipantsField';

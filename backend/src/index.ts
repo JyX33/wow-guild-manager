@@ -1,15 +1,15 @@
-import express from 'express';
-import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import express from 'express';
 import session from 'express-session';
-import https from 'https';
 import fs from 'fs';
+import https from 'https';
 import path from 'path';
 import config from './config';
 
 import authRoutes from './routes/auth.routes';
-import guildRoutes from './routes/guild.routes';
 import eventRoutes from './routes/event.routes';
+import guildRoutes from './routes/guild.routes';
 import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler';
 
 const app = express();
@@ -20,7 +20,7 @@ app.use(cookieParser());
 app.use(cors({
   origin: [
     config.server.frontendUrl,
-    'https://127.0.0.1:5173'
+    'https://127.0.0.1:5000'
   ],
   credentials: true
 }));

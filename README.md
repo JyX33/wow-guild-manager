@@ -26,10 +26,18 @@ A web application for World of Warcraft guild management, enabling guild leaders
   │   │   │   └── api/        # Domain-specific API services
   │   │   ├── hooks/          # Custom hooks
   │   │   ├── context/        # Context providers
-  │   │   ├── types/          # TypeScript interfaces and types
   │   │   └── assets/         # Static assets
   │   ├── public/             # Public assets
   │   └── index.html          # Entry HTML
+  │
+  ├── shared/                 # Shared code between frontend and backend
+  │   └── types/              # Shared TypeScript type definitions
+  │       ├── user.ts         # User and authentication types
+  │       ├── guild.ts        # Guild and character types
+  │       ├── event.ts        # Event and subscription types
+  │       ├── api.ts          # API request/response types
+  │       ├── config.ts       # Configuration types
+  │       └── index.ts        # Type exports
   │
   └── backend/                # Bun/Node.js server
       ├── src/
@@ -39,7 +47,6 @@ A web application for World of Warcraft guild management, enabling guild leaders
       │   ├── routes/        # API routes
       │   ├── services/      # Business logic
       │   ├── middleware/    # Custom middleware
-      │   ├── types/         # TypeScript interfaces and types
       │   ├── config/        # Configuration management
       │   └── utils/         # Utility functions
       ├── certs/             # SSL certificates for local HTTPS
@@ -80,14 +87,16 @@ The codebase has been significantly simplified and improved with the following c
 
 5. **Type System Enhancement**
     - Created centralized shared types system in `/shared/types/`:
-      - User and authentication types
-      - Guild and character types
-      - Event and subscription types
-      - API request/response types
+      - User and authentication types with proper role enums
+      - Guild and character types with detailed interfaces
+      - Event and subscription types with form value interfaces
+      - API request/response types with error handling
+      - Configuration types for backend settings
     - Improved type safety with proper interfaces and enums
     - Added detailed type documentation
     - Configured TypeScript path aliases for seamless type imports
-    - Enhanced developer experience with better type inference
+    - Eliminated duplicate type definitions between frontend and backend
+    - Single source of truth for all shared data structures
 
 6. **Code Organization**
    - Improved project structure with clearer separation of concerns

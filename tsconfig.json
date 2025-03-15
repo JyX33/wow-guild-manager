@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["frontend/src/*"],
+      "@shared/*": ["shared/*"]
+    }
+  },
+  "include": [
+    "frontend/src",
+    "backend/src",
+    "shared/types"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

@@ -1,5 +1,5 @@
+import { User, UserRole } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
-import { User, UserRole } from '../types';
 import { AppError } from '../utils/error-handler';
 
 class UserModel extends BaseModel<User> {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from '../config';
 import { AppError } from '../utils/error-handler';
-import { BattleNetUserProfile } from '../types';
+import { BattleNetUserProfile } from '../../../shared/types/user';
 
 interface TokenResponse {
   access_token: string;

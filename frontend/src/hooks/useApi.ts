@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { ApiError, ApiResponse } from '../types';
+import { useCallback, useEffect, useState } from 'react';
+import { ApiError, ApiResponse } from '../../../shared/types/index';
 
 interface UseApiOptions<T, P extends any[]> {
   // The API function to call

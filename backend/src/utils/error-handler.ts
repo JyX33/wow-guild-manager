@@ -1,5 +1,4 @@
-import { Response, Request, NextFunction } from 'express';
-import { ApiError } from '../types';
+import { NextFunction, Request, Response } from 'express';
 
 export class AppError extends Error {
   status: number;

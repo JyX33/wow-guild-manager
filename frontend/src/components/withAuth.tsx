@@ -1,7 +1,7 @@
 import React, { ComponentType, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../types';
+import { UserRole } from '../../../shared/types/index';
 import LoadingSpinner from './LoadingSpinner';
 
 interface WithAuthProps {

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../types';
+import { UserRole } from '../../../shared/types/user';
 
 /**
  * Hook to protect routes that require authentication

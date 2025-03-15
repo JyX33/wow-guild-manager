@@ -1,8 +1,8 @@
+import { ErrorMessage, Field, Form, Formik } from 'formik';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { Guild } from '../types';
+import { Guild } from '../../../shared/types/index';
 import { useApi } from '../hooks/useApi';
 import { guildApi } from '../services/api.service';
 import FormStatus from './FormStatus';
