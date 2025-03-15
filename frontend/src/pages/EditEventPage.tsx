@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Event } from '../../../shared/types/index';
 import EventForm from '../components/EventForm';
 import { useAuth } from '../context/AuthContext';
-import { eventApi } from '../services/api.service';
+import { eventService } from '../services/api';
 
 const EditEventPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -17,7 +17,7 @@ const EditEventPage: React.FC = () => {
       try {
         if (!eventId) return;
         
-        const response = await eventApi.getEventById(parseInt(eventId));
+        const response = await eventService.getEventById(parseInt(eventId));
         setEvent(response.data);
         
         // Check if user is authorized to edit

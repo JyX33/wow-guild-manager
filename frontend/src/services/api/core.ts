@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { ApiError, ApiResponse } from '../../types';
+import { ApiError, ApiResponse } from '../../../shared/types/index';
 
 // Use environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -67,4 +67,22 @@ export const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResp
       error: apiError
     };
   }
+};
+
+// Add a timeout utility
+export const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timeoutId: NodeJS.Timeout;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Request timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  
+  return Promise.race([
+    promise,
+    timeoutPromise
+  ]).finally(() => {
+    clearTimeout(timeoutId);
+  }) as Promise<T>;
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
 import { Event, EventType } from '../../../shared/types/index';
 import { useApi } from '../hooks/useApi';
-import { eventApi } from '../services/api.service';
+import { eventService } from '../services/api';
 
 interface CalendarEvent extends Event {
   start: Date;
@@ -28,7 +28,7 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
 
   // Use our custom hook to fetch events
   const { data: eventsData, loading, error } = useApi<Event[]>({
-    apiFn: eventApi.getGuildEvents,
+    apiFn: eventService.getGuildEvents,
     args: [guildId],
     deps: [guildId]
   });

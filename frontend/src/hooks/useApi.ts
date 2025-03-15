@@ -12,6 +12,8 @@ interface UseApiOptions<T, P extends any[]> {
   immediate?: boolean;
   // Optional cache key for results
   cacheKey?: string;
+  // Optional timeout in milliseconds
+  timeout?: number;
 }
 
 interface UseApiResult<T, P extends any[]> {
@@ -61,7 +63,20 @@ export function useApi<T, P extends any[] = any[]>(
       const finalArgs = args.length > 0 ? args : options.args || [] as unknown as P;
       
       // Call the API function with the arguments
-      const response = await options.apiFn(...finalArgs);
+      let apiPromise = options.apiFn(...finalArgs);
+      
+      // Apply timeout if specified
+      if (options.timeout) {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`Request timed out after ${options.timeout}ms`));
+          }, options.timeout);
+        });
+        
+        apiPromise = Promise.race([apiPromise, timeoutPromise]) as Promise<ApiResponse<T>>;
+      }
+      
+      const response = await apiPromise;
       
       if (response.success && response.data) {
         setData(response.data);
@@ -95,7 +110,7 @@ export function useApi<T, P extends any[] = any[]>(
     } finally {
       setLoading(false);
     }
-  }, [options.apiFn, options.cacheKey]);
+  }, [options.apiFn, options.cacheKey, options.timeout]);
 
   // Reset function to clear data and errors
   const reset = useCallback(() => {

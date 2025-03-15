@@ -1,4 +1,4 @@
-// Re-export everything for backward compatibility
+// Re-export all services for easy imports
 export * from './core';
 export * from './auth.service';
 export * from './guild.service';

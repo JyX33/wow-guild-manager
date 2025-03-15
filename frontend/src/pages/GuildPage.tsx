@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { guildApi, eventApi } from '../services/api.service';
+import { guildService, eventService } from '../services/api';
 import EventCalendar from '../components/EventCalendar';
 
 interface Event {
@@ -35,11 +35,11 @@ const GuildPage: React.FC = () => {
         if (!guildId) return;
         
         // Fetch guild data
-        const guildResponse = await guildApi.getGuildById(parseInt(guildId));
+        const guildResponse = await guildService.getGuildById(parseInt(guildId));
         setGuild(guildResponse.data);
         
         // Fetch guild members
-        const membersResponse = await guildApi.getGuildMembers(parseInt(guildId));
+        const membersResponse = await guildService.getGuildMembers(parseInt(guildId));
         setMembers(membersResponse.data);
       } catch (error) {
         console.error('Failed to fetch guild data:', error);

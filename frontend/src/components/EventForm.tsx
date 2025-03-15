@@ -7,7 +7,7 @@ import { EventTimeFields } from './forms/EventTimeFields';
 import { EventParticipantsField } from './forms/EventParticipantsField';
 import FormStatus from './FormStatus';
 import { useApi } from '../hooks/useApi';
-import { eventApi } from '../services/api.service';
+import { eventService } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 
 interface EventFormProps {
@@ -59,10 +59,10 @@ const EventForm: React.FC<EventFormProps> = ({
   
   // Use our custom useApi hook with the appropriate API function
   const { loading, error, execute } = useApi<Event, [Partial<Event>]>({
-    apiFn: mode === 'create' ? eventApi.createEvent : 
+    apiFn: mode === 'create' ? eventService.createEvent : 
           (mode === 'edit' && eventId) ? 
-            (data: Partial<Event>) => eventApi.updateEvent(eventId, data) :
-            eventApi.createEvent,
+            (data: Partial<Event>) => eventService.updateEvent(eventId, data) :
+            eventService.createEvent,
     immediate: false
   });
 

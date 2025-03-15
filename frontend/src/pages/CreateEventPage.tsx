@@ -4,7 +4,7 @@ import { Event, Guild } from '../../../shared/types/index';
 import EventForm from '../components/EventForm';
 import withAuth from '../components/withAuth';
 import { useApi } from '../hooks/useApi';
-import { guildApi } from '../services/api.service';
+import { guildService } from '../services/api';
 
 interface LocationState {
   startTime?: string;
@@ -22,7 +22,7 @@ const CreateEventPage: React.FC = () => {
   
   // Get guild details to show guild name in the page
   const { data: guild, loading: guildLoading } = useApi<Guild>({
-    apiFn: guildApi.getGuildById,
+    apiFn: guildService.getGuildById,
     args: [parseInt(guildId || '0')],
     deps: [guildId]
   });

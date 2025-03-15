@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { eventApi } from '../services/api.service';
+import { eventService } from '../services/api';
 import { format } from 'date-fns';
 
 interface Event {
@@ -48,11 +48,11 @@ const EventDetailsPage: React.FC = () => {
         if (!eventId) return;
         
         // Fetch event details
-        const eventResponse = await eventApi.getEventById(parseInt(eventId));
+        const eventResponse = await eventService.getEventById(parseInt(eventId));
         setEvent(eventResponse.data);
         
         // Fetch event subscribers
-        const subscribersResponse = await eventApi.getEventSubscribers(parseInt(eventId));
+        const subscribersResponse = await eventService.getEventSubscribers(parseInt(eventId));
         setSubscribers(subscribersResponse.data);
         
         // Check if current user is subscribed
@@ -92,14 +92,14 @@ const EventDetailsPage: React.FC = () => {
       
       if (userSubscription) {
         // Update existing subscription
-        await eventApi.updateSubscription(parseInt(eventId), formData);
+        await eventService.updateSubscription(parseInt(eventId), formData);
       } else {
         // Create new subscription
-        await eventApi.subscribeToEvent(parseInt(eventId), formData);
+        await eventService.subscribeToEvent(parseInt(eventId), formData);
       }
       
       // Refresh event subscribers
-      const subscribersResponse = await eventApi.getEventSubscribers(parseInt(eventId));
+      const subscribersResponse = await eventService.getEventSubscribers(parseInt(eventId));
       setSubscribers(subscribersResponse.data);
       
       // Update user subscription status
@@ -121,7 +121,7 @@ const EventDetailsPage: React.FC = () => {
     try {
       if (!eventId || !event) return;
       
-      await eventApi.deleteEvent(parseInt(eventId));
+      await eventService.deleteEvent(parseInt(eventId));
       navigate(`/guild/${event.guild_id}`);
     } catch (error) {
       console.error('Failed to delete event:', error);

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Guild } from '../../../shared/types/index';
 import { useApi } from '../hooks/useApi';
-import { guildApi } from '../services/api.service';
+import { guildService } from '../services/api';
 import FormStatus from './FormStatus';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -36,7 +36,7 @@ const GuildSelector: React.FC = () => {
   
   // Use the useApi hook for searching guilds, with immediate set to false
   const { loading, error, execute } = useApi<Guild, [string, string, string]>({
-    apiFn: guildApi.getGuildByName,
+    apiFn: guildService.getGuildByName,
     immediate: false
   });
 
