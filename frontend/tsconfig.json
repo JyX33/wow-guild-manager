@@ -26,9 +26,10 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../shared/types"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
