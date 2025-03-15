@@ -177,7 +177,7 @@ Create a `.env` file in the backend directory:
 ```
 PORT=5000
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5433
 DB_NAME=wow_guild_manager
 DB_USER=postgres
 DB_PASSWORD=your_password
@@ -197,7 +197,7 @@ export default {
   },
   database: {
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
+    port: parseInt(process.env.DB_PORT || '5433'),
     name: process.env.DB_NAME || 'wow_guild_manager',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'password'
