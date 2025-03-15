@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { eventService } from '../services/api';
+import { eventService, characterService } from '../services/api';
+import { CharacterSelector } from '../components/CharacterSelector';
 import { format } from 'date-fns';
 
 interface Event {
@@ -20,11 +21,13 @@ interface Subscription {
   id: number;
   event_id: number;
   user_id: number;
+  character_id: number;
   status: string;
+  battletag: string;
+  // Character data from join
   character_name: string;
   character_class: string;
   character_role: string;
-  battletag: string;
 }
 
 const EventDetailsPage: React.FC = () => {
@@ -35,12 +38,12 @@ const EventDetailsPage: React.FC = () => {
   const [subscribers, setSubscribers] = useState<Subscription[]>([]);
   const [userSubscription, setUserSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingCharacters, setLoadingCharacters] = useState(true);
   const [formData, setFormData] = useState({
     status: 'Confirmed',
-    character_name: '',
-    character_class: '',
-    character_role: 'DPS',
+    character_id: 0
   });
+  const [characters, setCharacters] = useState([]);
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -64,9 +67,7 @@ const EventDetailsPage: React.FC = () => {
           setUserSubscription(userSub);
           setFormData({
             status: userSub.status,
-            character_name: userSub.character_name,
-            character_class: userSub.character_class,
-            character_role: userSub.character_role,
+            character_id: userSub.character_id
           });
         }
       } catch (error) {
@@ -78,10 +79,44 @@ const EventDetailsPage: React.FC = () => {
 
     fetchEventData();
   }, [eventId, user?.id]);
+  
+  // Fetch user's characters
+  useEffect(() => {
+    const fetchCharacters = async () => {
+      try {
+        setLoadingCharacters(true);
+        const response = await characterService.getUserCharacters();
+        
+        if (response.success && response.data) {
+          setCharacters(response.data);
+          
+          // If we have characters but no character_id is set yet, select the main character or first character
+          if (response.data.length > 0 && !formData.character_id) {
+            const mainCharacter = response.data.find(char => char.is_main);
+            if (mainCharacter) {
+              setFormData(prev => ({ ...prev, character_id: mainCharacter.id }));
+            } else {
+              setFormData(prev => ({ ...prev, character_id: response.data[0].id }));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch characters:', error);
+      } finally {
+        setLoadingCharacters(false);
+      }
+    };
+    
+    fetchCharacters();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
+  };
+
+  const handleCharacterSelect = (characterId: number) => {
+    setFormData({ ...formData, character_id: characterId });
   };
 
   const handleSubscribe = async (e: React.FormEvent) => {
@@ -232,51 +267,11 @@ const EventDetailsPage: React.FC = () => {
                 </select>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Character Name
-                </label>
-                <input
-                  type="text"
-                  name="character_name"
-                  value={formData.character_name}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded"
-                  placeholder="Your character name"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Character Class
-                </label>
-                <input
-                  type="text"
-                  name="character_class"
-                  value={formData.character_class}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded"
-                  placeholder="Your character class"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <select
-                  name="character_role"
-                  value={formData.character_role}
-                  onChange={handleInputChange}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="Tank">Tank</option>
-                  <option value="Healer">Healer</option>
-                  <option value="DPS">DPS</option>
-                </select>
-              </div>
+              <CharacterSelector
+                selectedCharacterId={formData.character_id}
+                onSelectCharacter={handleCharacterSelect}
+                className="w-full"
+              />
               
               <button
                 type="submit"

@@ -30,13 +30,16 @@ export interface GuildMember {
 
 export interface Character {
   id: number;
+  user_id: number;
   name: string;
   realm: string;
   class: string;
   level: number;
   role: CharacterRole;
+  is_main: boolean;
+  created_at?: string;
+  updated_at?: string;
   guild_id?: number;
-  user_id?: number;
   character_data?: {
     achievement_points?: number;
     equipped_item_level?: number;

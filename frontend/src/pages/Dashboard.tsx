@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import GuildSelector from '../components/GuildSelector';
 import { useAuth } from '../context/AuthContext';
 
@@ -20,7 +21,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <div>
           <GuildSelector />
         </div>
@@ -28,6 +29,16 @@ const Dashboard: React.FC = () => {
           <h2 className="text-xl font-bold mb-4">Recent Guilds</h2>
           <p className="text-gray-500">You haven't visited any guilds yet.</p>
         </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <Link
+          to="/characters"
+          className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+        >
+          <h2 className="text-xl font-bold mb-4">Character Management</h2>
+          <p className="text-gray-600">Manage your characters and set your main character.</p>
+        </Link>
       </div>
     </div>
   );

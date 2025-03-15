@@ -1,15 +1,19 @@
-import { EventSubscription } from '../../../shared/types/index';
+import { EventSubscription, LegacyEventSubscription } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
 import db from '../db/db';
 import { AppError } from '../utils/error-handler';
 
 interface SubscriptionRow extends EventSubscription {
   battletag: string;
+  character_name: string;
+  character_class: string;
+  character_role: string;
 }
 
 interface EventWithSubscription {
   id: number;
   status: string;
+  character_id: number;
   character_name: string;
   character_class: string;
   character_role: string;
@@ -33,16 +37,17 @@ class SubscriptionModel extends BaseModel<EventSubscription> {
   }
   
   /**
-   * Find all subscribers for an event, with user information
+   * Find all subscribers for an event, with user and character information
    */
   async findByEventId(eventId: number): Promise<SubscriptionRow[]> {
     try {
       const result = await db.query(
-        `SELECT es.*, u.battletag
+        `SELECT es.*, u.battletag, c.name as character_name, c.class as character_class, c.role as character_role
          FROM event_subscriptions es
          JOIN users u ON es.user_id = u.id
+         JOIN characters c ON es.character_id = c.id
          WHERE es.event_id = $1
-         ORDER BY es.status ASC, es.character_role ASC`,
+         ORDER BY es.status ASC, c.role ASC`,
         [eventId]
       );
       return result.rows as SubscriptionRow[];
@@ -57,9 +62,10 @@ class SubscriptionModel extends BaseModel<EventSubscription> {
   async findEventsByUser(userId: number): Promise<EventWithSubscription[]> {
     try {
       const result = await db.query(
-        `SELECT e.*, es.status, es.character_name, es.character_class, es.character_role
+        `SELECT e.*, es.status, es.character_id, c.name as character_name, c.class as character_class, c.role as character_role
          FROM events e
          JOIN event_subscriptions es ON e.id = es.event_id
+         JOIN characters c ON es.character_id = c.id
          WHERE es.user_id = $1
          ORDER BY e.start_time ASC`,
         [userId]
@@ -101,10 +107,11 @@ class SubscriptionModel extends BaseModel<EventSubscription> {
   async getSubscriberCountsByRole(eventId: number): Promise<Record<string, number>> {
     try {
       const result = await db.query(
-        `SELECT character_role, COUNT(*) as count
-         FROM event_subscriptions
-         WHERE event_id = $1 AND status = 'Confirmed'
-         GROUP BY character_role`,
+        `SELECT c.role as character_role, COUNT(*) as count
+         FROM event_subscriptions es
+         JOIN characters c ON es.character_id = c.id
+         WHERE es.event_id = $1 AND es.status = 'Confirmed'
+         GROUP BY c.role`,
         [eventId]
       );
       

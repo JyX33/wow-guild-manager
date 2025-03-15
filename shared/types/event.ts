@@ -41,6 +41,18 @@ export interface EventSubscription {
   id: number;
   event_id: number;
   user_id: number;
+  character_id: number;
+  status: EventSubscriptionStatus;
+  created_at?: string;
+  battletag?: string;
+  notes?: string;
+}
+
+// Legacy interface for backward compatibility
+export interface LegacyEventSubscription {
+  id: number;
+  event_id: number;
+  user_id: number;
   status: EventSubscriptionStatus;
   character_name: string;
   character_class: string;

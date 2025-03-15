@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { User, UserRole, UserWithTokens } from '../../../shared/types/index';
+import { UserRole, UserWithTokens } from '../../../shared/types/index';
 import config from '../config';
 import userModel from '../models/user.model';
 import { asyncHandler } from '../utils/error-handler';

@@ -41,15 +41,29 @@ CREATE TABLE events (
   event_details JSONB -- For storing flexible event details
 );
 
+-- Create characters table
+CREATE TABLE characters (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  realm VARCHAR(255) NOT NULL,
+  class VARCHAR(50) NOT NULL,
+  level INTEGER NOT NULL,
+  role VARCHAR(50) NOT NULL, -- 'Tank', 'Healer', 'DPS'
+  is_main BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  character_data JSONB, -- For storing additional Battle.net character data
+  UNIQUE(user_id, name, realm)
+);
+
 -- Create event subscriptions table
 CREATE TABLE event_subscriptions (
   id SERIAL PRIMARY KEY,
   event_id INTEGER REFERENCES events(id),
   user_id INTEGER REFERENCES users(id),
+  character_id INTEGER REFERENCES characters(id),
   status VARCHAR(50) NOT NULL, -- 'Confirmed', 'Tentative', 'Declined'
-  character_name VARCHAR(255),
-  character_class VARCHAR(50),
-  character_role VARCHAR(50), -- 'Tank', 'Healer', 'DPS'
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(event_id, user_id)
 );

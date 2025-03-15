@@ -10,6 +10,7 @@ import config from './config';
 import authRoutes from './routes/auth.routes';
 import eventRoutes from './routes/event.routes';
 import guildRoutes from './routes/guild.routes';
+import characterRoutes from './routes/character.routes';
 import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler';
 
 const app = express();
@@ -56,6 +57,7 @@ app.get('/api/healthcheck', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/guilds', guildRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/characters', characterRoutes);
 
 // Error handling
 app.use(notFoundHandler);
