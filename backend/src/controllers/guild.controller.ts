@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import { asyncHandler } from '../utils/error-handler';
+import { AppError } from '../utils/error-handler';
 import battleNetService from '../services/battlenet.service';
 import guildModel from '../models/guild.model';
 import userModel from '../models/user.model';
@@ -38,17 +40,30 @@ export default {
     try {
       const { guildId } = req.params;
       
-      // Get guild from database
-      const guild = await guildModel.findById(parseInt(guildId));
+      // Validate that guildId is a valid integer
+      const guildIdInt = parseInt(guildId);
       
-      if (!guild) {
-        return res.status(404).json({ error: 'Guild not found' });
+      if (isNaN(guildIdInt)) {
+        throw new AppError('Invalid guild ID. Must be a valid integer.', 400);
       }
       
-      res.json(guild);
+      // Get guild from database
+      const guild = await guildModel.findById(guildIdInt);
+      
+      if (!guild) {
+        throw new AppError('Guild not found', 404);
+      }
+      
+      res.json({
+        success: true,
+        data: guild
+      });
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       console.error('Get guild by ID error:', error);
-      res.status(500).json({ error: 'Failed to get guild information' });
+      throw new AppError('Failed to get guild information', 500);
     }
   },
   
@@ -71,5 +86,5 @@ export default {
       console.error('Get guild members error:', error);
       res.status(500).json({ error: 'Failed to get guild members' });
     }
-  }
+  },    
 };

@@ -18,6 +18,11 @@ interface UseApiResult<T> {
   execute: () => Promise<ApiResponse<T>>;
 }
 
+/**
+ * Custom hook for making API requests with built-in loading, error handling, and response formatting
+ * @param options API request options
+ * @returns Object containing data, loading state, error state, and execute function
+ */
 export function useApi<T>(options: UseApiOptions<T>): UseApiResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(options.immediate !== false);
@@ -44,17 +49,22 @@ export function useApi<T>(options: UseApiOptions<T>): UseApiResult<T> {
       const response = await axios(config);
       const responseData = response.data;
       
-      setData(responseData);
+      // Handle different API response formats
+      const result = responseData.success !== undefined 
+        ? responseData 
+        : { success: true, data: responseData };
       
-      return {
-        success: true,
-        data: responseData
-      };
+      setData(result.data);
+      
+      return result;
     } catch (err) {
       const axiosError = err as AxiosError;
       const apiError: ApiError = {
         status: axiosError.response?.status || 500,
-        message: axiosError.response?.data?.message || axiosError.message || 'Unknown error'
+        message: axiosError.response?.data?.error?.message || 
+                axiosError.response?.data?.message || 
+                axiosError.message || 
+                'Unknown error'
       };
       
       setError(apiError);

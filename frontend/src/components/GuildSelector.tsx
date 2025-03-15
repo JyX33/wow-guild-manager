@@ -1,91 +1,159 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { guildApi } from '../services/api.service';
+import { Formik, Form, Field, ErrorMessage } from 'formik';
+import * as Yup from 'yup';
+import { Guild } from '../types';
+import { useApi } from '../hooks/useApi';
+import FormStatus from './FormStatus';
+import LoadingSpinner from './LoadingSpinner';
 
+interface GuildSelectorFormValues {
+  region: string;
+  realm: string;
+  guildName: string;
+}
+
+// Form validation schema
+const GuildSelectorSchema = Yup.object().shape({
+  region: Yup.string()
+    .required('Region is required')
+    .oneOf(['eu', 'us', 'kr', 'tw'], 'Invalid region'),
+  realm: Yup.string()
+    .required('Realm is required')
+    .min(2, 'Realm must be at least 2 characters')
+    .max(50, 'Realm must be at most 50 characters')
+    .matches(/^[a-zA-Z\-\s']*$/, 'Realm can only contain letters, spaces, hyphens, and apostrophes'),
+  guildName: Yup.string()
+    .required('Guild name is required')
+    .min(2, 'Guild name must be at least 2 characters')
+    .max(50, 'Guild name must be at most 50 characters')
+    .matches(/^[a-zA-Z0-9\-\s']*$/, 'Guild name can only contain letters, numbers, spaces, hyphens, and apostrophes')
+});
+
+/**
+ * Improved Guild Selector component with form validation
+ */
 const GuildSelector: React.FC = () => {
   const navigate = useNavigate();
-  const [region, setRegion] = useState('eu');
-  const [realm, setRealm] = useState('');
-  const [guildName, setGuildName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [selectedGuild, setSelectedGuild] = useState<Guild | null>(null);
+  
+  // Use the useApi hook for searching guilds, with immediate set to false
+  const { loading, error, execute } = useApi<Guild>({
+    method: 'GET',
+    immediate: false
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const initialValues: GuildSelectorFormValues = {
+    region: 'eu',
+    realm: '',
+    guildName: ''
+  };
+
+  const handleSubmit = async (values: GuildSelectorFormValues) => {
+    const { region, realm, guildName } = values;
     
-    if (!realm || !guildName) {
-      setError('Please enter both realm and guild name');
-      return;
-    }
+    const response = await execute({
+      url: `/guilds/${region}/${encodeURIComponent(realm)}/${encodeURIComponent(guildName)}`
+    });
     
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await guildApi.getGuildByName(region, realm, guildName);
-      navigate(`/guild/${response.data.id}`);
-    } catch (error) {
-      setError('Failed to find guild. Please check the realm and guild name.');
-    } finally {
-      setLoading(false);
+    if (response.success && response.data) {
+      // Validate that we have a valid guild ID before navigating
+      if (response.data.id && !isNaN(response.data.id)) {
+        setSelectedGuild(response.data);
+        navigate(`/guild/${response.data.id}`);
+      } else {
+        // If we don't have a valid guild ID, show an error
+        console.error('Invalid guild ID received:', response.data);
+      }
     }
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-xl font-bold mb-4">Select Your Guild</h2>
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h2 className="text-xl font-bold mb-4">Find Your Guild</h2>
       
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-          {error}
-        </div>
-      )}
+      <FormStatus loading={loading} error={error} />
       
-      <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Region</label>
-          <select
-            className="w-full p-2 border rounded"
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-          >
-            <option value="eu">Europe</option>
-            <option value="us">Americas</option>
-            <option value="kr">Korea</option>
-            <option value="tw">Taiwan</option>
-          </select>
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Realm</label>
-          <input
-            type="text"
-            className="w-full p-2 border rounded"
-            value={realm}
-            onChange={(e) => setRealm(e.target.value)}
-            placeholder="Enter realm name"
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2">Guild Name</label>
-          <input
-            type="text"
-            className="w-full p-2 border rounded"
-            value={guildName}
-            onChange={(e) => setGuildName(e.target.value)}
-            placeholder="Enter guild name"
-          />
-        </div>
-        
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-          disabled={loading}
-        >
-          {loading ? 'Loading...' : 'Find Guild'}
-        </button>
-      </form>
+      <Formik
+        initialValues={initialValues}
+        validationSchema={GuildSelectorSchema}
+        onSubmit={handleSubmit}
+      >
+        {({ isSubmitting, isValid, dirty }) => (
+          <Form className="space-y-4">
+            <div>
+              <label htmlFor="region" className="block text-sm font-medium text-gray-700 mb-1">
+                Region*
+              </label>
+              <Field
+                as="select"
+                name="region"
+                id="region"
+                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="eu">Europe</option>
+                <option value="us">Americas</option>
+                <option value="kr">Korea</option>
+                <option value="tw">Taiwan</option>
+              </Field>
+              <ErrorMessage name="region" component="div" className="text-red-500 text-sm mt-1" />
+            </div>
+            
+            <div>
+              <label htmlFor="realm" className="block text-sm font-medium text-gray-700 mb-1">
+                Realm*
+              </label>
+              <Field
+                type="text"
+                name="realm"
+                id="realm"
+                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter realm name"
+              />
+              <ErrorMessage name="realm" component="div" className="text-red-500 text-sm mt-1" />
+              <div className="text-xs text-gray-500 mt-1">
+                Example: Silvermoon, Kazzak, Stormrage
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="guildName" className="block text-sm font-medium text-gray-700 mb-1">
+                Guild Name*
+              </label>
+              <Field
+                type="text"
+                name="guildName"
+                id="guildName"
+                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter guild name"
+              />
+              <ErrorMessage name="guildName" component="div" className="text-red-500 text-sm mt-1" />
+            </div>
+            
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting || !isValid || !dirty}
+                className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 
+                  ${(isSubmitting || !isValid || !dirty) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isSubmitting ? <LoadingSpinner size="sm" message="Searching..." /> : 'Find Guild'}
+              </button>
+            </div>
+            
+            <div className="text-xs text-gray-500">
+              * Required fields
+            </div>
+          </Form>
+        )}
+      </Formik>
+      
+      <div className="mt-4 text-sm text-gray-600">
+        <p>
+          This will search the Battle.net API for your guild. 
+          If the guild is found, you'll be redirected to the guild page.
+        </p>
+      </div>
     </div>
   );
 };
