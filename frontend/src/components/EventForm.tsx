@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Formik, Form, Field, ErrorMessage, FormikHelpers } from 'formik';
+import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { Event } from '../types';
+import { EventBasicFields } from './forms/EventBasicFields';
+import { EventTimeFields } from './forms/EventTimeFields';
+import { EventParticipantsField } from './forms/EventParticipantsField';
 import FormStatus from './FormStatus';
 import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api.service';
@@ -73,20 +76,16 @@ const EventForm: React.FC<EventFormProps> = ({
     immediate: false
   });
 
-  const handleSubmit = async (
-    values: EventFormValues, 
-    { setSubmitting, resetForm }: FormikHelpers<EventFormValues>
-  ) => {
+  const handleSubmit = async (values: EventFormValues) => {
     try {
       const response = await execute(values);
       
       if (response.success && response.data) {
         setFormSubmitted(true);
-        resetForm();
         onSubmitSuccess(response.data);
       }
-    } finally {
-      setSubmitting(false);
+    } catch (error) {
+      console.error('Form submission error:', error);
     }
   };
 
@@ -104,97 +103,11 @@ const EventForm: React.FC<EventFormProps> = ({
         validationSchema={EventSchema}
         onSubmit={handleSubmit}
       >
-        {({ isSubmitting, isValid, dirty, values, setFieldValue }) => (
+        {({ isSubmitting, isValid, dirty }) => (
           <Form className="space-y-4">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                Event Title*
-              </label>
-              <Field
-                type="text"
-                name="title"
-                id="title"
-                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Give your event a descriptive title"
-              />
-              <ErrorMessage name="title" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-            
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <Field
-                as="textarea"
-                name="description"
-                id="description"
-                rows={3}
-                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Add details about your event"
-              />
-              <ErrorMessage name="description" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-            
-            <div>
-              <label htmlFor="event_type" className="block text-sm font-medium text-gray-700 mb-1">
-                Event Type*
-              </label>
-              <Field
-                as="select"
-                name="event_type"
-                id="event_type"
-                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select Event Type</option>
-                <option value="Raid">Raid</option>
-                <option value="Dungeon">Dungeon</option>
-                <option value="Special">Special Event</option>
-              </Field>
-              <ErrorMessage name="event_type" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="start_time" className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Time*
-                </label>
-                <Field
-                  type="datetime-local"
-                  name="start_time"
-                  id="start_time"
-                  className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                />
-                <ErrorMessage name="start_time" component="div" className="text-red-500 text-sm mt-1" />
-              </div>
-              
-              <div>
-                <label htmlFor="end_time" className="block text-sm font-medium text-gray-700 mb-1">
-                  End Time*
-                </label>
-                <Field
-                  type="datetime-local"
-                  name="end_time"
-                  id="end_time"
-                  className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                />
-                <ErrorMessage name="end_time" component="div" className="text-red-500 text-sm mt-1" />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="max_participants" className="block text-sm font-medium text-gray-700 mb-1">
-                Maximum Participants*
-              </label>
-              <Field
-                type="number"
-                name="max_participants"
-                id="max_participants"
-                min="1"
-                max="100"
-                className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-              />
-              <ErrorMessage name="max_participants" component="div" className="text-red-500 text-sm mt-1" />
-            </div>
+            <EventBasicFields />
+            <EventTimeFields />
+            <EventParticipantsField />
             
             <div className="pt-4">
               <button
