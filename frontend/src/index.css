@@ -1,77 +1,155 @@
-/* 
+/*
  * Import theme variables first
- * This ensures your custom CSS variables are available
- * when Tailwind processes the CSS
  */
- @import "./theme.css";
+@import "./theme.css";
 
- /* 
-  * Import Tailwind CSS framework 
-  * In v4, this is simplified to a single import
-  */
- @import "tailwindcss";
+/*
+ * Import Tailwind CSS framework
+ */
+@import "tailwindcss";
  
- /* 
-  * Then add your custom styles, building on
-  * both your theme variables and Tailwind's utilities
-  */
- @layer base {
-   html {
-     -webkit-font-smoothing: antialiased;
-     -moz-osx-font-smoothing: grayscale;
-     font-synthesis: none;
-   }
+/* Base styles */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+  }
  
-   body {
-     margin: 0;
-     min-width: 320px;
-     min-height: 100vh;
-     font-family: var(--font-sans);
-     background-color: var(--color-gray-100);
-     font-weight: normal;
-     line-height: normal;
-   }
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    font-family: var(--font-sans);
+    background-color: var(--color-gray-100);
+    font-weight: normal;
+    line-height: normal;
+  }
  
-   #root {
-     min-height: 100vh;
-     background-color: var(--color-gray-100);
-   }
- }
+  #root {
+    min-height: 100vh;
+    background-color: var(--color-gray-100);
+  }
+}
  
- /* Component styles */
- @layer components {
-   .btn {
-     padding: var(--spacing-2) var(--spacing-4);
-     border-radius: var(--radius);
-     font-weight: 500;
-   }
+/* Component styles */
+@layer components {
+  /* Button styles */
+  .btn {
+    padding: var(--spacing-2) var(--spacing-4);
+    border-radius: var(--radius);
+    font-weight: 500;
+  }
    
-   .btn-primary {
-     background-color: var(--color-blue-500);
-     color: white;
-   }
+  .btn-primary {
+    background-color: var(--color-primary-500);
+    color: white;
+  }
    
-   .btn-primary:hover {
-     background-color: var(--color-blue-600);
-   }
+  .btn-primary:hover {
+    background-color: var(--color-primary-600);
+  }
    
-   /* You can also use nesting now */
-   .card {
-     background-color: white;
-     border-radius: var(--radius-lg);
-     box-shadow: var(--shadow);
-     padding: var(--spacing-4);
-     
-     h2 {
-       color: var(--color-gray-900);
-       margin-bottom: var(--spacing-2);
-     }
-     
-     p {
-       color: var(--color-gray-600);
-     }
-   }
- }
- 
- /* You can also import other component-specific CSS files */
- @import "./components/SimpleCalendar.css";
+  /* Card styles */
+  .card {
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: var(--spacing-4);
+  }
+  
+  /* Calendar styles (formerly in SimpleCalendar.css) */
+  .calendar-container {
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius);
+    background-color: white;
+    padding: var(--spacing-5);
+  }
+
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-5);
+  }
+
+  .calendar-nav {
+    display: flex;
+    gap: var(--spacing-2);
+  }
+
+  .calendar-nav button {
+    background-color: var(--color-gray-50);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius);
+    padding: var(--spacing-1) var(--spacing-2);
+    cursor: pointer;
+  }
+  
+  .calendar-nav button:hover {
+    background-color: var(--color-gray-100);
+  }
+
+  .calendar-title {
+    font-size: 1.125rem;
+    font-weight: bold;
+  }
+
+  .calendar-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+  }
+
+  .calendar-day-header {
+    text-align: center;
+    font-weight: bold;
+    padding: var(--spacing-1);
+    border-bottom: 1px solid var(--color-gray-100);
+  }
+
+  .calendar-day {
+    height: 5rem;
+    border: 1px solid var(--color-gray-100);
+    border-radius: var(--radius);
+    padding: var(--spacing-1);
+    position: relative;
+  }
+
+  .calendar-day.today {
+    background-color: var(--color-yellow-50);
+  }
+
+  .calendar-day-number {
+    position: absolute;
+    top: var(--spacing-1);
+    right: var(--spacing-1);
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+  }
+
+  .calendar-event {
+    margin-top: var(--spacing-5);
+    margin-bottom: 0.125rem;
+    padding: 0.125rem var(--spacing-1);
+    border-radius: var(--radius);
+    font-size: 0.75rem;
+    color: white;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .calendar-event.raid {
+    background-color: var(--color-red-600);
+  }
+
+  .calendar-event.dungeon {
+    background-color: var(--color-green-600);
+  }
+
+  .calendar-event.special {
+    background-color: var(--color-purple-600);
+  }
+}

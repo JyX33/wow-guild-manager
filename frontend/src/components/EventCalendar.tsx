@@ -146,69 +146,50 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="p-4 flex items-center justify-between border-b">
-        <div className="space-x-2">
-          <button 
-            onClick={handlePrevMonth}
-            className="px-3 py-1 border rounded hover:bg-gray-50"
-          >
-            &larr;
-          </button>
-          <button 
-            onClick={handleToday}
-            className="px-3 py-1 border rounded hover:bg-gray-50"
-          >
-            Today
-          </button>
-          <button 
-            onClick={handleNextMonth}
-            className="px-3 py-1 border rounded hover:bg-gray-50"
-          >
-            &rarr;
-          </button>
+    <div className="calendar-container">
+      <div className="calendar-header">
+        <div className="calendar-nav">
+          <button onClick={handlePrevMonth}>&larr;</button>
+          <button onClick={handleToday}>Today</button>
+          <button onClick={handleNextMonth}>&rarr;</button>
         </div>
-        <h2 className="text-xl font-bold">
-          {format(currentMonth, 'MMMM yyyy')}
-        </h2>
+        <h2 className="calendar-title">{format(currentMonth, 'MMMM yyyy')}</h2>
       </div>
       
-      <div className="p-2">
-        <div className="grid grid-cols-7">
-          {weekdays.map(day => (
-            <div key={day} className="text-center font-medium p-2 border-b">
-              {day}
+      <div className="calendar-days">
+        {weekdays.map(day => (
+          <div key={day} className="calendar-day-header">
+            {day}
+          </div>
+        ))}
+        
+        {days.map((day, i) => (
+          <div
+            key={i}
+            className={`calendar-day ${isToday(day) ? 'today' : ''} ${!isSameMonth(day, currentMonth) ? 'opacity-50' : ''}`}
+            onClick={() => handleDayClick(day)}
+          >
+            <div className="calendar-day-number">
+              {day.getDate()}
             </div>
-          ))}
-          
-          {days.map((day, i) => (
-            <div
-              key={i}
-              className={getDayClass(day)}
-              onClick={() => handleDayClick(day)}
-            >
-              <div className="absolute top-1 right-1 text-sm">
-                {day.getDate()}
-              </div>
-              
-              <div className="mt-5 space-y-1">
-                {getEventsForDay(day).map((event) => (
-                  <div
-                    key={event.id}
-                    className={`text-xs p-1 rounded truncate cursor-pointer ${getEventClass(event.event_type)}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectEvent(event);
-                    }}
-                    title={event.title}
-                  >
-                    {format(event.start, 'h:mm a')} - {event.title}
-                  </div>
-                ))}
-              </div>
+            
+            <div>
+              {getEventsForDay(day).map((event) => (
+                <div
+                  key={event.id}
+                  className={`calendar-event ${event.event_type.toLowerCase()}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectEvent(event);
+                  }}
+                  title={event.title}
+                >
+                  {format(event.start, 'h:mm a')} - {event.title}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
       
       <div className="p-3 border-t text-sm text-gray-500">

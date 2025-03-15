@@ -1,7 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { ApiError, ApiResponse, Event, EventSubscription, Guild, User } from '../types';
-
-type UserRole = 'admin' | 'user' | 'moderator';
+import { ApiError, ApiResponse, Event, EventSubscription, Guild, User, UserRole } from '../types';
 
 // Type augmentation for Vite's ImportMeta
 declare global {
@@ -66,10 +64,10 @@ const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>
   } catch (error) {
     const apiError: ApiError = {
       status: error instanceof AxiosError ? (error.response?.status || 500) : 500,
-      message: error instanceof AxiosError ? 
-        (error.response?.data?.error?.message || 
-         error.response?.data?.message || 
-         error.message) : 
+      message: error instanceof AxiosError ?
+        (error.response?.data?.error?.message ||
+         error.response?.data?.message ||
+         error.message) :
         'Unknown error occurred',
       details: error instanceof AxiosError ? error.response?.data?.error?.details : undefined
     };
@@ -83,31 +81,31 @@ const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>
 
 // Authentication API
 export const authApi = {
-  login: (region: string) => 
+  login: (region: string) =>
     apiRequest<{ authUrl: string }>({
       method: 'GET',
       url: `/auth/login?region=${region}`
     }),
   
-  getCurrentUser: () => 
+  getCurrentUser: () =>
     apiRequest<User>({
       method: 'GET',
       url: '/auth/me'
     }),
   
-  logout: () => 
+  logout: () =>
     apiRequest<{ message: string }>({
       method: 'GET',
       url: '/auth/logout'
     }),
   
-  refreshToken: () => 
+  refreshToken: () =>
     apiRequest<{ message: string }>({
       method: 'GET',
       url: '/auth/refresh'
     }),
     
-  updateUserRole: (userId: number, role: UserRole) => 
+  updateUserRole: (userId: number, role: UserRole) =>
     apiRequest<User>({
       method: 'PUT',
       url: '/auth/role',
@@ -117,10 +115,10 @@ export const authApi = {
 
 // Guild API
 export const guildApi = {
-  getGuildByName: (region: string, realm: string, name: string) => 
+  getGuildByName: (region: string, realm: string, name: string) =>
     apiRequest<Guild>({
       method: 'GET',
-      url: `/guilds/${region}/${realm}/${name}`
+      url: `/guilds/${region}/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`
     }),
   
   getGuildById: (guildId: number) =>
@@ -129,7 +127,7 @@ export const guildApi = {
       url: `/guilds/id/${guildId}`
     }),
   
-  getGuildMembers: (guildId: number) => 
+  getGuildMembers: (guildId: number) =>
     apiRequest<Array<any>>({
       method: 'GET',
       url: `/guilds/${guildId}/members`
@@ -138,7 +136,7 @@ export const guildApi = {
 
 // Event API
 export const eventApi = {
-  getGuildEvents: (guildId: number) => 
+  getGuildEvents: (guildId: number) =>
     apiRequest<Event[]>({
       method: 'GET',
       url: `/events/guild/${guildId}`
@@ -150,41 +148,41 @@ export const eventApi = {
       url: `/events/${eventId}`
     }),
     
-  createEvent: (eventData: Partial<Event>) => 
+  createEvent: (eventData: Partial<Event>) =>
     apiRequest<Event>({
       method: 'POST',
       url: '/events',
       data: eventData
     }),
   
-  updateEvent: (eventId: number, eventData: Partial<Event>) => 
+  updateEvent: (eventId: number, eventData: Partial<Event>) =>
     apiRequest<Event>({
       method: 'PUT',
       url: `/events/${eventId}`,
       data: eventData
     }),
   
-  deleteEvent: (eventId: number) => 
+  deleteEvent: (eventId: number) =>
     apiRequest<{ message: string }>({
       method: 'DELETE',
       url: `/events/${eventId}`
     }),
   
-  subscribeToEvent: (eventId: number, subscriptionData: Partial<EventSubscription>) => 
+  subscribeToEvent: (eventId: number, subscriptionData: Partial<EventSubscription>) =>
     apiRequest<EventSubscription>({
       method: 'POST',
       url: `/events/${eventId}/subscribe`,
       data: subscriptionData
     }),
   
-  updateSubscription: (eventId: number, subscriptionData: Partial<EventSubscription>) => 
+  updateSubscription: (eventId: number, subscriptionData: Partial<EventSubscription>) =>
     apiRequest<EventSubscription>({
       method: 'PUT',
       url: `/events/${eventId}/subscribe`,
       data: subscriptionData
     }),
   
-  getEventSubscribers: (eventId: number) => 
+  getEventSubscribers: (eventId: number) =>
     apiRequest<EventSubscription[]>({
       method: 'GET',
       url: `/events/${eventId}/subscribers`

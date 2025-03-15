@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { guildApi } from '../services/api.service';
 import EventForm from '../components/EventForm';
-import withAuth from '../components/WithAuth';
+import withAuth from '../components/withAuth';
 import { Event, Guild } from '../types';
 
 interface LocationState {

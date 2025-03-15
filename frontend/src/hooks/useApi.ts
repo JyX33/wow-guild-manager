@@ -10,6 +10,8 @@ interface UseApiOptions<T, P extends any[]> {
   deps?: any[];
   // Whether to call the API function immediately
   immediate?: boolean;
+  // Optional cache key for results
+  cacheKey?: string;
 }
 
 interface UseApiResult<T, P extends any[]> {
@@ -21,6 +23,10 @@ interface UseApiResult<T, P extends any[]> {
   reset: () => void;
 }
 
+// Simple in-memory cache for API results
+const apiCache: Record<string, {data: any, timestamp: number}> = {};
+const CACHE_TTL = 60000; // 1 minute cache TTL
+
 /**
  * Custom hook for making API requests with built-in loading and error states
  * @param options Configuration options for the API hook
@@ -31,6 +37,20 @@ export function useApi<T, P extends any[] = any[]>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(options.immediate !== false);
   const [error, setError] = useState<ApiError | null>(null);
+
+  // Check cache on initial load if cacheKey is provided
+  useEffect(() => {
+    if (options.cacheKey && apiCache[options.cacheKey]) {
+      const cachedData = apiCache[options.cacheKey];
+      const now = Date.now();
+      
+      // Use cached data if it's not expired
+      if (now - cachedData.timestamp < CACHE_TTL) {
+        setData(cachedData.data);
+        setLoading(false);
+      }
+    }
+  }, [options.cacheKey]);
 
   const execute = useCallback(async (...args: P): Promise<ApiResponse<T>> => {
     try {
@@ -45,6 +65,14 @@ export function useApi<T, P extends any[] = any[]>(
       
       if (response.success && response.data) {
         setData(response.data);
+        
+        // Cache successful response if cacheKey is provided
+        if (options.cacheKey) {
+          apiCache[options.cacheKey] = {
+            data: response.data,
+            timestamp: Date.now()
+          };
+        }
       } else if (response.error) {
         setError(response.error);
       }
@@ -67,14 +95,19 @@ export function useApi<T, P extends any[] = any[]>(
     } finally {
       setLoading(false);
     }
-  }, [options.apiFn]);
+  }, [options.apiFn, options.cacheKey]);
 
   // Reset function to clear data and errors
   const reset = useCallback(() => {
     setData(null);
     setError(null);
     setLoading(false);
-  }, []);
+    
+    // Clear cache for this request if cacheKey is provided
+    if (options.cacheKey) {
+      delete apiCache[options.cacheKey];
+    }
+  }, [options.cacheKey]);
 
   // Call the API function on mount if immediate is true
   useEffect(() => {
@@ -83,11 +116,11 @@ export function useApi<T, P extends any[] = any[]>(
     }
   }, options.deps || []);
 
-  return { 
-    data, 
-    loading, 
-    error, 
-    execute, 
+  return {
+    data,
+    loading,
+    error,
+    execute,
     setData,
     reset
   };

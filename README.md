@@ -45,6 +45,35 @@ A web application for World of Warcraft guild management, enabling guild leaders
       └── index.ts             # Entry point
 ```
 
+## Recent Improvements
+
+The codebase has been simplified and improved with the following changes:
+
+1. **Configuration Consolidation**
+   - Removed redundant configuration files
+   - Enhanced environment variable validation
+   - Centralized configuration in a single location
+
+2. **Authentication Protection Unification**
+   - Standardized authentication using the withAuth HOC pattern
+   - Removed redundant ProtectedRoute component
+   - Improved type safety for user roles
+
+3. **API Communication Streamlining**
+   - Enhanced API service with better error handling
+   - Improved useApi hook with caching capabilities
+   - Added URL encoding for API parameters
+
+4. **Database Model Standardization**
+   - Implemented consistent BaseModel pattern
+   - Improved error handling in database operations
+   - Added transaction support for complex operations
+
+5. **CSS and Styling Standardization**
+   - Consolidated theme variables
+   - Standardized component styling
+   - Improved calendar component styling
+
 ## Setup Instructions
 
 ### Prerequisites

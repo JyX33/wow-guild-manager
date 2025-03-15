@@ -2,6 +2,8 @@
 import { ReactNode } from 'react';
 
 // User types
+export type UserRole = 'admin' | 'user' | 'moderator';
+
 export interface User {
   id: number;
   battle_net_id: string;
@@ -10,6 +12,7 @@ export interface User {
   token_expires_at?: string;
   created_at?: string;
   updated_at?: string;
+  role?: UserRole;
 }
 
 // Guild types

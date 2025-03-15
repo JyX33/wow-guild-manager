@@ -17,11 +17,10 @@ const requiredEnvVars = [
 ];
 
 // Check if all required environment variables are set
-requiredEnvVars.forEach(envVar => {
-  if (!process.env[envVar]) {
-    console.warn(`Warning: Missing environment variable: ${envVar}`);
-  }
-});
+const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+if (missingVars.length > 0) {
+  throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
+}
 
 const config: AppConfig = {
   server: {
@@ -37,8 +36,8 @@ const config: AppConfig = {
     password: process.env.DB_PASSWORD || 'postgres'
   },
   auth: {
-    jwtSecret: process.env.JWT_SECRET || 'your-access-token-secret-key',
-    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-token-secret-key',
+    jwtSecret: process.env.JWT_SECRET || '',
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || '',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
     jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     cookieMaxAge: parseInt(process.env.COOKIE_MAX_AGE || '3600000'), // 1 hour

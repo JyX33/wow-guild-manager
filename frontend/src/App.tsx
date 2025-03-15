@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import withAuth from './components/withAuth';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
@@ -13,6 +13,13 @@ import EditEventPage from './pages/EditEventPage';
 
 const queryClient = new QueryClient();
 
+// Apply withAuth HOC to components that require authentication
+const ProtectedDashboard = withAuth(Dashboard);
+const ProtectedGuildPage = withAuth(GuildPage);
+const ProtectedCreateEventPage = withAuth(CreateEventPage);
+const ProtectedEventDetailsPage = withAuth(EventDetailsPage);
+const ProtectedEditEventPage = withAuth(EditEventPage);
+
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -22,55 +29,14 @@ const App: React.FC = () => {
             <div className="min-h-screen">
               <main className="min-h-screen">
                 <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/guild/:guildId" 
-              element={
-                <ProtectedRoute>
-                  <GuildPage />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/guild/:guildId/event/create" 
-              element={
-                <ProtectedRoute>
-                  <CreateEventPage />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/event/:eventId" 
-              element={
-                <ProtectedRoute>
-                  <EventDetailsPage />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route 
-              path="/event/:eventId/edit" 
-              element={
-                <ProtectedRoute>
-                  <EditEventPage />
-                </ProtectedRoute>
-              } 
-            />
-            
-            <Route path="/" element={<Navigate to="/dashboard" />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/dashboard" element={<ProtectedDashboard />} />
+                  <Route path="/guild/:guildId" element={<ProtectedGuildPage />} />
+                  <Route path="/guild/:guildId/event/create" element={<ProtectedCreateEventPage />} />
+                  <Route path="/event/:eventId" element={<ProtectedEventDetailsPage />} />
+                  <Route path="/event/:eventId/edit" element={<ProtectedEditEventPage />} />
+                  <Route path="/" element={<Navigate to="/dashboard" />} />
                 </Routes>
               </main>
             </div>

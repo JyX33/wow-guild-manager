@@ -1,49 +1,28 @@
-import db from './db';
+import BaseModel from '../db/BaseModel';
+import { Guild } from '../types';
+import { AppError } from '../utils/error-handler';
 
-export default {
-  findById: async (id: number) => {
-    const result = await db.query(
-      'SELECT * FROM guilds WHERE id = $1',
-      [id]
-    );
-    return result.rows[0];
-  },
-  
-  findByNameRealmRegion: async (name: string, realm: string, region: string) => {
-    const result = await db.query(
-      'SELECT * FROM guilds WHERE name = $1 AND realm = $2 AND region = $3',
-      [name, realm, region]
-    );
-    return result.rows[0];
-  },
-  
-  create: async (guildData: any) => {
-    const result = await db.query(
-      `INSERT INTO guilds 
-      (name, realm, region, guild_data) 
-      VALUES ($1, $2, $3, $4) 
-      RETURNING *`,
-      [
-        guildData.name,
-        guildData.realm,
-        guildData.region,
-        guildData.guild_data
-      ]
-    );
-    return result.rows[0];
-  },
-  
-  update: async (id: number, guildData: any) => {
-    const result = await db.query(
-      `UPDATE guilds 
-      SET guild_data = $1, last_updated = CURRENT_TIMESTAMP 
-      WHERE id = $2 
-      RETURNING *`,
-      [
-        guildData.guild_data,
-        id
-      ]
-    );
-    return result.rows[0];
+class GuildModel extends BaseModel<Guild> {
+  constructor() {
+    super('guilds');
   }
-};
+
+  async findByNameRealmRegion(name: string, realm: string, region: string): Promise<Guild | null> {
+    try {
+      return await this.findOne({ name, realm, region });
+    } catch (error) {
+      throw new AppError(`Error finding guild by name/realm/region: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  async getGuildWithMembers(guildId: number): Promise<Guild | null> {
+    try {
+      const guild = await this.findById(guildId);
+      return guild;
+    } catch (error) {
+      throw new AppError(`Error retrieving guild with members: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+}
+
+export default new GuildModel();
