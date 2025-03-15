@@ -25,6 +25,29 @@ export interface Guild {
   guild_data?: any; // This will be replaced with a proper type in the future
 }
 
+export interface GuildMember {
+  id: number;
+  guild_id: number;
+  character_name: string;
+  character_class: string;
+  character_role: 'Tank' | 'Healer' | 'DPS';
+  rank: number;
+  user_id?: number;
+  battletag?: string;
+}
+
+export interface Character {
+  id: number;
+  name: string;
+  realm: string;
+  class: string;
+  level: number;
+  role: 'Tank' | 'Healer' | 'DPS';
+  guild_id?: number;
+  user_id?: number;
+  character_data?: any; // This will be replaced with a proper type in the future
+}
+
 // Event types
 export interface Event {
   id: number;

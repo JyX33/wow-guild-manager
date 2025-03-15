@@ -21,58 +21,70 @@ A web application for World of Warcraft guild management, enabling guild leaders
   ├── frontend/                # React/Vite app
   │   ├── src/
   │   │   ├── components/      # Reusable components
-  │   │   ├── pages/           # Page components
-  │   │   ├── services/        # API services
-  │   │   ├── hooks/           # Custom hooks
-  │   │   ├── context/         # Context providers
-  │   │   ├── types/           # TypeScript interfaces and types
-  │   │   └── assets/          # Static assets
-  │   ├── public/              # Public assets
-  │   └── index.html           # Entry HTML
+  │   │   ├── pages/          # Page components
+  │   │   ├── services/       # API services
+  │   │   │   └── api/        # Domain-specific API services
+  │   │   ├── hooks/          # Custom hooks
+  │   │   ├── context/        # Context providers
+  │   │   ├── types/          # TypeScript interfaces and types
+  │   │   └── assets/         # Static assets
+  │   ├── public/             # Public assets
+  │   └── index.html          # Entry HTML
   │
-  └── backend/                 # Bun/Node.js server
+  └── backend/                # Bun/Node.js server
       ├── src/
-      │   ├── controllers/     # Route controllers
-      │   ├── db/              # Database connection and base models
-      │   ├── models/          # Data models
-      │   ├── routes/          # API routes
-      │   ├── services/        # Business logic
-      │   ├── middleware/      # Custom middleware
-      │   ├── types/           # TypeScript interfaces and types
-      │   ├── config/          # Configuration management
-      │   └── utils/           # Utility functions
-      ├── certs/               # SSL certificates for local HTTPS
-      └── index.ts             # Entry point
+      │   ├── controllers/    # Route controllers
+      │   ├── db/            # Database connection and base models
+      │   ├── models/        # Data models
+      │   ├── routes/        # API routes
+      │   ├── services/      # Business logic
+      │   ├── middleware/    # Custom middleware
+      │   ├── types/         # TypeScript interfaces and types
+      │   ├── config/        # Configuration management
+      │   └── utils/         # Utility functions
+      ├── certs/             # SSL certificates for local HTTPS
+      └── index.ts           # Entry point
 ```
 
 ## Recent Improvements
 
-The codebase has been simplified and improved with the following changes:
+The codebase has been significantly simplified and improved with the following changes:
 
-1. **Configuration Consolidation**
-   - Removed redundant configuration files
-   - Enhanced environment variable validation
-   - Centralized configuration in a single location
+1. **API Service Organization**
+   - Split monolithic API service into domain-specific modules
+   - Created shared core API utilities for consistent error handling
+   - Improved type safety with domain-specific service interfaces
+   - Standardized API response formats
 
-2. **Authentication Protection Unification**
-   - Standardized authentication using the withAuth HOC pattern
-   - Removed redundant ProtectedRoute component
-   - Improved type safety for user roles
+2. **Authentication Simplification**
+   - Replaced complex HOC pattern with custom hooks
+   - Implemented `useRequireAuth` hook for route protection
+   - Created reusable `AuthProtect` component
+   - Simplified role-based access control
 
-3. **API Communication Streamlining**
-   - Enhanced API service with better error handling
-   - Improved useApi hook with caching capabilities
-   - Added URL encoding for API parameters
+3. **Component Refinement**
+   - Created reusable form components
+   - Split complex components into smaller, focused pieces
+   - Improved component composition and reusability
+   - Enhanced form validation patterns
 
-4. **Database Model Standardization**
-   - Implemented consistent BaseModel pattern
-   - Improved error handling in database operations
-   - Added transaction support for complex operations
+4. **Error Handling Standardization**
+   - Implemented unified error handling system
+   - Created standardized error types and utilities
+   - Added user-friendly error display components
+   - Improved error logging and debugging capabilities
 
-5. **CSS and Styling Standardization**
-   - Consolidated theme variables
-   - Standardized component styling
-   - Improved calendar component styling
+5. **Type System Enhancement**
+   - Consolidated shared types between frontend and backend
+   - Improved type safety across the application
+   - Added comprehensive type documentation
+   - Enhanced developer experience with better type inference
+
+6. **Code Organization**
+   - Improved project structure with clearer separation of concerns
+   - Enhanced code maintainability and readability
+   - Reduced code duplication
+   - Better module encapsulation
 
 ## Setup Instructions
 

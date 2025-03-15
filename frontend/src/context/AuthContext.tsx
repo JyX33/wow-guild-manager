@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { authApi } from '../services/api.service';
+import { authService } from '../services/api';
 import { User, UserRole } from '../types';
 
 interface AuthContextType {
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setError(null);
     
     try {
-      const response = await authApi.getCurrentUser();
+      const response = await authService.getCurrentUser();
       
       if (response.success && response.data) {
         setUser(response.data);
@@ -65,7 +65,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
         setLoading(true);
         setError(null);
         
-        const response = await authApi.getCurrentUser();
+        const response = await authService.getCurrentUser();
         
         if (isMounted) {
           if (response.success && response.data) {
@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     const tokenRefreshInterval = setInterval(async () => {
       if (isAuthenticatedRef.current) {
         try {
-          await authApi.refreshToken();
+          await authService.refreshToken();
         } catch (err) {
           console.error('Token refresh failed:', err);
           setUser(null);
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setError(null);
     
     try {
-      const response = await authApi.login(region);
+      const response = await authService.login(region);
       
       if (response.success && response.data) {
         window.location.href = response.data.authUrl;
@@ -144,7 +144,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     setError(null);
     
     try {
-      const response = await authApi.logout();
+      const response = await authService.logout();
       
       if (response.success) {
         setUser(null);
