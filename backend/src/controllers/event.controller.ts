@@ -10,13 +10,28 @@ export default {
       const event = await eventModel.findById(parseInt(eventId));
       
       if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: 'Event not found',
+            status: 404
+          }
+        });
       }
       
-      res.json(event);
+      res.json({
+        success: true,
+        data: event
+      });
     } catch (error) {
       console.error('Get event by ID error:', error);
-      res.status(500).json({ error: 'Failed to get event' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get event',
+          status: 500
+        }
+      });
     }
   },
   
@@ -26,10 +41,19 @@ export default {
       
       const events = await eventModel.findByGuildId(parseInt(guildId));
       
-      res.json(events);
+      res.json({
+        success: true,
+        data: events
+      });
     } catch (error) {
       console.error('Get guild events error:', error);
-      res.status(500).json({ error: 'Failed to get guild events' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get guild events',
+          status: 500
+        }
+      });
     }
   },
   
@@ -48,10 +72,19 @@ export default {
       const event = await eventModel.create(eventData);
       console.log('Event created successfully:', event);
       
-      res.status(201).json(event);
+      res.status(201).json({
+        success: true,
+        data: event
+      });
     } catch (error) {
       console.error('Create event error:', error);
-      res.status(500).json({ error: 'Failed to create event' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to create event',
+          status: 500
+        }
+      });
     }
   },
   
@@ -63,19 +96,40 @@ export default {
       const existingEvent = await eventModel.findById(parseInt(eventId));
       
       if (!existingEvent) {
-        return res.status(404).json({ error: 'Event not found' });
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: 'Event not found',
+            status: 404
+          }
+        });
       }
       
       if (existingEvent.created_by !== req.user.id) {
-        return res.status(403).json({ error: 'Permission denied' });
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'Permission denied',
+            status: 403
+          }
+        });
       }
       
       const updatedEvent = await eventModel.update(parseInt(eventId), req.body);
       
-      res.json(updatedEvent);
+      res.json({
+        success: true,
+        data: updatedEvent
+      });
     } catch (error) {
       console.error('Update event error:', error);
-      res.status(500).json({ error: 'Failed to update event' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to update event',
+          status: 500
+        }
+      });
     }
   },
   
@@ -87,19 +141,40 @@ export default {
       const existingEvent = await eventModel.findById(parseInt(eventId));
       
       if (!existingEvent) {
-        return res.status(404).json({ error: 'Event not found' });
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: 'Event not found',
+            status: 404
+          }
+        });
       }
       
       if (existingEvent.created_by !== req.user.id) {
-        return res.status(403).json({ error: 'Permission denied' });
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'Permission denied',
+            status: 403
+          }
+        });
       }
       
       const deletedEvent = await eventModel.deleteEvent(parseInt(eventId));
       
-      res.json(deletedEvent);
+      res.json({
+        success: true,
+        data: deletedEvent
+      });
     } catch (error) {
       console.error('Delete event error:', error);
-      res.status(500).json({ error: 'Failed to delete event' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to delete event',
+          status: 500
+        }
+      });
     }
   },
   
@@ -114,7 +189,13 @@ export default {
       );
       
       if (existingSubscription) {
-        return res.status(400).json({ error: 'Already subscribed to this event' });
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: 'Already subscribed to this event',
+            status: 400
+          }
+        });
       }
       
       const subscriptionData = {
@@ -125,10 +206,19 @@ export default {
       
       const subscription = await subscriptionModel.create(subscriptionData);
       
-      res.status(201).json(subscription);
+      res.status(201).json({
+        success: true,
+        data: subscription
+      });
     } catch (error) {
       console.error('Subscribe to event error:', error);
-      res.status(500).json({ error: 'Failed to subscribe to event' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to subscribe to event',
+          status: 500
+        }
+      });
     }
   },
   
@@ -143,7 +233,13 @@ export default {
       );
       
       if (!existingSubscription) {
-        return res.status(404).json({ error: 'Subscription not found' });
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: 'Subscription not found',
+            status: 404
+          }
+        });
       }
       
       const updatedSubscription = await subscriptionModel.update(
@@ -151,10 +247,19 @@ export default {
         req.body
       );
       
-      res.json(updatedSubscription);
+      res.json({
+        success: true,
+        data: updatedSubscription
+      });
     } catch (error) {
       console.error('Update subscription error:', error);
-      res.status(500).json({ error: 'Failed to update subscription' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to update subscription',
+          status: 500
+        }
+      });
     }
   },
   
@@ -164,10 +269,19 @@ export default {
       
       const subscribers = await subscriptionModel.findByEventId(parseInt(eventId));
       
-      res.json(subscribers);
+      res.json({
+        success: true,
+        data: subscribers
+      });
     } catch (error) {
       console.error('Get event subscribers error:', error);
-      res.status(500).json({ error: 'Failed to get event subscribers' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get event subscribers',
+          status: 500
+        }
+      });
     }
   }
 };

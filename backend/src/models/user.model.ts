@@ -1,4 +1,4 @@
-import { User, UserRole } from '../../../shared/types/index';
+import { User, UserRole, UserWithTokens } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';
 
@@ -16,7 +16,7 @@ class UserModel extends BaseModel<User> {
     }
   }
 
-  async createUser(userData: Partial<User>): Promise<User> {
+  async createUser(userData: Partial<UserWithTokens>): Promise<UserWithTokens> {
     // Set default role to USER if not provided
     if (!userData.role) {
       userData.role = UserRole.USER;
@@ -57,6 +57,16 @@ class UserModel extends BaseModel<User> {
       throw new AppError(`Error getting users with role: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
+
+  async getUserWithTokens(id: number): Promise<UserWithTokens | null> {
+    try {
+      const result = await this.findById(id);
+      return result as UserWithTokens;
+    } catch (error) {
+      throw new AppError(`Error finding user with tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
 }
 
 export default new UserModel();

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { User, UserRole } from '../../../shared/types/index';
+import { User, UserRole, UserWithTokens } from '../../../shared/types/index';
 import config from '../config';
 import userModel from '../models/user.model';
 import { asyncHandler } from '../utils/error-handler';
@@ -9,7 +9,7 @@ import { asyncHandler } from '../utils/error-handler';
 declare global {
   namespace Express {
     interface Request {
-      user?: User;
+      user?: UserWithTokens;
     }
   }
 }
@@ -35,8 +35,8 @@ export default {
       // Verify token
       const decoded = jwt.verify(token, config.auth.jwtSecret) as { id: number };
       
-      // Get user from database
-      const user = await userModel.findById(decoded.id);
+      // Get user from database - explicitly as UserWithTokens
+      const user = await userModel.getUserWithTokens(decoded.id);
       
       if (!user) {
         return res.status(401).json({
@@ -137,8 +137,8 @@ export default {
       // Verify refresh token
       const decoded = jwt.verify(refreshToken, config.auth.jwtRefreshSecret) as { id: number };
       
-      // Get user from database
-      const user = await userModel.findById(decoded.id);
+      // Get user from database with tokens
+      const user = await userModel.getUserWithTokens(decoded.id);
       
       if (!user || user.refresh_token !== refreshToken) {
         return res.status(401).json({

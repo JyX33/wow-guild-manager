@@ -1,6 +1,10 @@
 import { CharacterRole } from './guild';
 
-export type EventType = 'Raid' | 'Dungeon' | 'Special';
+export enum EventType {
+  RAID = 'Raid',
+  DUNGEON = 'Dungeon',
+  SPECIAL = 'Special'
+}
 export type EventSubscriptionStatus = 'Confirmed' | 'Tentative' | 'Declined';
 
 export interface Event {

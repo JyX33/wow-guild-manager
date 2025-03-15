@@ -12,6 +12,7 @@ export interface User {
   created_at?: string;
   updated_at?: string;
   role?: UserRole;
+  user_data?: BattleNetUserProfile;
 }
 
 // For backend use only - not exported directly in index.ts

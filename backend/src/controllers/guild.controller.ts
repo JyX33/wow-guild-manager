@@ -13,8 +13,12 @@ export default {
       let guild = await guildModel.findByNameRealmRegion(name, realm, region);
       
       if (!guild) {
-        // Get user for access token
-        const user = await userModel.findById(req.user.id);
+        // Get user with tokens
+        const user = await userModel.getUserWithTokens(req.user.id);
+        
+        if (!user || !user.access_token) {
+          throw new AppError('User authentication token not found', 401);
+        }
         
         // Fetch guild data from Battle.net API
         const guildData = await battleNetService.getGuildMembers(region, realm, name, user.access_token);
@@ -28,10 +32,19 @@ export default {
         });
       }
       
-      res.json(guild);
+      res.json({
+        success: true,
+        data: guild
+      });
     } catch (error) {
       console.error('Get guild error:', error);
-      res.status(500).json({ error: 'Failed to get guild information' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get guild information',
+          status: 500
+        }
+      });
     }
   },
   
@@ -74,16 +87,31 @@ export default {
       const guild = await guildModel.findById(parseInt(guildId));
       
       if (!guild) {
-        return res.status(404).json({ error: 'Guild not found' });
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: 'Guild not found',
+            status: 404
+          }
+        });
       }
       
       // Extract members from guild data
       const members = guild.guild_data?.members || [];
       
-      res.json(members);
+      res.json({
+        success: true,
+        data: members
+      });
     } catch (error) {
       console.error('Get guild members error:', error);
-      res.status(500).json({ error: 'Failed to get guild members' });
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get guild members',
+          status: 500
+        }
+      });
     }
   },    
 };

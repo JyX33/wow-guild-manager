@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import config from '../config';
 import battleNetService from '../services/battlenet.service';
 import userModel from '../models/user.model';
-import { User, UserRole, BattleNetUserProfile } from '../../../shared/types/index';
+import { User, UserRole, UserWithTokens, BattleNetUserProfile } from '../../../shared/types/index';
 import { AppError } from '../utils/error-handler';
 import { asyncHandler } from '../utils/error-handler';
 
@@ -12,7 +12,7 @@ const generateState = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-const generateToken = (user: User) => {
+const generateToken = (user: User | UserWithTokens) => {
   // Generate JWT for frontend auth
   const token = jwt.sign(
     { id: user.id, battle_net_id: user.battle_net_id, role: user.role },
@@ -82,7 +82,7 @@ export default {
         battletag: userInfo.battletag,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
-        token_expires_at: tokenExpiryDate,
+        token_expires_at: tokenExpiryDate.toISOString(),
         user_data: userInfo as BattleNetUserProfile,
         role: UserRole.USER
       });
@@ -139,8 +139,11 @@ export default {
       throw new AppError('User not found', 404);
     }
     
+    // Explicitly cast to UserWithTokens to acknowledge tokens are present
+    const userWithTokens = req.user as UserWithTokens;
+    
     // Don't send sensitive info to frontend
-    const { access_token, refresh_token, ...safeUser } = req.user;
+    const { access_token, refresh_token, ...safeUser } = userWithTokens;
     
     res.json({ success: true, data: safeUser });
   }),
@@ -190,8 +193,9 @@ export default {
       throw new AppError('User not found', 404);
     }
     
-    // Don't return sensitive data
-    const { access_token, refresh_token, ...safeUser } = updatedUser;
+    // Cast to UserWithTokens and don't return sensitive data
+    const userWithTokens = updatedUser as UserWithTokens;
+    const { access_token, refresh_token, ...safeUser } = userWithTokens;
     
     res.json({ success: true, data: safeUser });
   })

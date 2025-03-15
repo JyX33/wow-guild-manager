@@ -1,5 +1,6 @@
 import React from 'react';
 import { FormField } from './FormField';
+import { EventType } from '../../../../shared/types/event';
 
 export const EventBasicFields: React.FC = () => {
   return (
@@ -26,9 +27,9 @@ export const EventBasicFields: React.FC = () => {
         required
       >
         <option value="">Select Event Type</option>
-        <option value="Raid">Raid</option>
-        <option value="Dungeon">Dungeon</option>
-        <option value="Special">Special Event</option>
+        <option value={EventType.RAID}>{EventType.RAID}</option>
+        <option value={EventType.DUNGEON}>{EventType.DUNGEON}</option>
+        <option value={EventType.SPECIAL}>{EventType.SPECIAL}</option>
       </FormField>
     </>
   );

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { Event } from '../../../shared/types/event';
-import { EventFormValues } from '../../../shared/types/event';
+import { Event, EventType, EventFormValues } from '../../../shared/types/event';
 import { EventBasicFields } from './forms/EventBasicFields';
 import { EventTimeFields } from './forms/EventTimeFields';
 import { EventParticipantsField } from './forms/EventParticipantsField';
@@ -29,7 +28,7 @@ const EventSchema = Yup.object().shape({
     .max(1000, 'Description must be at most 1000 characters'),
   event_type: Yup.string()
     .required('Event type is required')
-    .oneOf(['Raid', 'Dungeon', 'Special'], 'Invalid event type'),
+    .oneOf(Object.values(EventType), 'Invalid event type'),
   start_time: Yup.string()
     .required('Start time is required'),
   end_time: Yup.string()

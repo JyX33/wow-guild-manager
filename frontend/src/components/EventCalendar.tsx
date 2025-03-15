@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
-import { Event } from '../../../shared/types/index';
+import { Event, EventType } from '../../../shared/types/index';
 import { useApi } from '../hooks/useApi';
 import { eventApi } from '../services/api.service';
 
@@ -95,13 +95,13 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
   };
   
   // Get class for event based on type
-  const getEventClass = (eventType: string) => {
-    switch (eventType.toLowerCase()) {
-      case 'raid':
+  const getEventClass = (eventType: EventType) => {
+    switch (eventType) {
+      case EventType.RAID:
         return "bg-red-600 text-white";
-      case 'dungeon':
+      case EventType.DUNGEON:
         return "bg-green-600 text-white";
-      case 'special':
+      case EventType.SPECIAL:
         return "bg-purple-600 text-white";
       default:
         return "bg-blue-500 text-white";
@@ -114,7 +114,7 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
     id: 9999,
     title: 'Test Event',
     description: 'Test event to verify calendar functionality',
-    event_type: 'Special',
+    event_type: EventType.SPECIAL,
     start_time: today.toISOString(),
     end_time: new Date(today.getTime() + 60 * 60 * 1000).toISOString(),
     created_by: 1,
