@@ -1,4 +1,4 @@
-import { User, UserRole, UserWithTokens } from '../../../shared/types/index';
+import { UserRole, UserWithTokens } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';
 
@@ -95,6 +95,20 @@ class UserModel extends BaseModel<UserWithTokens> {
       return await this.findAll({ role });
     } catch (error) {
       throw new AppError(`Error getting users with role: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
+   * Update character sync timestamp
+   */
+  async updateCharacterSyncTimestamp(id: number): Promise<UserWithTokens | null> {
+    try {
+      return await this.update(id, { 
+        last_synced_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    } catch (error) {
+      throw new AppError(`Error updating sync timestamp: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 }

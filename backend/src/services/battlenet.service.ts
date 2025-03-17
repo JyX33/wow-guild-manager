@@ -13,6 +13,32 @@ interface TokenResponse {
 
 class BattleNetService {
   /**
+   * Get WoW profile data for a user
+   */
+  async getWowProfile(region: string, accessToken: string): Promise<any> {
+    try {
+      const regionConfig = config.battlenet.regions[region] || config.battlenet.regions.eu;
+      
+      const response = await axios.get(`${regionConfig.apiBaseUrl}/profile/user/wow`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Battlenet-Namespace': `profile-${region}`
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new AppError(
+          `Battle.net WoW profile error: ${error.response?.data?.detail || error.message}`,
+          error.response?.status || 500
+        );
+      }
+      throw new AppError(`Battle.net WoW profile error: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+  
+  /**
    * Generate Battle.net OAuth authorization URL
    */
   async getAuthorizationUrl(region: string, state: string): Promise<string> {

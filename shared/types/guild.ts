@@ -1,5 +1,5 @@
 // Character roles and classes
-export type CharacterRole = 'Tank' | 'Healer' | 'DPS';
+export type CharacterRole = 'Tank' | 'Healer' | 'DPS' | 'Support';
 
 export interface Guild {
   id: number;

@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { asyncHandler, AppError } from '../utils/error-handler';
 import characterModel from '../models/character.model';
+import userModel from '../models/user.model';
+import battleNetService from '../services/battlenet.service';
 import { Character } from '../../../shared/types/index';
 
 export default {
@@ -161,5 +163,56 @@ export default {
       success: true,
       data: updatedCharacter
     });
+  }),
+
+  
+  /**
+   * Sync characters from Battle.net
+   */
+  syncCharacters: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user.id;
+    
+    // Get user with tokens
+    const user = await userModel.getUserWithTokens(userId);
+    
+    if (!user || !user.access_token) {
+      throw new AppError('User authentication token not found', 401);
+    }
+
+    // Get region from session or use default
+    const region = req.session.region || 'eu';
+    
+    // Get account profile from Battle.net
+    const wowProfile = await battleNetService.getWowProfile(
+      region, 
+      user.access_token
+    );
+    
+    // Sync characters
+    const syncResult = await characterModel.syncCharactersFromBattleNet(
+      userId, 
+      wowProfile.wow_accounts || []
+    );
+    
+    // Set a main character if none exists
+    if (syncResult.added > 0) {
+      const mainChar = await characterModel.getMainCharacter(userId);
+      if (!mainChar) {
+        // Get the highest level character to set as main
+        const highestLevelChar = await characterModel.getHighestLevelCharacter(userId);
+        if (highestLevelChar) {
+          await characterModel.setMainCharacter(highestLevelChar.id, userId);
+        }
+      }
+    }
+    
+    // Update last synced timestamp
+    await userModel.updateCharacterSyncTimestamp(userId);
+    
+    res.json({
+      success: true,
+      data: syncResult
+    });
   })
+
 };

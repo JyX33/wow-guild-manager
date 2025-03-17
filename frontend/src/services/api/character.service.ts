@@ -1,4 +1,4 @@
-import { Character } from '../../../shared/types/index';
+import { Character } from '../../../../shared/types/index';
 import { apiRequest } from './core';
 
 export const characterService = {
@@ -72,7 +72,16 @@ export const characterService = {
       method: 'POST',
       url: `/characters/${characterId}/main`
     });
-  }
+  },
+
+  /**
+   * Sync characters from Battle.net
+   */
+  syncCharacters: () =>
+    apiRequest<{added: number, updated: number, total: number}>({
+      method: 'POST',
+      url: '/characters/sync'
+    })
 };
 
 export default characterService;

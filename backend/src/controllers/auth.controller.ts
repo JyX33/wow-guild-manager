@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../config';
 import battleNetService from '../services/battlenet.service';
+import characterModel from '../models/character.model';
 import userModel from '../models/user.model';
 import { User, UserRole, UserWithTokens, BattleNetUserProfile } from '../../../shared/types/index';
 import { AppError } from '../utils/error-handler';
@@ -114,6 +115,28 @@ export default {
       path: '/api/auth/refresh',  // Only accessible by refresh endpoint
       maxAge: config.auth.refreshCookieMaxAge
     });
+
+    if (req.query.sync === 'true') {
+      try {
+        // Get WoW profile from Battle.net
+        const wowProfile = await battleNetService.getWowProfile(
+          region as string, 
+          tokenData.access_token
+        );
+        
+        // Sync characters
+        await characterModel.syncCharactersFromBattleNet(
+          user.id, 
+          wowProfile.wow_accounts || []
+        );
+        
+        // Update sync timestamp
+        await userModel.updateCharacterSyncTimestamp(user.id);
+      } catch (syncError) {
+        console.error('Error syncing characters during login:', syncError);
+        // Don't fail the login if sync fails
+      }
+    }
     
     // Redirect to frontend
     res.redirect(`${config.server.frontendUrl}/auth/callback`);

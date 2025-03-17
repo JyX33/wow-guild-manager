@@ -1,8 +1,8 @@
-import { Character } from '../../../shared/types/index';
+import { Character, CharacterRole } from '../../../shared/types';
 import BaseModel from '../db/BaseModel';
+import db from '../db/db';
 import { AppError } from '../utils/error-handler';
 import { withTransaction } from '../utils/transaction';
-import db from '../db/db';
 
 class CharacterModel extends BaseModel<Character> {
   constructor() {
@@ -188,6 +188,169 @@ class CharacterModel extends BaseModel<Character> {
         throw error;
       }
       throw new AppError(`Error deleting character: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
+   * Sync characters from Battle.net account data
+   */
+  async syncCharactersFromBattleNet(
+    userId: number, 
+    wowAccounts: any[]
+  ): Promise<{added: number, updated: number, total: number}> {
+    try {
+      return await withTransaction(async (client) => {
+        let added = 0;
+        let updated = 0;
+        
+        // Gather all characters from Battle.net
+        const battleNetCharacters: Partial<Character>[] = [];
+        
+        for (const account of wowAccounts) {
+          for (const character of account.characters || []) {
+            battleNetCharacters.push({
+              user_id: userId,
+              name: character.name,
+              realm: character.realm.slug,
+              class: character.playable_class.name.en_US || character.playable_class.name.en_GB || 'Unknown',
+              level: character.level,
+              role: this.determineDefaultRole(character.playable_class.id),
+              character_data: character,
+              is_main: false
+            });
+          }
+        }
+        
+        // Get existing characters for this user
+        const existingCharsResult = await client.query(
+          `SELECT id, name, realm FROM ${this.tableName} WHERE user_id = $1`,
+          [userId]
+        );
+        
+        const existingChars = existingCharsResult.rows.map((row: {id: number, name: string, realm: string}) => 
+          `${row.name.toLowerCase()}-${row.realm.toLowerCase()}`
+        );
+        
+        // Process each character
+        for (const character of battleNetCharacters) {
+          const charKey = `${character.name?.toLowerCase() || ''}-${character.realm?.toLowerCase() || ''}`;
+          
+          if (existingChars.includes(charKey)) {
+            // Update existing character
+            const charToUpdate = existingCharsResult.rows.find((row: {id: number, name: string, realm: string}) => 
+              `${row.name.toLowerCase()}-${row.realm.toLowerCase()}` === charKey
+            );
+            
+            await client.query(
+              `UPDATE ${this.tableName} 
+              SET level = $1, 
+                  character_data = $2, 
+                  updated_at = NOW() 
+              WHERE id = $3`,
+              [character.level, character.character_data, charToUpdate.id]
+            );
+            
+            updated++;
+          } else {
+            // Insert new character
+            await client.query(
+              `INSERT INTO ${this.tableName} 
+              (user_id, name, realm, class, level, role, is_main, character_data, created_at, updated_at) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
+              [
+                character.user_id,
+                character.name,
+                character.realm,
+                character.class,
+                character.level,
+                character.role,
+                false, // Not set as main automatically
+                character.character_data
+              ]
+            );
+            
+            added++;
+          }
+        }
+        
+        return { added, updated, total: battleNetCharacters.length };
+      });
+    } catch (error) {
+      throw new AppError(`Error syncing characters: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
+   * Determine default role based on specialization or class
+   */
+  private determineDefaultRole(characterData: any): CharacterRole {
+    // First try to get role from active_spec if available
+    if (characterData.active_spec && characterData.active_spec.id) {
+      const specId = characterData.active_spec.id;
+      
+      // Tank specs
+      if ([73, 66, 104, 268, 250, 581].includes(specId)) {
+        return 'Tank';
+      }
+      
+      // Healer specs
+      if ([105, 270, 65, 256, 257, 264, 1468].includes(specId)) {
+        return 'Healer';
+      }
+      
+      // All other specs are DPS
+      return 'DPS';
+    }
+    
+    // Fallback to class-based default if spec not available
+    const classId = characterData.playable_class?.id;
+    if (!classId) return 'DPS';
+    
+    switch(classId) {
+      // Classes that can ONLY be DPS
+      case 3: // Hunter
+      case 4: // Rogue
+      case 8: // Mage
+      case 9: // Warlock
+        return 'DPS';
+        
+      // Classes with tanking specs - default to tank as it's less common
+      case 1: // Warrior (Protection)
+      case 2: // Paladin (Protection)
+      case 6: // Death Knight (Blood)
+      case 10: // Monk (Brewmaster)
+      case 11: // Druid (Guardian)
+      case 12: // Demon Hunter (Vengeance)
+        return 'Tank';
+        
+      // Classes with healing specs - default to healer as it's less common
+      case 5: // Priest (Holy, Discipline) 
+      case 7: // Shaman (Restoration)
+      case 13: // Evoker (Preservation)
+        return 'Healer';
+        
+      // Default for unknown classes
+      default:
+        return 'DPS';
+    }
+  }
+
+  /**
+   * Get the highest level character for a user
+   */
+  async getHighestLevelCharacter(userId: number): Promise<Character | null> {
+    try {
+      const result = await db.query(
+        `SELECT * FROM ${this.tableName} 
+        WHERE user_id = $1
+        ORDER BY level DESC, updated_at DESC
+        LIMIT 1`,
+        [userId]
+      );
+      
+      return result.rows[0] || null;
+    } catch (error) {
+      throw new AppError(`Error getting highest level character: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 }

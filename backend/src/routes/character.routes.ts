@@ -28,4 +28,7 @@ router.delete('/:id', characterController.deleteCharacter);
 // Set a character as the main character
 router.post('/:id/main', characterController.setMainCharacter);
 
+// Sync characters from Battle.net
+router.post('/sync', authMiddleware.authenticate, characterController.syncCharacters);
+
 export default router;

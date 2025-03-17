@@ -3,6 +3,7 @@ import { Character } from '../../../shared/types';
 import { CharacterList } from '../components/CharacterList';
 import { CharacterForm } from '../components/forms/CharacterForm';
 import { characterService } from '../services/api';
+import { SyncCharactersButton } from '../components/SyncCharactersButton';
 import withAuth from '../components/withAuth';
 
 const CharactersPage: React.FC = () => {
@@ -12,6 +13,12 @@ const CharactersPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [refreshList, setRefreshList] = useState<number>(0); // Used to trigger re-fetch
+
+  // Inside the component:
+  const handleSyncComplete = (result: {added: number, updated: number, total: number}) => {
+    setSuccess(`Sync completed: ${result.added} added, ${result.updated} updated out of ${result.total} characters`);
+    setRefreshList(prev => prev + 1); // Refresh the character list
+  };
 
   const handleCreateCharacter = async (values: Partial<Character>) => {
     setLoading(true);
@@ -74,14 +81,18 @@ const CharactersPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">Character Management</h1>
         
-        {!isAddingCharacter && !editingCharacter && (
-          <button
-            onClick={() => setIsAddingCharacter(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Add Character
-          </button>
-        )}
+        <div className="flex space-x-2">
+          {!isAddingCharacter && !editingCharacter && (
+            <button
+              onClick={() => setIsAddingCharacter(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Add Character
+            </button>
+          )}
+          
+          <SyncCharactersButton onSyncComplete={handleSyncComplete} />
+        </div>
       </div>
       
       {success && !isAddingCharacter && !editingCharacter && (

@@ -1,4 +1,4 @@
-import { User, UserRole } from '../../../shared/types/index';
+import { User, UserRole } from '../../../../shared/types/index';
 import { apiRequest } from './core';
 
 interface LoginResponse {
@@ -17,11 +17,12 @@ export const authService = {
   /**
    * Initiate login with Battle.net OAuth
    * @param region Battle.net region (eu, us, kr, tw)
+   * @param syncCharacters Whether to sync characters after login
    */
-  login: (region: string) =>
+  login: (region: string, syncCharacters: boolean = false) =>
     apiRequest<LoginResponse>({
       method: 'GET',
-      url: `/auth/login?region=${region}`
+      url: `/auth/login?region=${region}${syncCharacters ? '&sync=true' : ''}`
     }),
   
   /**

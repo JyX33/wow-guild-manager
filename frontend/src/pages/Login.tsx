@@ -4,10 +4,13 @@ import { useAuth } from '../context/AuthContext';
 const Login: React.FC = () => {
   const { login } = useAuth();
   const [region, setRegion] = useState('eu');
+  const [syncCharacters, setSyncCharacters] = useState(true);
 
   const handleLogin = () => {
-    login(region);
+    login(region, syncCharacters);
   };
+
+  
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -26,6 +29,18 @@ const Login: React.FC = () => {
             <option value="kr">Korea</option>
             <option value="tw">Taiwan</option>
           </select>
+        </div>
+
+        <div className="mb-4">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={syncCharacters}
+              onChange={(e) => setSyncCharacters(e.target.checked)}
+              className="mr-2"
+            />
+            <span className="text-sm text-gray-700">Sync characters from Battle.net</span>
+          </label>
         </div>
         
         <button
