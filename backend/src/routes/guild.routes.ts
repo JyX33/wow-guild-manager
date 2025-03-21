@@ -1,16 +1,33 @@
 import express from 'express';
 import guildController from '../controllers/guild.controller';
 import authMiddleware from '../middleware/auth.middleware';
+import { isGuildMaster } from '../middleware/guild-master.middleware';
 
 const router = express.Router();
 
-// Get guild by ID (needs to be a separate path to avoid conflict with the region/realm/name route)
+// Get all guilds the user is in
+router.get('/user', authMiddleware.authenticate, guildController.getUserGuilds);
+
+// Get guild by ID
 router.get('/id/:guildId', authMiddleware.authenticate, guildController.getGuildById);
 
-// Get guild by region, realm and name
+// Get guild members (enhanced) - MORE SPECIFIC ROUTE FIRST
+router.get('/:guildId/members/enhanced', authMiddleware.authenticate, guildController.getEnhancedGuildMembers);
+
+// Get guild members (basic)
+router.get('/:guildId/members', authMiddleware.authenticate, guildController.getGuildMembers);
+
+// Guild rank management
+router.get('/:guildId/ranks', authMiddleware.authenticate, guildController.getGuildRanks);
+
+// Get guild by region, realm and name - GENERIC ROUTE LAST
 router.get('/:region/:realm/:name', authMiddleware.authenticate, guildController.getGuildByName);
 
-// Get guild members
-router.get('/:guildId/members', authMiddleware.authenticate, guildController.getGuildMembers);
+// Update rank name (protected - only guild master)
+router.put('/:guildId/ranks/:rankId',
+  authMiddleware.authenticate,
+  isGuildMaster,
+  guildController.updateRankName
+);
 
 export default router;

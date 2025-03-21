@@ -1,6 +1,5 @@
 import { Guild, GuildMember } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
-import db from '../db/db';
 import { AppError } from '../utils/error-handler';
 
 class GuildModel extends BaseModel<Guild> {

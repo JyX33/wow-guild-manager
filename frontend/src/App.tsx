@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import GuildPage from './pages/GuildPage';
+import GuildManagePage from './pages/GuildManagePage';
 import EventDetailsPage from './pages/EventDetailsPage';
 import CreateEventPage from './pages/CreateEventPage';
 import EditEventPage from './pages/EditEventPage';
@@ -33,6 +34,11 @@ const App: React.FC = () => {
                   <Route path="/guild/:guildId" element={
                     <AuthProtect>
                       <GuildPage />
+                    </AuthProtect>
+                  } />
+                  <Route path="/guild/:guildId/manage" element={
+                    <AuthProtect>
+                      <GuildManagePage />
                     </AuthProtect>
                   } />
                   <Route path="/guild/:guildId/event/create" element={
