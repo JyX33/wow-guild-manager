@@ -1,19 +1,14 @@
-import { Guild, GuildMember, Character } from '../../../shared/types/index';
 import { apiRequest } from './core';
+import { 
+  Guild, 
+  GuildMember, 
+  EnhancedGuildMember, 
+  GuildRank 
+} from '../../../../shared/types/guild';
 
 export const guildService = {
   /**
-   * Get a list of all guilds
-   */
-  getGuilds: () =>
-    apiRequest<Guild[]>({
-      method: 'GET',
-      url: '/guilds'
-    }),
-
-  /**
-   * Get a guild by ID
-   * @param guildId The guild ID
+   * Get guild by ID
    */
   getGuildById: (guildId: number) =>
     apiRequest<Guild>({
@@ -22,20 +17,16 @@ export const guildService = {
     }),
 
   /**
-   * Get a guild by name, realm, and region
-   * @param region Battle.net region
-   * @param realm Server realm
-   * @param name Guild name
+   * Get guild by region, realm and name
    */
   getGuildByName: (region: string, realm: string, name: string) =>
     apiRequest<Guild>({
       method: 'GET',
-      url: `/guilds/${region}/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`
+      url: `/guilds/${region}/${realm}/${name}`
     }),
 
   /**
-   * Get all members of a guild
-   * @param guildId The guild ID
+   * Get guild members
    */
   getGuildMembers: (guildId: number) =>
     apiRequest<GuildMember[]>({
@@ -44,66 +35,39 @@ export const guildService = {
     }),
 
   /**
-   * Search for a guild
-   * @param region Battle.net region
-   * @param realm Server realm
-   * @param name Guild name
+   * Get all guilds that the user is a member of
    */
-  searchGuild: (region: string, realm: string, name: string) =>
-    apiRequest<Guild>({
+  getUserGuilds: () =>
+    apiRequest<Guild[]>({
       method: 'GET',
-      url: `/guilds/search?region=${region}&realm=${encodeURIComponent(realm)}&name=${encodeURIComponent(name)}`
+      url: '/guilds/user'
     }),
 
   /**
-   * Subscribe to a guild
-   * @param guildId The guild ID
+   * Get enhanced guild members with detailed information
    */
-  subscribeToGuild: (guildId: number) =>
-    apiRequest<{ message: string }>({
-      method: 'POST',
-      url: `/guilds/${guildId}/subscribe`
-    }),
-
-  /**
-   * Unsubscribe from a guild
-   * @param guildId The guild ID
-   */
-  unsubscribeFromGuild: (guildId: number) =>
-    apiRequest<{ message: string }>({
-      method: 'DELETE',
-      url: `/guilds/${guildId}/subscribe`
-    }),
-
-  /**
-   * Update guild settings
-   * @param guildId The guild ID
-   * @param settings Guild settings to update
-   */
-  updateGuildSettings: (guildId: number, settings: Partial<Guild>) =>
-    apiRequest<Guild>({
-      method: 'PATCH',
-      url: `/guilds/${guildId}/settings`,
-      data: settings
-    }),
-
-  /**
-   * Synchronize guild members from Battle.net
-   * @param guildId The guild ID
-   */
-  syncGuildMembers: (guildId: number) =>
-    apiRequest<{ message: string }>({
-      method: 'POST',
-      url: `/guilds/${guildId}/sync`
-    }),
-  
-  /**
-   * Get characters for a guild
-   * @param guildId The guild ID
-   */
-  getCharacters: (guildId: number) =>
-    apiRequest<Character[]>({
+  getEnhancedGuildMembers: (guildId: number) =>
+    apiRequest<EnhancedGuildMember[]>({
       method: 'GET',
-      url: `/guilds/${guildId}/characters`
-    })
+      url: `/guilds/${guildId}/members/enhanced`
+    }),
+
+  /**
+   * Get guild ranks (both default and custom)
+   */
+  getGuildRanks: (guildId: number) =>
+    apiRequest<GuildRank[]>({
+      method: 'GET',
+      url: `/guilds/${guildId}/ranks`
+    }),
+
+  /**
+   * Update a guild rank name
+   */
+  updateRankName: (guildId: number, rankId: number, rankName: string) =>
+    apiRequest<GuildRank>({
+      method: 'PUT',
+      url: `/guilds/${guildId}/ranks/${rankId}`,
+      data: { rank_name: rankName }
+    }),
 };

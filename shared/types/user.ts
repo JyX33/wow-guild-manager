@@ -4,6 +4,8 @@ export enum UserRole {
   ADMIN = 'admin'
 }
 
+export type BattleNetRegion = 'eu' | 'us' | 'kr' | 'tw';
+
 export interface User {
   id: number;
   battle_net_id: string;
@@ -13,6 +15,7 @@ export interface User {
   updated_at?: string;
   last_synced_at?: string;
   role?: UserRole;
+  region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;
 }
 
@@ -27,4 +30,35 @@ export interface BattleNetUserProfile {
   battletag: string;
   sub: string;
   [key: string]: any; // For any additional fields returned by Battle.net API
+}
+
+export interface BattleNetCharacter {
+  name: string;
+  id: number;
+  realm: {
+    slug: string;
+    name: string;
+  };
+  guild?: {
+    name: string;
+    realm: {
+      slug: string;
+      name: string;
+    };
+  };
+}
+
+export interface BattleNetGuildMember {
+  character: BattleNetCharacter;
+  rank: number;
+}
+
+export interface BattleNetGuildRoster {
+  members: BattleNetGuildMember[];
+}
+
+export interface BattleNetWoWProfile {
+  wow_accounts: Array<{
+    characters: BattleNetCharacter[];
+  }>;
 }

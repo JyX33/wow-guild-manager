@@ -12,7 +12,7 @@ const https = require('https');
 // Configuration - MODIFY THESE VALUES AS NEEDED
 const config = {
   // Your access token
-  accessToken: 'EUoQSCZtkPHj8897R80c7HrFN9sO7cIqNy',
+  accessToken: 'EU45qkdKw3KRcv5Tm7F22a1kA7eRkIYwyn',
   
   // Region to use for API calls
   region: 'eu',
@@ -20,12 +20,12 @@ const config = {
   // Default values for endpoint parameters
   defaults: {
     realm: 'hyjal',
-    character: 'amïlia',
+    character: 'rødeo',
     guild: 'this-is-not-a-guild',
     realmId: '542',
     characterId: '205626680',
     pvpBracket: '2v2',
-    seasonId: '1'
+    seasonId: '14'
   },
   
   // Output file path

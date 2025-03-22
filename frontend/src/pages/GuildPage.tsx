@@ -1,33 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { guildService, eventService } from '../services/api';
+import { guildService } from '../services/api/guild.service';
+import { Guild } from '../../../shared/types/guild';
+import { EnhancedGuildMembersList } from '../components/EnhancedGuildMembersList';
 import EventCalendar from '../components/EventCalendar';
-
-interface Event {
-  id: number;
-  title: string;
-  start: Date;
-  end: Date;
-  event_type: string;
-}
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const GuildPage: React.FC = () => {
   const { guildId } = useParams<{ guildId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const [guild, setGuild] = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
+  const [guild, setGuild] = useState<Guild | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuildMaster, setIsGuildMaster] = useState(false);
   const [activeTab, setActiveTab] = useState<'calendar' | 'members'>('calendar');
+  const [error, setError] = useState<string | null>(null);
   // Add a key to force refresh the calendar component when needed
   const [calendarKey, setCalendarKey] = useState(Date.now());
-
-  useEffect(() => {
-    // Force refresh of calendar when navigating back to this page
-    setCalendarKey(Date.now());
-  }, [location.key]);
 
   useEffect(() => {
     const fetchGuildData = async () => {
@@ -36,12 +27,21 @@ const GuildPage: React.FC = () => {
         
         // Fetch guild data
         const guildResponse = await guildService.getGuildById(parseInt(guildId));
-        setGuild(guildResponse.data);
         
-        // Fetch guild members
-        const membersResponse = await guildService.getGuildMembers(parseInt(guildId));
-        setMembers(membersResponse.data);
+        if (guildResponse.success && guildResponse.data) {
+          setGuild(guildResponse.data);
+          
+          // Check if user is guild master of this guild
+          const userGuildsResponse = await guildService.getUserGuilds();
+          if (userGuildsResponse.success && userGuildsResponse.data) {
+            const matchingGuild = userGuildsResponse.data.find(g => g.id === parseInt(guildId));
+            setIsGuildMaster(matchingGuild?.is_guild_master || false);
+          }
+        } else {
+          setError(guildResponse.error?.message || 'Failed to load guild data');
+        }
       } catch (error) {
+        setError('Failed to fetch guild data');
         console.error('Failed to fetch guild data:', error);
       } finally {
         setLoading(false);
@@ -49,9 +49,9 @@ const GuildPage: React.FC = () => {
     };
 
     fetchGuildData();
-  }, [guildId]);
+  }, [guildId, user?.id]);
 
-  const handleEventSelect = (event: Event) => {
+  const handleEventSelect = (event: any) => {
     navigate(`/event/${event.id}`);
   };
 
@@ -72,22 +72,57 @@ const GuildPage: React.FC = () => {
     navigate(`/guild/${guildId}/event/create`);
   };
 
+  const handleManageGuild = () => {
+    if (!guildId) return;
+    navigate(`/guild/${guildId}/manage`);
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl mb-4">Loading Guild...</h2>
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+      <div className="flex justify-center items-center min-h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+          {error}
         </div>
+      </div>
+    );
+  }
+
+  if (!guild) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-gray-500 text-center">Guild not found</div>
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{guild?.name}</h1>
-        <p className="text-gray-600">{guild?.realm} ({guild?.region.toUpperCase()})</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">{guild.name}</h1>
+          <p className="text-gray-600">{guild.realm} ({guild.region.toUpperCase()})</p>
+        </div>
+        
+        {isGuildMaster && (
+          <button
+            onClick={handleManageGuild}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Manage Guild
+          </button>
+        )}
       </div>
       
       <div className="mb-6">
@@ -129,26 +164,7 @@ const GuildPage: React.FC = () => {
       
       {activeTab === 'members' && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {members.map((member, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap">{member.character.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{member.character.playable_class.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{member.character.level}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{member.rank}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <EnhancedGuildMembersList guildId={parseInt(guildId || '0')} />
         </div>
       )}
     </div>
