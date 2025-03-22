@@ -1,7 +1,22 @@
 import axios from 'axios';
+import PQueue from 'p-queue';
 import { BattleNetUserProfile } from '../../../shared/types/user';
 import config from '../config';
 import { AppError } from '../utils/error-handler';
+
+class RateLimitRetryError extends Error {
+  constructor() {
+    super('RATE_LIMIT_RETRY');
+    this.name = 'RateLimitRetryError';
+  }
+}
+
+interface APIMetrics {
+  lastRequest: Date;
+  requestsLastMinute: number;
+  errorCount: number;
+  queueSize: number;
+}
 
 interface TokenResponse {
   access_token: string;
@@ -14,6 +29,71 @@ interface TokenResponse {
 type BattleNetRegion = 'eu' | 'us' | 'kr' | 'tw';
 
 class BattleNetService {
+  private rateLimiter: PQueue;
+  private metrics: APIMetrics;
+
+  constructor() {
+    // Initialize rate limiter with 98 req/sec (buffer of 2 for safety)
+    this.rateLimiter = new PQueue({
+      interval: 1000,
+      intervalCap: 98,
+      carryoverConcurrencyCount: true
+    });
+
+    this.metrics = {
+      lastRequest: new Date(),
+      requestsLastMinute: 0,
+      errorCount: 0,
+      queueSize: 0
+    };
+
+    // Monitor queue metrics
+    this.rateLimiter.on('active', () => {
+      this.metrics.queueSize = this.rateLimiter.pending;
+      this.metrics.lastRequest = new Date();
+      this.metrics.requestsLastMinute++;
+
+      // Reset requests counter every minute
+      setTimeout(() => {
+        this.metrics.requestsLastMinute--;
+      }, 60000);
+    });
+
+    this.rateLimiter.on('error', () => {
+      this.metrics.errorCount++;
+    });
+  }
+
+  // Helper method to wrap API calls with rate limiting
+  private async rateLimit<T>(operation: () => Promise<T>): Promise<T> {
+    const executeOperation = async (): Promise<T> => {
+      try {
+        return await operation();
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 429) {
+          const retryAfter = parseInt(error.response.headers['retry-after'] || '1000', 10);
+          await new Promise(resolve => setTimeout(resolve, retryAfter));
+          throw new RateLimitRetryError();
+        }
+        throw error;
+      }
+    };
+
+    try {
+      return await this.rateLimiter.add(executeOperation) as Promise<T>;
+    } catch (error) {
+      if (error instanceof RateLimitRetryError) {
+        return this.rateLimit(operation);
+      }
+      throw error;
+    }
+  }
+
+  // Get current API metrics
+  public getMetrics(): APIMetrics {
+    return { ...this.metrics };
+  }
+
   private validateRegion(region: string): BattleNetRegion {
     if (region in config.battlenet.regions) {
       return region as BattleNetRegion;
@@ -159,73 +239,94 @@ class BattleNetService {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
-      // Convert accented characters to non-accented and normalize
       const normalizedRealm = realm.toLowerCase();
-      console.log('Normalized Realm:', normalizedRealm);
       const normalizedCharacter = characterName.toLowerCase();
-      console.log('Normalized Character:', normalizedCharacter);
-      // Get character profile
-      const profileResponse = await axios.get(
-        `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}`,
-        {
-          params: {
-            namespace: `profile-${validRegion}`,
-            locale: 'en_US'
-          },
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        }
-      );
 
-      // Get equipment data for item level
-      const equipmentResponse = await axios.get(
-        `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/equipment`,
-        {
-          params: {
-            namespace: `profile-${validRegion}`,
-            locale: 'en_US'
-          },
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        }
-      );
+      const [profile, equipment, mythicKeystone, professions] = await Promise.all([
+        // Get character profile
+        this.rateLimit(async () => {
+          const response = await axios.get(
+            `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}`,
+            {
+              params: {
+                namespace: `profile-${validRegion}`,
+                locale: 'en_US'
+              },
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }
+          );
+          return response.data;
+        }),
 
-      // Get mythic keystone profile (catch error as not all characters have M+ data)
-      const mythicResponse = await axios.get(
-        `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/mythic-keystone-profile`,
-        {
-          params: {
-            namespace: `profile-${validRegion}`,
-            locale: 'en_US'
-          },
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+        // Get equipment data
+        this.rateLimit(async () => {
+          const response = await axios.get(
+            `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/equipment`,
+            {
+              params: {
+                namespace: `profile-${validRegion}`,
+                locale: 'en_US'
+              },
+              headers: {
+                Authorization: `Bearer ${accessToken}`
+              }
+            }
+          );
+          return response.data;
+        }),
+
+        // Get mythic keystone profile
+        this.rateLimit(async () => {
+          try {
+            const response = await axios.get(
+              `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/mythic-keystone-profile`,
+              {
+                params: {
+                  namespace: `profile-${validRegion}`,
+                  locale: 'en_US'
+                },
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
+                }
+              }
+            );
+            return response.data;
+          } catch {
+            return null;
           }
-        }
-      ).catch(() => ({ data: null }));
-      // Get character professions (catch error as not all characters have professions)
-      const professionsResponse = await axios.get(
-        `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/professions`,
-        {
-          params: {
-            namespace: `profile-${validRegion}`,
-            locale: 'en_US'
-          },
-          headers: {
-            Authorization: `Bearer ${accessToken}`
+        }),
+
+        // Get character professions
+        this.rateLimit(async () => {
+          try {
+            const response = await axios.get(
+              `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/professions`,
+              {
+                params: {
+                  namespace: `profile-${validRegion}`,
+                  locale: 'en_US'
+                },
+                headers: {
+                  Authorization: `Bearer ${accessToken}`
+                }
+              }
+            );
+            return response.data;
+          } catch {
+            return { primaries: [] };
           }
-        }
-      ).catch(() => ({ data: { primaries: [] } }));
+        })
+      ]);
 
       // Return combined enhanced data
       return {
-        ...profileResponse.data,
-        equipment: equipmentResponse.data,
-        itemLevel: profileResponse.data.equipped_item_level,
-        mythicKeystone: mythicResponse?.data,
-        professions: professionsResponse.data.primaries || []
+        ...profile,
+        equipment,
+        itemLevel: profile.equipped_item_level,
+        mythicKeystone,
+        professions: professions.primaries || []
       };
     } catch (error) {
       if (axios.isAxiosError(error)) {

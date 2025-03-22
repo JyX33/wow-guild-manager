@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { guildService } from '../services/api/guild.service';
-import { EnhancedGuildMember, GuildRank, LocalizedString } from '../../../shared/types/guild';
+import { EnhancedGuildMember, GuildRank } from '../../../shared/types/guild';
 import LoadingSpinner from './LoadingSpinner';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -11,11 +11,6 @@ type SortDirection = 'asc' | 'desc';
 interface Props {
   guildId: number;
 }
-
-// Helper functions
-const getLocalizedText = (text: LocalizedString, locale: keyof LocalizedString = 'en_US'): string => {
-  return text[locale] || text.en_US || '';
-};
 
 const getItemLevel = (member: EnhancedGuildMember): number => {
   return member.character?.equipped_item_level ||
@@ -175,13 +170,13 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                   <div className="whitespace-nowrap">
                     {member.character?.active_spec ? (
                       <>
-                        <span>{member.character.class}</span>
+                        <span>{member.character_class}</span>
                         <span className="ml-1 text-xs text-gray-500">
                           ({member.character?.active_spec?.name})
                         </span>
                       </>
                     ) : (
-                      member.character?.class
+                      member.character_class
                     )}
                   </div>
                 </td>
@@ -191,20 +186,7 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                   </div>
                   {member.character?.mythicKeystone?.current_period?.best_runs?.length > 0 && (
                     <div className="text-xs text-gray-500 mt-1">
-                      rating : {member.character?.mythicKeystone?.current_mythic_rating?.rating}
-                      {/* {member.character?.mythicKeystone?.current_period?.best_runs
-                        .sort((a, b) => b.keystone_level - a.keystone_level)
-                        .slice(0, 3)
-                        .map((run) => (
-                          <div key={`${run.dungeon.id}-${run.keystone_level}`} className="mb-0.5">
-                            +{run.keystone_level} {getLocalizedText(run.dungeon.name)}
-                            {run.duration && (
-                              <span className="ml-1">
-                                ({Math.floor(run.duration / 60)}:{String(run.duration % 60).padStart(2, '0')})
-                              </span>
-                            )}
-                          </div>
-                        ))} */}
+                      rating : {Math.round(member.character?.mythicKeystone?.current_mythic_rating?.rating || 0)}
                     </div>
                   )}
                 </td>

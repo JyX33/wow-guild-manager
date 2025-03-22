@@ -236,20 +236,28 @@ export default {
       
       console.log('[DEBUG] Guild roster fetched, total members:', guildRoster.members.length);
       
-      const membersToEnhance = guildRoster.members.slice(0, 20);
-      console.log('[DEBUG] Processing first 20 members for enhancement');
+      const allowedRanks = new Set([0, 1, 3, 4, 5]);
+      const membersToEnhance = guildRoster.members.filter(member => allowedRanks.has(member.rank));
       
+      console.log(`[DEBUG] Processing ${membersToEnhance.length} members with ranks 0,1,3,4,5 for enhancement`);
       console.log('[DEBUG] Starting enhancement of members');
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: Array<{name: string; error: string}> = [];
+      
       const enhancedMembers = await Promise.all(
         membersToEnhance.map(async (member: BattleNetGuildMember) => {
           try {
-            console.log(`[DEBUG] Enhancing member: ${member.character.name} (${member.character.realm.slug})`);
+            console.log(`[DEBUG] Enhancing member: ${member.character.name} (${member.character.realm.slug}) - Rank ${member.rank}`);
             const enhancedData = await battleNetService.getEnhancedCharacterData(
               member.character.realm.slug,
               member.character.name,
               userToken,
               guild.region
             );
+            
+            successCount++;
             
             return {
               id: 0,
@@ -286,18 +294,93 @@ export default {
                 professions: enhancedData.professions || []
               }
             };
+            return {
+              id: 0,
+              guild_id: parseInt(guildId),
+              character_name: member.character.name,
+              character_class: enhancedData.character_class?.name || 'Unknown',
+              character_role: 'DPS',
+              rank: member.rank,
+              character: {
+                id: enhancedData.id,
+                user_id: 0,
+                name: member.character.name,
+                realm: member.character.realm.slug,
+                class: enhancedData.character_class?.name || 'Unknown',
+                level: enhancedData.level || member.character.level,
+                role: 'DPS',
+                is_main: false,
+                achievement_points: enhancedData.achievement_points || 0,
+                equipped_item_level: enhancedData.equipped_item_level || 0,
+                average_item_level: enhancedData.average_item_level || 0,
+                last_login_timestamp: enhancedData.last_login_timestamp || '',
+                active_spec: enhancedData.active_spec,
+                active_title: enhancedData.active_title,
+                covenant_progress: enhancedData.covenant_progress,
+                itemLevel: enhancedData.equipped_item_level || 0,
+                mythicKeystone: enhancedData.mythicKeystone || {
+                  current_period: {
+                    period: { id: 0, start_timestamp: '', end_timestamp: '' },
+                    best_runs: []
+                  }
+                },
+                activeSpec: enhancedData.active_spec,
+                professions: enhancedData.professions || []
+              }
+            };
           } catch (error) {
-            console.warn(`Could not fetch enhanced data for ${member.character.name}:`, error);
-            return member;
+            errorCount++;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.warn(`[ERROR] Could not fetch enhanced data for ${member.character.name}:`, errorMessage);
+            errors.push({ name: member.character.name, error: errorMessage });
+            
+            // Return basic member data on error
+            return {
+              id: 0,
+              guild_id: parseInt(guildId),
+              character_name: member.character.name,
+              character_class: 'Unknown',
+              character_role: 'DPS',
+              rank: member.rank,
+              character: {
+                id: 0,
+                user_id: 0,
+                name: member.character.name,
+                realm: member.character.realm.slug,
+                class: 'Unknown',
+                level: member.character.level,
+                role: 'DPS',
+                is_main: false,
+                achievement_points: 0,
+                equipped_item_level: 0,
+                average_item_level: 0,
+                last_login_timestamp: '',
+                active_spec: null,
+                active_title: null,
+                covenant_progress: null,
+                itemLevel: 0,
+                mythicKeystone: null,
+                activeSpec: null,
+                professions: []
+              }
+            };
           }
         })
       );
       
-      console.log('[DEBUG] Enhancement complete. Successfully enhanced members:', enhancedMembers.length);
+      const completionStats = {
+        total: membersToEnhance.length,
+        successful: successCount,
+        failed: errorCount,
+        errors: errors
+      };
+      
+      console.log('[DEBUG] Enhancement complete:', JSON.stringify(completionStats, null, 2));
       
       res.json({
         success: true,
-        data: enhancedMembers
+        data: enhancedMembers,
+        stats: completionStats
       });
     } catch (error) {
       if (error instanceof AppError) {
