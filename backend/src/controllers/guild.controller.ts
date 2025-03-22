@@ -255,17 +255,35 @@ export default {
               id: 0,
               guild_id: parseInt(guildId),
               character_name: member.character.name,
-              character_class: enhancedData.character_class?.name?.en_US || 'Unknown',
+              character_class: enhancedData.character_class?.name || 'Unknown',
               character_role: 'DPS',
               rank: member.rank,
               character: {
-                ...enhancedData,
+                id: enhancedData.id,
+                user_id: 0, // Default value as we may not have this information
                 name: member.character.name,
                 realm: member.character.realm.slug,
-                itemLevel: enhancedData.equipped_item_level,
+                class: enhancedData.character_class?.name || 'Unknown',
+                level: enhancedData.level || member.character.level,
+                role: 'DPS', // Default role
+                is_main: false, // Default value
+                achievement_points: enhancedData.achievement_points || 0,
+                equipped_item_level: enhancedData.equipped_item_level || 0,
+                average_item_level: enhancedData.average_item_level || 0,
+                last_login_timestamp: enhancedData.last_login_timestamp || '',
+                active_spec: enhancedData.active_spec,
+                active_title: enhancedData.active_title,
+                covenant_progress: enhancedData.covenant_progress,
+                // Enhanced fields
+                itemLevel: enhancedData.equipped_item_level || 0,
+                mythicKeystone: enhancedData.mythicKeystone || {
+                  current_period: {
+                    period: { id: 0, start_timestamp: '', end_timestamp: '' },
+                    best_runs: []
+                  }
+                },
                 activeSpec: enhancedData.active_spec,
-                mythicKeystone: enhancedData.mythic_keystone_profile,
-                professions: enhancedData.professions
+                professions: enhancedData.professions || []
               }
             };
           } catch (error) {

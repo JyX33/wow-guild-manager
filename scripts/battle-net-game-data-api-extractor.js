@@ -12,7 +12,7 @@ const https = require('https');
 // Configuration - MODIFY THESE VALUES AS NEEDED
 const config = {
   // Your access token
-  accessToken: 'EUq6r1rGD6tduR2GUCWKE7cBbvYUkpbORS',
+  accessToken: 'EU45qkdKw3KRcv5Tm7F22a1kA7eRkIYwyn',
   
   // Region to use for API calls
   region: 'eu',
@@ -21,7 +21,7 @@ const config = {
   defaults: {
     realm: 'hyjal',
     realmSlug: 'hyjal',
-    characterName: 'amïlia',
+    characterName: 'rødeo',
     guild: 'this-is-not-a-guild',
     connectedRealmId: '581',
     achievementId: '6',
@@ -49,8 +49,8 @@ const config = {
     mountId: '6',
     keystoneAffixId: '1',
     dungeonId: '2',
-    periodId: '641',
-    seasonId: '1',
+    periodId: '1003',
+    seasonId: '14',
     playableClassId: '1',
     classId: '1',
     playableRaceId: '1',

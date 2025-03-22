@@ -159,9 +159,11 @@ class BattleNetService {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
-      const normalizedRealm = realm.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      // Convert accented characters to non-accented and normalize
+      const normalizedRealm = realm.toLowerCase();
+      console.log('Normalized Realm:', normalizedRealm);
       const normalizedCharacter = characterName.toLowerCase();
-
+      console.log('Normalized Character:', normalizedCharacter);
       // Get character profile
       const profileResponse = await axios.get(
         `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}`,
@@ -203,7 +205,6 @@ class BattleNetService {
           }
         }
       ).catch(() => ({ data: null }));
-
       // Get character professions (catch error as not all characters have professions)
       const professionsResponse = await axios.get(
         `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/professions`,
@@ -254,7 +255,8 @@ class BattleNetService {
    * Generate Battle.net OAuth authorization URL
    */
   async getAuthorizationUrl(region: string, state: string): Promise<string> {
-    const regionConfig = config.battlenet.regions[region] || config.battlenet.regions.eu;
+    const validRegion = this.validateRegion(region);
+    const regionConfig = config.battlenet.regions[validRegion];
     
     // Generate URL with OAuth parameters
     return `${regionConfig.authBaseUrl}/authorize?` + 
@@ -270,7 +272,8 @@ class BattleNetService {
    */
   async getAccessToken(region: string, code: string): Promise<TokenResponse> {
     try {
-      const regionConfig = config.battlenet.regions[region] || config.battlenet.regions.eu;
+      const validRegion = this.validateRegion(region);
+      const regionConfig = config.battlenet.regions[validRegion];
       
       const response = await axios.post<TokenResponse>(
         `${regionConfig.authBaseUrl}/token`,
@@ -307,7 +310,8 @@ class BattleNetService {
    */
   async refreshAccessToken(region: string, refreshToken: string): Promise<TokenResponse> {
     try {
-      const regionConfig = config.battlenet.regions[region] || config.battlenet.regions.eu;
+      const validRegion = this.validateRegion(region);
+      const regionConfig = config.battlenet.regions[validRegion];
       
       const response = await axios.post<TokenResponse>(
         `${regionConfig.authBaseUrl}/token`,

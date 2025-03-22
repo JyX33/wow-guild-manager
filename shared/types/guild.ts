@@ -89,25 +89,54 @@ export interface BattleNetGuildMember {
   rank: number;
 }
 
+export interface BattleNetGuild {
+  _links: {
+    self: {
+      href: string;
+    };
+  };
+  id: number;
+  name: string;
+  faction: TypeName;
+  achievement_points: number;
+  member_count: number;
+  realm: RealmReference;
+  crest: GuildCrest;
+  created_timestamp: number;
+  roster: {
+    href: string;
+  };
+  achievements: {
+    href: string;
+  };
+  activity: {
+    href: string;
+  };
+}
+
+export interface BattleNetGuildRoster {
+  _links: {
+    self: {
+      href: string;
+    };
+  };
+  guild: {
+    key: KeyReference;
+    name: string;
+    id: number;
+    realm: RealmReference;
+    faction: TypeName;
+  };
+  members: BattleNetGuildMember[];
+}
+
 export interface Guild {
   id: number;
   name: string;
   realm: string;
   region: string;
   last_updated?: string;
-  guild_data: {
-    id: number;
-    name: string;
-    faction: TypeName;
-    achievement_points: number;
-    member_count: number;
-    realm: RealmReference;
-    crest: GuildCrest;
-    created_timestamp: string;
-    roster: { href: string };
-    achievements: { href: string };
-    activity: { href: string };
-  };
+  guild_data: BattleNetGuild;
   is_guild_master?: boolean;
 }
 
@@ -134,31 +163,30 @@ export interface Character {
   created_at?: string;
   updated_at?: string;
   guild_id?: number;
-  character_data: {
-    achievement_points: number;
-    equipped_item_level: number;
-    average_item_level: number;
-    last_login_timestamp: string;
-    active_spec: {
-      key: KeyReference;
-      name: LocalizedString;
-      id: number;
-    };
-    active_title?: {
-      key: KeyReference;
-      name: LocalizedString;
-      id: number;
-      display_string: LocalizedString;
-    };
-    covenant_progress?: {
-      chosen_covenant: {
-        key: KeyReference;
-        name: LocalizedString;
-        id: number;
-      };
-      renown_level: number;
-    };
+  achievement_points: number;
+  equipped_item_level: number;
+  average_item_level: number;
+  last_login_timestamp: string;
+  active_spec: {
+    key: KeyReference;
+    name: LocalizedString;
+    id: number;
   };
+  active_title?: {
+    key: KeyReference;
+    name: LocalizedString;
+    id: number;
+    display_string: LocalizedString;
+  };
+  covenant_progress?: {
+    chosen_covenant: {
+      key: KeyReference;
+      name: LocalizedString;
+      id: number;
+    };
+    renown_level: number;
+  };
+  
 }
 
 export interface MythicKeystoneRun {

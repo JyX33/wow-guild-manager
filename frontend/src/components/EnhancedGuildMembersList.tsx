@@ -18,8 +18,8 @@ const getLocalizedText = (text: LocalizedString, locale: keyof LocalizedString =
 };
 
 const getItemLevel = (member: EnhancedGuildMember): number => {
-  return member.character?.character_data?.equipped_item_level ||
-         member.character?.character_data?.average_item_level ||
+  return member.character?.equipped_item_level ||
+         member.character?.average_item_level ||
          0;
 };
 
@@ -152,7 +152,7 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedMembers.map((member) => (
-              <tr key={member.id} className="hover:bg-gray-50">
+              <tr key={member.character.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   {member.character?.name}
                 </td>
@@ -162,34 +162,28 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
                     {getItemLevel(member)}
-                    {member.character?.character_data?.average_item_level !== 
-                     member.character?.character_data?.equipped_item_level && 
-                     member.character?.character_data?.average_item_level && (
+                    {member.character?.average_item_level !== 
+                     member.character?.equipped_item_level && 
+                     member.character?.average_item_level && (
                       <span className="ml-1 text-xs text-gray-500">
-                        (Bags: {member.character.character_data.average_item_level})
+                        (Bags: {member.character.average_item_level})
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
-                    {member.character?.character_data?.active_spec ? (
+                    {member.character?.active_spec ? (
                       <>
-                        <span>{member.character?.class}</span>
+                        <span>{member.character.class}</span>
                         <span className="ml-1 text-xs text-gray-500">
-                          ({member.character?.character_data?.active_spec?.name?.en_US})
+                          ({member.character?.active_spec?.name})
                         </span>
                       </>
                     ) : (
                       member.character?.class
                     )}
                   </div>
-                  {member.character?.character_data?.covenant_progress && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {member.character?.character_data?.covenant_progress?.chosen_covenant?.name?.en_US}
-                      ({member.character?.character_data?.covenant_progress?.renown_level})
-                    </div>
-                  )}
                 </td>
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
@@ -197,11 +191,12 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                   </div>
                   {member.character?.mythicKeystone?.current_period?.best_runs?.length > 0 && (
                     <div className="text-xs text-gray-500 mt-1">
-                      {member.character?.mythicKeystone?.current_period?.best_runs
+                      rating : {member.character?.mythicKeystone?.current_mythic_rating?.rating}
+                      {/* {member.character?.mythicKeystone?.current_period?.best_runs
                         .sort((a, b) => b.keystone_level - a.keystone_level)
                         .slice(0, 3)
-                        .map((run, index) => (
-                          <div key={index} className="mb-0.5">
+                        .map((run) => (
+                          <div key={`${run.dungeon.id}-${run.keystone_level}`} className="mb-0.5">
                             +{run.keystone_level} {getLocalizedText(run.dungeon.name)}
                             {run.duration && (
                               <span className="ml-1">
@@ -209,14 +204,14 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                               </span>
                             )}
                           </div>
-                        ))}
+                        ))} */}
                     </div>
                   )}
                 </td>
                 <td className="px-6 py-4">
                   {member.character?.professions?.map(prof => (
                     <div key={prof.profession.id} className="text-sm">
-                      {prof.profession.name.en_US}
+                      {prof.profession.name}
                       {prof.skill_points && (
                         <span className="ml-1 text-xs text-gray-500">
                           ({prof.skill_points}/{prof.max_skill_points || '?'})
