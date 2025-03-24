@@ -120,8 +120,7 @@ export interface Guild {
     realm: string;
     region: string;
     last_updated?: string;
-    guild_data: BattleNetGuild;
-    is_guild_master?: boolean;
+    guild_data: BattleNetGuild;    
 }
 
 export interface GuildMember {

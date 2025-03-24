@@ -6,6 +6,7 @@ import { Guild } from '../../../shared/types/guild';
 import { EnhancedGuildMembersList } from '../components/EnhancedGuildMembersList';
 import EventCalendar from '../components/EventCalendar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import withAuth from '@/components/withAuth';
 
 const GuildPage: React.FC = () => {
   const { guildId } = useParams<{ guildId: string }>();
@@ -171,4 +172,4 @@ const GuildPage: React.FC = () => {
   );
 };
 
-export default GuildPage;
+export default withAuth(GuildPage);

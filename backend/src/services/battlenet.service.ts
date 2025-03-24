@@ -99,44 +99,34 @@ class BattleNetService {
       return region as BattleNetRegion;
     }
     return 'eu';
-  }
+  }  
 
-  /**
-   * Get connected realm ID from realm slug
-   */
-  private async getConnectedRealmId(region: string, realmSlug: string, accessToken: string): Promise<number> {
-    const validRegion = this.validateRegion(region);
-    const regionConfig = config.battlenet.regions[validRegion] || config.battlenet.regions.eu;
-    
+  async getWowCharacter(region: string, realm: string, character: string, accessToken: string): Promise<any> {
     try {
-      const response = await axios.get(
-        `${regionConfig.apiBaseUrl}/data/wow/search/connected-realm`,
-        {
-          params: {
-            namespace: `dynamic-${validRegion}`,
-            'realms.slug': realmSlug,
-            locale: 'en_US'
-          },
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+      const validRegion = this.validateRegion(region);
+      const regionConfig = config.battlenet.regions[validRegion];
+      const realmSlug = realm.toLowerCase();
+      const normalizedCharacter = character.toLowerCase();
+      console.log('Fetching character data for:', { region, realm, character, accessToken, realmSlug, normalizedCharacter });
+      const response = await axios.get(`${regionConfig.apiBaseUrl}/profile/wow/character/${realmSlug}/${encodeURIComponent(normalizedCharacter)}`, {
+        params: {
+          namespace: `profile-${validRegion}`,
+          locale: 'en_US'
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`
         }
-      );
-      if (response.data.results && response.data.results.length > 0) {
-        // Extract the ID from the href
-        const href = response.data.results[0].data.id;
-        return parseInt(href);
-      }
-
-      throw new AppError(`Connected realm not found for slug: ${realmSlug}`, 404);
+      });
+      
+      return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new AppError(
-          `Failed to get connected realm ID: ${error.response?.data?.detail || error.message}`,
+          `Battle.net WoW profile error: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
-      throw error;
+      throw new AppError(`Battle.net WoW profile error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 
@@ -204,14 +194,12 @@ class BattleNetService {
   async getGuildData(realm: string, guildName: string, accessToken: string, region: string = 'eu') {
     try {
       const validRegion = this.validateRegion(region);
-      const regionConfig = config.battlenet.regions[validRegion];
-      
-      // Get connected realm ID first
-      const connectedRealmId = await this.getConnectedRealmId(region, realm.toLowerCase(), accessToken);
+      const regionConfig = config.battlenet.regions[validRegion];      
+    
       const normalizedGuildName = guildName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-      
+      console.log('Fetching guild data for:', { region, realm, guildName, accessToken, normalizedGuildName });
       const response = await axios.get(
-        `${regionConfig.apiBaseUrl}/data/wow/guild/${connectedRealmId}/${encodeURIComponent(normalizedGuildName)}`,
+        `${regionConfig.apiBaseUrl}/data/wow/guild/${realm.toLowerCase()}/${encodeURIComponent(normalizedGuildName)}`,
         {
           params: {
             namespace: `profile-${validRegion}`,

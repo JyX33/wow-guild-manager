@@ -4,6 +4,7 @@ import { Event } from '../../../shared/types/index';
 import EventForm from '../components/EventForm';
 import { useAuth } from '../context/AuthContext';
 import { eventService } from '../services/api';
+import withAuth from '@/components/withAuth';
 
 const EditEventPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -100,4 +101,4 @@ const EditEventPage: React.FC = () => {
   );
 };
 
-export default EditEventPage;
+export default withAuth(EditEventPage);

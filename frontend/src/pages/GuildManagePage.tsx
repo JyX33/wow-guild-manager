@@ -5,6 +5,7 @@ import { guildService } from '../services/api/guild.service';
 import { Guild } from '../../../shared/types/guild';
 import { GuildRankManager } from '../components/GuildRankManager';
 import LoadingSpinner from '../components/LoadingSpinner';
+import withAuth from '@/components/withAuth';
 
 const GuildManagePage: React.FC = () => {
   const { guildId } = useParams<{ guildId: string }>();
@@ -132,4 +133,4 @@ const GuildManagePage: React.FC = () => {
   );
 };
 
-export default GuildManagePage;
+export default withAuth(GuildManagePage);

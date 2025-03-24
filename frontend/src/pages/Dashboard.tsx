@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import withAuth from '../components/withAuth';
 import GuildSelector from '../components/GuildSelector';
 import { useAuth } from '../context/AuthContext';
 
@@ -44,4 +45,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard;
+export default withAuth(Dashboard);

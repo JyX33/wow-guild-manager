@@ -14,7 +14,6 @@ export default {
   getGuildByName: async (req: Request, res: Response) => {
     try {
       const { region, realm, name } = req.params;
-      console.log("params", req.params);
       // Check if guild exists in database
       let guild = await guildModel.findByNameRealmRegion(name, realm, region);
       
@@ -114,8 +113,16 @@ export default {
         guild.realm,
         guild.name,
         user.access_token
-      );
+      ) as BattleNetGuildRoster;
 
+      // Find the rank 0 member (Guild Master)
+      const guildMaster = guildRoster.members.find(member => member.rank === 0);
+      console.log('Guild Master:', guildMaster);
+      if (guildMaster) {
+        // Set the guild master to the guild and persist it
+        guild.guild_master = guildMaster.character.name.toLocaleLowerCase();
+        await guildModel.updateGuildData(guild.id, guild);
+      }
       res.json({
         success: true,
         data: guildRoster.members
@@ -147,48 +154,51 @@ export default {
         user.region || 'eu',
         user.access_token
       );
-      
       const guilds = [];
-      const processedGuilds = new Set<string>();
+      // const processedGuilds = new Set<string>();
       
       for (const account of profile.wow_accounts || []) {
         for (const character of account.characters || []) {
-          if (!character.guild) continue;
+          const characterData = await battleNetService.getWowCharacter(
+           user.region || 'eu',
+            character.realm.slug,
+            character.name,
+            user.access_token
+          )
+          if (!characterData.guild) continue;
           
-          const guildKey = `${character.guild.realm.slug}-${character.guild.name}`;
-          if (processedGuilds.has(guildKey)) continue;
-          processedGuilds.add(guildKey);
+          // const guildKey = `${characterData.guild.realm.slug}-${characterData.guild.name}`;
+          // if (processedGuilds.has(guildKey)) continue;
+          // processedGuilds.add(guildKey);
           
           try {
             const guildInfo = await battleNetService.getGuildData(
-              character.realm.slug,
-              character.guild.name,
+              characterData.realm.slug,
+              characterData.guild.name,
               user.access_token,
               user.region
             );
             
             const roster = await battleNetService.getGuildMembers(
               user.region || 'eu',
-              character.realm.slug,
-              character.guild.name,
+              characterData.realm.slug,
+              characterData.guild.name,
               user.access_token
             ) as BattleNetGuildRoster;
-            
             const isGuildMaster = roster.members.some(member => 
-              character.name.toLowerCase() === member.character.name.toLowerCase() && 
+              characterData.name.toLowerCase() === member.character.name.toLowerCase() && 
               member.rank === 0
             );
-            
             guilds.push({
               ...guildInfo,
               is_guild_master: isGuildMaster
             });
           } catch (error) {
-            console.error(`Error fetching guild data for ${character.guild.name}:`, error);
+            console.error(`Error fetching guild data for ${characterData.guild.name}:`, error);
           }
         }
       }
-      
+      console.log(`[DEBUG] Processed ${guilds.length} unique guilds for user ${user.id}`);
       res.json({
         success: true,
         data: guilds
@@ -293,41 +303,7 @@ export default {
                 activeSpec: enhancedData.active_spec,
                 professions: enhancedData.professions || []
               }
-            };
-            return {
-              id: 0,
-              guild_id: parseInt(guildId),
-              character_name: member.character.name,
-              character_class: enhancedData.character_class?.name || 'Unknown',
-              character_role: 'DPS',
-              rank: member.rank,
-              character: {
-                id: enhancedData.id,
-                user_id: 0,
-                name: member.character.name,
-                realm: member.character.realm.slug,
-                class: enhancedData.character_class?.name || 'Unknown',
-                level: enhancedData.level || member.character.level,
-                role: 'DPS',
-                is_main: false,
-                achievement_points: enhancedData.achievement_points || 0,
-                equipped_item_level: enhancedData.equipped_item_level || 0,
-                average_item_level: enhancedData.average_item_level || 0,
-                last_login_timestamp: enhancedData.last_login_timestamp || '',
-                active_spec: enhancedData.active_spec,
-                active_title: enhancedData.active_title,
-                covenant_progress: enhancedData.covenant_progress,
-                itemLevel: enhancedData.equipped_item_level || 0,
-                mythicKeystone: enhancedData.mythicKeystone || {
-                  current_period: {
-                    period: { id: 0, start_timestamp: '', end_timestamp: '' },
-                    best_runs: []
-                  }
-                },
-                activeSpec: enhancedData.active_spec,
-                professions: enhancedData.professions || []
-              }
-            };
+            };           
           } catch (error) {
             errorCount++;
             const errorMessage = error instanceof Error ? error.message : String(error);

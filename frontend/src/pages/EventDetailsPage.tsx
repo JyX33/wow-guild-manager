@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { eventService, characterService } from '../services/api';
 import { CharacterSelector } from '../components/CharacterSelector';
 import { format } from 'date-fns';
+import withAuth from '@/components/withAuth';
 
 interface Event {
   id: number;
@@ -327,4 +328,4 @@ const EventDetailsPage: React.FC = () => {
   );
 };
 
-export default EventDetailsPage;
+export default withAuth(EventDetailsPage);
