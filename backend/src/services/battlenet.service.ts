@@ -1,6 +1,14 @@
 import axios from 'axios';
 import PQueue from 'p-queue';
-import { BattleNetUserProfile } from '../../../shared/types/user';
+import { BattleNetUserProfile, BattleNetRegion, BattleNetWoWProfile } from '../../../shared/types/user';
+import { 
+  BattleNetGuild, 
+  BattleNetGuildRoster, 
+  BattleNetCharacter,
+  BattleNetCharacterEquipment,
+  BattleNetMythicKeystoneProfile,
+  BattleNetProfessions
+} from '../../../shared/types/guild';
 import config from '../config';
 import { AppError } from '../utils/error-handler';
 
@@ -26,7 +34,7 @@ interface TokenResponse {
   scope: string;
 }
 
-type BattleNetRegion = 'eu' | 'us' | 'kr' | 'tw';
+// BattleNetRegion is now imported from shared types
 
 class BattleNetService {
   private rateLimiter: PQueue;
@@ -101,7 +109,7 @@ class BattleNetService {
     return 'eu';
   }  
 
-  async getWowCharacter(region: string, realm: string, character: string, accessToken: string): Promise<any> {
+  async getWowCharacter(region: string, realm: string, character: string, accessToken: string): Promise<BattleNetCharacter> {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
@@ -130,7 +138,7 @@ class BattleNetService {
     }
   }
 
-  async getWowProfile(region: string, accessToken: string): Promise<any> {
+  async getWowProfile(region: string, accessToken: string): Promise<BattleNetWoWProfile> {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
@@ -157,7 +165,7 @@ class BattleNetService {
     }
   }
 
-  async getGuildMembers(region: string, realm: string, guildName: string, accessToken: string) {
+  async getGuildRoster(region: string, realm: string, guildName: string, accessToken: string): Promise<BattleNetGuildRoster> {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
@@ -183,15 +191,20 @@ class BattleNetService {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         throw new AppError(
-          `Battle.net guild members error: ${error.response?.data?.detail || error.message}`,
+          `Battle.net guild roster error: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
-      throw new AppError(`Battle.net guild members error: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(`Battle.net guild roster error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
+  
+  // Keeping this method for backward compatibility
+  async getGuildMembers(region: string, realm: string, guildName: string, accessToken: string) {
+    return this.getGuildRoster(region, realm, guildName, accessToken);
+  }
 
-  async getGuildData(realm: string, guildName: string, accessToken: string, region: string = 'eu') {
+  async getGuildData(realm: string, guildName: string, accessToken: string, region: string = 'eu'): Promise<BattleNetGuild> {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];      
@@ -223,7 +236,12 @@ class BattleNetService {
     }
   }
 
-  async getEnhancedCharacterData(realm: string, characterName: string, accessToken: string, region: string = 'eu') {
+  async getEnhancedCharacterData(realm: string, characterName: string, accessToken: string, region: string = 'eu'): Promise<BattleNetCharacter & {
+    equipment: BattleNetCharacterEquipment;
+    itemLevel: number;
+    mythicKeystone: BattleNetMythicKeystoneProfile | null;
+    professions: BattleNetProfessions['primaries'];
+  }> {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
@@ -457,4 +475,19 @@ class BattleNetService {
  
 }
 
-export default new BattleNetService();
+const battleNetService = new BattleNetService();
+
+export const getWowCharacter = battleNetService.getWowCharacter.bind(battleNetService);
+export const getWowProfile = battleNetService.getWowProfile.bind(battleNetService);
+export const getGuildRoster = battleNetService.getGuildRoster.bind(battleNetService);
+export const getGuildMembers = battleNetService.getGuildMembers.bind(battleNetService);
+export const getGuildData = battleNetService.getGuildData.bind(battleNetService);
+export const getEnhancedCharacterData = battleNetService.getEnhancedCharacterData.bind(battleNetService);
+export const validateToken = battleNetService.validateToken.bind(battleNetService);
+export const getAuthorizationUrl = battleNetService.getAuthorizationUrl.bind(battleNetService);
+export const getAccessToken = battleNetService.getAccessToken.bind(battleNetService);
+export const refreshAccessToken = battleNetService.refreshAccessToken.bind(battleNetService);
+export const getUserInfo = battleNetService.getUserInfo.bind(battleNetService);
+export const getMetrics = battleNetService.getMetrics.bind(battleNetService);
+
+export default battleNetService;

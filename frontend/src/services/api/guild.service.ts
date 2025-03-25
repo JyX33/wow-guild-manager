@@ -70,4 +70,22 @@ export const guildService = {
       url: `/guilds/${guildId}/ranks/${rankId}`,
       data: { rank_name: rankName }
     }),
+    
+  /**
+   * Get enhanced guild rank structure with member counts
+   */
+  getGuildRankStructure: (guildId: number) =>
+    apiRequest<GuildRank[]>({
+      method: 'GET', 
+      url: `/guilds/${guildId}/rank-structure`
+    }),
+    
+  /**
+   * Synchronize guild roster with database
+   */
+  syncGuildRoster: (guildId: number) =>
+    apiRequest<{message: string, members_updated: number}>({
+      method: 'POST',
+      url: `/guilds/${guildId}/sync-roster`
+    }),
 };

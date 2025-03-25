@@ -1,10 +1,11 @@
-import { Character, CharacterRole } from '../../../shared/types';
+import { CharacterRole, BattleNetCharacter } from '../../../shared/types';
+import { Character, DbCharacter } from '../../../shared/types/guild';
 import BaseModel from '../db/BaseModel';
 import db from '../db/db';
 import { AppError } from '../utils/error-handler';
 import { withTransaction } from '../utils/transaction';
 
-class CharacterModel extends BaseModel<Character> {
+class CharacterModel extends BaseModel<DbCharacter> {
   constructor() {
     super('characters');
   }
@@ -196,7 +197,7 @@ class CharacterModel extends BaseModel<Character> {
    */
   async syncCharactersFromBattleNet(
     userId: number, 
-    wowAccounts: any[]
+    wowAccounts: Array<{characters: BattleNetCharacter[]}>
   ): Promise<{added: number, updated: number, total: number}> {
     try {
       return await withTransaction(async (client) => {
@@ -212,9 +213,9 @@ class CharacterModel extends BaseModel<Character> {
               user_id: userId,
               name: character.name,
               realm: character.realm.slug,
-              class: character.playable_class.name.en_US || character.playable_class.name.en_GB || 'Unknown',
-              level: character.level,
-              role: this.determineDefaultRole(character.playable_class.id),
+              class: character.playable_class?.name || 'Unknown',
+              level: character.level || 1,
+              role: this.determineDefaultRole(character.playable_class?.id),
               character_data: character,
               is_main: false
             });
@@ -283,28 +284,38 @@ class CharacterModel extends BaseModel<Character> {
   /**
    * Determine default role based on specialization or class
    */
-  private determineDefaultRole(characterData: any): CharacterRole {
-    // First try to get role from active_spec if available
-    if (characterData.active_spec && characterData.active_spec.id) {
-      const specId = characterData.active_spec.id;
-      
-      // Tank specs
-      if ([73, 66, 104, 268, 250, 581].includes(specId)) {
-        return 'Tank';
-      }
-      
-      // Healer specs
-      if ([105, 270, 65, 256, 257, 264, 1468].includes(specId)) {
-        return 'Healer';
-      }
-      
-      // All other specs are DPS
-      return 'DPS';
-    }
-    
-    // Fallback to class-based default if spec not available
-    const classId = characterData.playable_class?.id;
+  private determineDefaultRole(classId?: number): CharacterRole {
+    // If no class ID is provided, default to DPS
     if (!classId) return 'DPS';
+    
+    // Class-based default role assignment
+    switch(classId) {
+      // Classes that can ONLY be DPS
+      case 3: // Hunter
+      case 4: // Rogue
+      case 8: // Mage
+      case 9: // Warlock
+        return 'DPS';
+        
+      // Classes with tanking specs - default to tank as it's less common
+      case 1: // Warrior (Protection)
+      case 2: // Paladin (Protection)
+      case 6: // Death Knight (Blood)
+      case 10: // Monk (Brewmaster)
+      case 11: // Druid (Guardian)
+      case 12: // Demon Hunter (Vengeance)
+        return 'Tank';
+        
+      // Classes with healing specs - default to healer as it's less common
+      case 5: // Priest (Holy, Discipline) 
+      case 7: // Shaman (Restoration)
+      case 13: // Evoker (Preservation)
+        return 'Healer';
+        
+      // Default for unknown classes
+      default:
+        return 'DPS';
+    }
     
     switch(classId) {
       // Classes that can ONLY be DPS
@@ -353,6 +364,49 @@ class CharacterModel extends BaseModel<Character> {
       throw new AppError(`Error getting highest level character: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
+
+  /**
+   * Find a character by name and realm
+   */
+  async findByNameRealm(name: string, realm: string): Promise<Character | null> {
+    try {
+      return await this.findOne({
+        name: db.raw(`LOWER('${name}')`),
+        realm: db.raw(`LOWER('${realm}')`)
+      });
+    } catch (error) {
+      throw new AppError(`Error finding character by name and realm: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
+   * Get characters for a specific guild
+   */
+  async findByGuildId(guildId: number): Promise<Character[]> {
+    try {
+      return await this.findAll({ guild_id: guildId });
+    } catch (error) {
+      throw new AppError(`Error finding characters by guild ID: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
 }
 
-export default new CharacterModel();
+const characterModel = new CharacterModel();
+
+export const findById = characterModel.findById.bind(characterModel);
+export const findOne = characterModel.findOne.bind(characterModel);
+export const findAll = characterModel.findAll.bind(characterModel);
+export const create = characterModel.create.bind(characterModel);
+export const update = characterModel.update.bind(characterModel);
+export const findByUserId = characterModel.findByUserId.bind(characterModel);
+export const getMainCharacter = characterModel.getMainCharacter.bind(characterModel);
+export const setMainCharacter = characterModel.setMainCharacter.bind(characterModel);
+export const createCharacter = characterModel.createCharacter.bind(characterModel);
+export const updateCharacter = characterModel.updateCharacter.bind(characterModel);
+export const deleteUserCharacter = characterModel.deleteUserCharacter.bind(characterModel);
+export const syncCharactersFromBattleNet = characterModel.syncCharactersFromBattleNet.bind(characterModel);
+export const getHighestLevelCharacter = characterModel.getHighestLevelCharacter.bind(characterModel);
+export const findByNameRealm = characterModel.findByNameRealm.bind(characterModel);
+export const findByGuildId = characterModel.findByGuildId.bind(characterModel);
+
+export default characterModel;

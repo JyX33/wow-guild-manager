@@ -1,10 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import guildModel from '../models/guild.model';
-import characterModel from '../models/character.model';
-import battleNetService from '../services/battlenet.service';
-import userModel from '../models/user.model';
+import * as guildModel from '../models/guild.model';
 import { AppError } from '../utils/error-handler';
-import { Character, Guild } from '../../../shared/types/guild';
+import { verifyGuildLeadership } from '../services/guild-leadership.service';
 
 interface BattleNetGuildMember {
   character: {
@@ -36,31 +33,8 @@ export const isGuildMaster = async (req: Request, res: Response, next: NextFunct
       throw new AppError('Guild not found', 404);
     }
     
-    // Get user's characters
-    const characters = await characterModel.findByUserId(userId);
-    
-    // Get user access token
-    const user = await userModel.getUserWithTokens(userId);
-    
-    if (!user || !user.access_token) {
-      throw new AppError('Authentication token not found', 401);
-    }
-    
-    // Get guild roster from Battle.net
-    const guildRoster = await battleNetService.getGuildMembers(
-      guild.region,
-      guild.realm,
-      guild.name,
-      user.access_token
-    ) as GuildRoster;
-    
-    // Check if any of the user's characters is rank 0 (guild master)
-    const isGM = guildRoster.members.some((member: BattleNetGuildMember) => 
-      characters.some((char: Character) => 
-        char.name.toLowerCase() === member.character.name.toLowerCase() && 
-        member.rank === 0
-      )
-    );
+    // Use the verification service instead of direct API calls
+    const isGM = await verifyGuildLeadership(guildId, userId);
     
     if (!isGM) {
       return res.status(403).json({

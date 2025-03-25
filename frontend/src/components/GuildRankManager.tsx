@@ -21,7 +21,7 @@ export const GuildRankManager: React.FC<Props> = ({ guildId }) => {
     error,
     execute: refreshRanks 
   } = useApi<GuildRank[]>({
-    apiFn: guildService.getGuildRanks,
+    apiFn: guildService.getGuildRankStructure,
     args: [guildId],
     deps: [guildId]
   });
@@ -108,6 +108,9 @@ export const GuildRankManager: React.FC<Props> = ({ guildId }) => {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Name
             </th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Members
+            </th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
               Actions
             </th>
@@ -142,6 +145,11 @@ export const GuildRankManager: React.FC<Props> = ({ guildId }) => {
                     )}
                   </div>
                 )}
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-center">
+                <span className="px-2 inline-flex items-center text-sm">
+                  {rank.member_count || 0}
+                </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right">
                 {editingRank === rank.rank_id ? (

@@ -20,6 +20,16 @@ router.get('/:guildId/members', authMiddleware.authenticate, guildController.get
 // Guild rank management
 router.get('/:guildId/ranks', authMiddleware.authenticate, guildController.getGuildRanks);
 
+// Enhanced guild rank structure with member counts
+router.get('/:guildId/rank-structure', authMiddleware.authenticate, guildController.getGuildRankStructure);
+
+// Sync guild characters with database (populate guild_id, etc.)
+router.post('/:guildId/sync-roster', 
+  authMiddleware.authenticate, 
+  isGuildMaster, 
+  guildController.syncGuildCharacters
+);
+
 // Get guild by region, realm and name - GENERIC ROUTE LAST
 router.get('/:region/:realm/:name', authMiddleware.authenticate, guildController.getGuildByName);
 

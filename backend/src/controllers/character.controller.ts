@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { asyncHandler, AppError } from '../utils/error-handler';
-import characterModel from '../models/character.model';
-import userModel from '../models/user.model';
-import battleNetService from '../services/battlenet.service';
+import * as characterModel from '../models/character.model';
+import * as userModel from '../models/user.model';
+import * as guildModel from '../models/guild.model';
+import * as battleNetService from '../services/battlenet.service';
 import { Character } from '../../../shared/types/index';
 
 export default {
@@ -188,11 +189,55 @@ export default {
       user.access_token
     );
     
-    // Sync characters
+    // Sync characters first
     const syncResult = await characterModel.syncCharactersFromBattleNet(
       userId, 
       wowProfile.wow_accounts || []
     );
+    
+    // Now update guild associations for each character
+    let guildAssociationsUpdated = 0;
+    
+    for (const account of wowProfile.wow_accounts || []) {
+      for (const character of account.characters || []) {
+        try {
+          if (character.guild) {
+            // Check if guild exists in our database
+            let guildId = null;
+            
+            const guild = await guildModel.findByNameRealmRegion(
+              character.guild.name,
+              character.guild.realm.slug,
+              region
+            );
+            
+            if (guild) {
+              guildId = guild.id;
+              
+              // Find the character in our database
+              const dbCharacter = await characterModel.findByNameRealm(
+                character.name,
+                character.realm.slug
+              );
+              
+              if (dbCharacter && (!dbCharacter.guild_id || dbCharacter.guild_id !== guildId)) {
+                // Update the character with guild association
+                await characterModel.update(dbCharacter.id, {
+                  guild_id: guildId,
+                  updated_at: new Date().toISOString()
+                });
+                
+                guildAssociationsUpdated++;
+              }
+            }
+            // If guild doesn't exist, we don't create it here
+            // It will be created when the user explicitly accesses it
+          }
+        } catch (error) {
+          console.error(`Error updating guild association for ${character.name}:`, error);
+        }
+      }
+    }
     
     // Set a main character if none exists
     if (syncResult.added > 0) {
@@ -211,7 +256,10 @@ export default {
     
     res.json({
       success: true,
-      data: syncResult
+      data: {
+        ...syncResult,
+        guild_associations_updated: guildAssociationsUpdated
+      }
     });
   })
 

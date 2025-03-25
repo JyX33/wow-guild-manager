@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import { BattleNetGuildMember } from '../../../shared/types/guild';
-import guildModel from '../models/guild.model';
-import rankModel from '../models/rank.model';
-import userModel from '../models/user.model';
-import battleNetService from '../services/battlenet.service';
+import * as guildModel from '../models/guild.model';
+import * as rankModel from '../models/rank.model';
+import * as userModel from '../models/user.model';
+import * as battleNetService from '../services/battlenet.service';
 import { AppError } from '../utils/error-handler';
+import * as guildLeadershipService from '../services/guild-leadership.service';
+import * as guildRosterService from '../services/guild-roster.service';
 
 interface BattleNetGuildRoster {
   members: BattleNetGuildMember[];
@@ -33,8 +35,45 @@ export default {
           name,
           realm,
           region,
-          guild_data: guildData
+          guild_data: guildData,
+          last_updated: new Date().toISOString()
         });
+        
+        // After creating the guild, fetch roster to establish leadership
+        const guildRoster = await battleNetService.getGuildRoster(
+          region, 
+          realm, 
+          name, 
+          user.access_token
+        );
+        
+        // Find the guild master in roster
+        const guildMaster = guildRoster.members.find(member => member.rank === 0);
+        
+        if (guildMaster) {
+          // Find user who owns this character
+          const guildMasterUser = await userModel.findByCharacterName(
+            guildMaster.character.name,
+            guildMaster.character.realm.slug
+          );
+          
+          if (guildMasterUser) {
+            // Update guild with leader_id
+            await guildModel.update(guild.id, { 
+              leader_id: guildMasterUser.id,
+              last_updated: new Date().toISOString()
+            });
+            
+            // Refresh guild data
+            guild = await guildModel.findById(guild.id);
+          }
+        }
+        
+        // Sync guild ranks
+        await guildRosterService.syncGuildRanks(guild.id, guildRoster);
+        
+        // Update rank counts
+        await guildRosterService.updateGuildRankInfo(guild.id, guildRoster);
       }
       
       res.json({
@@ -108,7 +147,7 @@ export default {
       }
 
       // Get fresh roster data from Battle.net
-      const guildRoster = await battleNetService.getGuildMembers(
+      const guildRoster = await battleNetService.getGuildRoster(
         guild.region,
         guild.realm,
         guild.name,
@@ -117,12 +156,22 @@ export default {
 
       // Find the rank 0 member (Guild Master)
       const guildMaster = guildRoster.members.find(member => member.rank === 0);
-      console.log('Guild Master:', guildMaster);
+      
       if (guildMaster) {
         // Set the guild master to the guild and persist it
         guild.guild_master = guildMaster.character.name.toLocaleLowerCase();
+        
+        // Update guild_data
         await guildModel.updateGuildData(guild.id, guild);
+        
+        // Update leader_id if needed
+        await guildLeadershipService.findAndUpdateGuildLeader(guild.id, guildRoster);
       }
+      
+      // Update guild ranks and rank counts 
+      await guildRosterService.syncGuildRanks(guild.id, guildRoster);
+      await guildRosterService.updateGuildRankInfo(guild.id, guildRoster);
+      
       res.json({
         success: true,
         data: guildRoster.members
@@ -474,6 +523,85 @@ export default {
         success: false,
         error: {
           message: 'Failed to update rank name',
+          status: 500
+        }
+      });
+    }
+  },
+
+  syncGuildCharacters: async (req: Request, res: Response) => {
+    try {
+      const { guildId } = req.params;
+      const userId = req.user.id;
+      
+      // Verify user has permission (guild member or leader)
+      const user = await userModel.getUserWithTokens(userId);
+      
+      if (!user?.access_token) {
+        throw new AppError('Authentication token not found', 401);
+      }
+      
+      // Sync roster
+      const result = await guildRosterService.synchronizeGuildRoster(
+        parseInt(guildId),
+        user.access_token
+      );
+      
+      res.json({
+        success: true,
+        data: {
+          message: 'Guild roster synchronized successfully',
+          members_updated: result.members.length
+        }
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      console.error('Sync guild characters error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to synchronize guild characters',
+          status: 500
+        }
+      });
+    }
+  },
+
+  getGuildRankStructure: async (req: Request, res: Response) => {
+    try {
+      const { guildId } = req.params;
+      
+      const guild = await guildModel.findById(parseInt(guildId));
+      
+      if (!guild) {
+        throw new AppError('Guild not found', 404);
+      }
+      
+      const ranks = await rankModel.getGuildRanks(parseInt(guildId));
+      
+      // Enhance with member counts from guild_data
+      const rankCounts = guild.guild_data?.rank_counts || {};
+      
+      const enhancedRanks = ranks.map(rank => ({
+        ...rank,
+        member_count: rankCounts[rank.rank_id] || 0
+      }));
+      
+      res.json({
+        success: true,
+        data: enhancedRanks
+      });
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+      console.error('Get guild rank structure error:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to get guild rank structure',
           status: 500
         }
       });

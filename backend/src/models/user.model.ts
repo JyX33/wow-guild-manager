@@ -1,8 +1,10 @@
-import { UserRole, UserWithTokens } from '../../../shared/types/index';
+import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/index';
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';
+import db from '../db/db';
+import { Character, DbCharacter } from '../../../shared/types/guild';
 
-class UserModel extends BaseModel<UserWithTokens> {
+class UserModel extends BaseModel<DbUser> {
   constructor() {
     super('users');
   }
@@ -111,6 +113,66 @@ class UserModel extends BaseModel<UserWithTokens> {
       throw new AppError(`Error updating sync timestamp: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
+
+  async getUserCharacters(userId: number): Promise<Character[]> {
+    try {
+      const result = await db.query(
+        'SELECT * FROM characters WHERE user_id = $1',
+        [userId]
+      );
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error getting user characters: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  async findByCharacterName(characterName: string, realm: string): Promise<UserWithTokens | null> {
+    try {
+      const result = await db.query(
+        `SELECT u.* FROM users u
+         JOIN characters c ON c.user_id = u.id
+         WHERE LOWER(c.name) = LOWER($1) AND LOWER(c.realm) = LOWER($2)
+         LIMIT 1`,
+        [characterName, realm]
+      );
+      return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+      throw new AppError(`Error finding user by character: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  async findGuildMembers(guildId: number): Promise<UserWithTokens[]> {
+    try {
+      const result = await db.query(
+        `SELECT DISTINCT u.* FROM users u
+         JOIN characters c ON c.user_id = u.id
+         WHERE c.guild_id = $1`,
+        [guildId]
+      );
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error finding guild members: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
 }
 
-export default new UserModel();
+const userModel = new UserModel();
+
+export const findById = userModel.findById.bind(userModel);
+export const findOne = userModel.findOne.bind(userModel);
+export const findAll = userModel.findAll.bind(userModel);
+export const create = userModel.create.bind(userModel);
+export const update = userModel.update.bind(userModel);
+export const findByBattleNetId = userModel.findByBattleNetId.bind(userModel);
+export const createUser = userModel.createUser.bind(userModel);
+export const getUserWithTokens = userModel.getUserWithTokens.bind(userModel);
+export const updateTokens = userModel.updateTokens.bind(userModel);
+export const validateUserToken = userModel.validateUserToken.bind(userModel);
+export const updateRole = userModel.updateRole.bind(userModel);
+export const getUsersWithRole = userModel.getUsersWithRole.bind(userModel);
+export const updateCharacterSyncTimestamp = userModel.updateCharacterSyncTimestamp.bind(userModel);
+export const getUserCharacters = userModel.getUserCharacters.bind(userModel);
+export const findByCharacterName = userModel.findByCharacterName.bind(userModel);
+export const findGuildMembers = userModel.findGuildMembers.bind(userModel);
+
+export default userModel;

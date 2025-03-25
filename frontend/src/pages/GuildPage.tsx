@@ -33,11 +33,11 @@ const GuildPage: React.FC = () => {
           setGuild(guildResponse.data);
           
           // Check if user is guild master of this guild
-          const userGuildsResponse = await guildService.getUserGuilds();
-          if (userGuildsResponse.success && userGuildsResponse.data) {
-            const matchingGuild = userGuildsResponse.data.find(g => g.id === parseInt(guildId));
-            setIsGuildMaster(matchingGuild?.is_guild_master || false);
-          }
+          // const userGuildsResponse = await guildService.getUserGuilds();
+          // if (userGuildsResponse.success && userGuildsResponse.data) {
+          //   const matchingGuild = userGuildsResponse.data.find(g => g.id === parseInt(guildId));
+          //   setIsGuildMaster(matchingGuild?.is_guild_master || false);
+          // }
         } else {
           setError(guildResponse.error?.message || 'Failed to load guild data');
         }
