@@ -371,8 +371,8 @@ class CharacterModel extends BaseModel<DbCharacter> {
   async findByNameRealm(name: string, realm: string): Promise<Character | null> {
     try {
       return await this.findOne({
-        name: db.raw(`LOWER('${name}')`),
-        realm: db.raw(`LOWER('${realm}')`)
+        name: name.toLowerCase(),
+        realm: realm.toLowerCase()
       });
     } catch (error) {
       throw new AppError(`Error finding character by name and realm: ${error instanceof Error ? error.message : String(error)}`, 500);

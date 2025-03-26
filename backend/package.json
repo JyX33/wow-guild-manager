@@ -11,15 +11,15 @@
     "migrate": "node database/migrate.js"
   },
   "dependencies": {
-    "axios": "^1.8.3",
+    "axios": "^1.8.4",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "jsonwebtoken": "^9.0.2",
-    "p-queue": "^8.0.0",
-    "pg": "^8.14.0",
+    "p-queue": "^8.1.0",
+    "pg": "^8.14.1",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
@@ -28,8 +28,11 @@
     "@types/express": "^5.0.1",
     "@types/express-session": "^1.18.1",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^22.13.10",
+    "@types/knex": "^0.15.2",
+    "@types/node": "^22.13.13",
     "@types/pg": "^8.11.11",
+    "knex": "^3.1.0",
+    "knex-cli": "^1.0.2",
     "typescript": "^5.8.2"
   }
 }

@@ -30,12 +30,9 @@ const GuildManagePage: React.FC = () => {
         if (guildResponse.success && guildResponse.data) {
           setGuild(guildResponse.data);
           
-          // // Check if user is guild master of this guild
-          // const userGuildsResponse = await guildService.getUserGuilds();
-          // if (userGuildsResponse.success && userGuildsResponse.data) {
-          //   const matchingGuild = userGuildsResponse.data.find(g => g.id === parseInt(guildId));
-          //   setIsGuildMaster(matchingGuild?.is_guild_master || false);
-          // }
+         // Check if user is guild master of this guild
+         setIsGuildMaster(guildResponse.data.leader_id === user?.id);
+          
         } else {
           setError(guildResponse.error?.message || 'Failed to load guild data');
         }

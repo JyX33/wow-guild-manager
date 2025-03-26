@@ -11,7 +11,6 @@ import withAuth from '@/components/withAuth';
 const GuildPage: React.FC = () => {
   const { guildId } = useParams<{ guildId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const [guild, setGuild] = useState<Guild | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,11 +32,8 @@ const GuildPage: React.FC = () => {
           setGuild(guildResponse.data);
           
           // Check if user is guild master of this guild
-          // const userGuildsResponse = await guildService.getUserGuilds();
-          // if (userGuildsResponse.success && userGuildsResponse.data) {
-          //   const matchingGuild = userGuildsResponse.data.find(g => g.id === parseInt(guildId));
-          //   setIsGuildMaster(matchingGuild?.is_guild_master || false);
-          // }
+          setIsGuildMaster(guildResponse.data.leader_id === user?.id);
+          
         } else {
           setError(guildResponse.error?.message || 'Failed to load guild data');
         }
