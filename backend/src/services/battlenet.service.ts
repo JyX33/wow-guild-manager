@@ -232,7 +232,14 @@ class BattleNetService {
           error.response?.status || 500
         );
       }
-      throw error;
+      throw new AppError(
+        `Failed to fetch guild data: ${error instanceof Error ? error.message : String(error)}`,
+        500,
+        {
+          code: 'API_ERROR',
+          details: error instanceof Error ? error.stack : undefined
+        }
+      );
     }
   }
 
@@ -341,7 +348,14 @@ class BattleNetService {
           error.response?.status || 500
         );
       }
-      throw error;
+      throw new AppError(
+        `Failed to fetch enhanced character data: ${error instanceof Error ? error.message : String(error)}`,
+        500,
+        {
+          code: 'API_ERROR',
+          details: error instanceof Error ? error.stack : undefined
+        }
+      );
     }
   }
 
