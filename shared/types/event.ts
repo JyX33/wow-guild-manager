@@ -7,6 +7,24 @@ export enum EventType {
 }
 export type EventSubscriptionStatus = 'Confirmed' | 'Tentative' | 'Declined';
 
+export interface EventDetails {
+  minimum_level?: number;
+  required_roles?: {
+    tanks?: number;
+    healers?: number;
+    dps?: number;
+  };
+  difficulty?: string;
+  location?: string;
+  requirements?: string[];
+  loot_rules?: string;
+  voice_chat?: {
+    platform: string;
+    channel?: string;
+    url?: string;
+  };
+}
+
 export interface Event {
   id: number;
   title: string;
@@ -17,24 +35,7 @@ export interface Event {
   created_by: number;
   guild_id: number;
   max_participants: number;
-  event_details?: {
-    minimum_level?: number;
-    required_roles?: {
-      tanks?: number;
-      healers?: number;
-      dps?: number;
-    };
-    difficulty?: string;
-    location?: string;
-    requirements?: string[];
-    loot_rules?: string;
-    voice_chat?: {
-      platform: string;
-      channel?: string;
-      url?: string;
-    };
-    [key: string]: any; // For additional custom fields
-  };
+  event_details?: EventDetails;
 }
 
 export interface EventSubscription {
@@ -78,5 +79,5 @@ export interface EventFormValues {
   end_time: string;
   max_participants: number;
   guild_id: number;
-  event_details?: Event['event_details'];
+  event_details?: EventDetails;
 }

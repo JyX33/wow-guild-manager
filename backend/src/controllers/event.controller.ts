@@ -2,9 +2,29 @@ import { Request, Response } from 'express';
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 import eventModel from '../models/event.model';
 import subscriptionModel from '../models/subscription.model';
+import { Event, EventFormValues, EventSubscription } from '../../../shared/types/event';
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
+
+interface EventRequest extends Request {
+  body: EventFormValues;
+  user: {
+    id: number;
+  };
+}
+
+interface SubscriptionRequest extends Request {
+  body: Omit<EventSubscription, 'id' | 'event_id' | 'user_id'>;
+  user: {
+    id: number;
+  };
+}
 
 export default {
-  getEventById: asyncHandler(async (req: Request, res: Response) => {
+  getEventById: asyncHandler(async (req: Request<{ eventId: string }>, res: Response<ApiResponse<Event>>) => {
     const { eventId } = req.params;
     
     const event = await eventModel.findById(parseInt(eventId));
@@ -22,7 +42,7 @@ export default {
     });
   }),
   
-  getGuildEvents: asyncHandler(async (req: Request, res: Response) => {
+  getGuildEvents: asyncHandler(async (req: Request<{ guildId: string }>, res: Response<ApiResponse<Event[]>>) => {
     const { guildId } = req.params;
     
     const events = await eventModel.findByGuildId(parseInt(guildId));
@@ -33,7 +53,7 @@ export default {
     });
   }),
   
-  createEvent: asyncHandler(async (req: Request, res: Response) => {
+  createEvent: asyncHandler(async (req: EventRequest, res: Response<ApiResponse<Event>>) => {
     if (!req.body.guild_id || !req.body.title || !req.body.start_time) {
       throw new AppError('Missing required event fields', 400, {
         code: ERROR_CODES.VALIDATION_ERROR,
@@ -41,7 +61,7 @@ export default {
       });
     }
 
-    const eventData = {
+    const eventData: EventFormValues & { created_by: number } = {
       ...req.body,
       created_by: req.user.id,
       event_details: req.body.event_details || {}
@@ -62,7 +82,7 @@ export default {
     });
   }),
   
-  updateEvent: asyncHandler(async (req: Request, res: Response) => {
+  updateEvent: asyncHandler(async (req: EventRequest & { params: { eventId: string } }, res: Response<ApiResponse<Event>>) => {
     const { eventId } = req.params;
     
     const existingEvent = await eventModel.findById(parseInt(eventId));
@@ -96,7 +116,7 @@ export default {
     });
   }),
   
-  deleteEvent: asyncHandler(async (req: Request, res: Response) => {
+  deleteEvent: asyncHandler(async (req: Request<{ eventId: string }> & { user: { id: number } }, res: Response<ApiResponse<Event>>) => {
     const { eventId } = req.params;
     
     const existingEvent = await eventModel.findById(parseInt(eventId));
@@ -130,7 +150,7 @@ export default {
     });
   }),
   
-  subscribeToEvent: asyncHandler(async (req: Request, res: Response) => {
+  subscribeToEvent: asyncHandler(async (req: SubscriptionRequest & { params: { eventId: string } }, res: Response<ApiResponse<EventSubscription>>) => {
     const { eventId } = req.params;
     
     const existingSubscription = await subscriptionModel.findByEventAndUser(
@@ -145,7 +165,7 @@ export default {
       });
     }
     
-    const subscriptionData = {
+    const subscriptionData: Omit<EventSubscription, 'id'> = {
       event_id: parseInt(eventId),
       user_id: req.user.id,
       ...req.body
@@ -166,7 +186,7 @@ export default {
     });
   }),
   
-  updateSubscription: asyncHandler(async (req: Request, res: Response) => {
+  updateSubscription: asyncHandler(async (req: SubscriptionRequest & { params: { eventId: string } }, res: Response<ApiResponse<EventSubscription>>) => {
     const { eventId } = req.params;
     
     const existingSubscription = await subscriptionModel.findByEventAndUser(
@@ -199,7 +219,7 @@ export default {
     });
   }),
   
-  getEventSubscribers: asyncHandler(async (req: Request, res: Response) => {
+  getEventSubscribers: asyncHandler(async (req: Request<{ eventId: string }>, res: Response<ApiResponse<EventSubscription[]>>) => {
     const { eventId } = req.params;
     
     const subscribers = await subscriptionModel.findByEventId(parseInt(eventId));

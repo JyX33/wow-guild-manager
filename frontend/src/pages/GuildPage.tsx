@@ -3,10 +3,18 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { guildService } from '../services/api/guild.service';
 import { Guild } from '../../../shared/types/guild';
+import { Event } from '../../../shared/types/event';
 import { EnhancedGuildMembersList } from '../components/EnhancedGuildMembersList';
 import EventCalendar from '../components/EventCalendar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import withAuth from '@/components/withAuth';
+
+interface SlotInfo {
+  start: Date;
+  end: Date;
+}
+
+type TabType = 'calendar' | 'members';
 
 const GuildPage: React.FC = () => {
   const { guildId } = useParams<{ guildId: string }>();
@@ -15,7 +23,7 @@ const GuildPage: React.FC = () => {
   const [guild, setGuild] = useState<Guild | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuildMaster, setIsGuildMaster] = useState(false);
-  const [activeTab, setActiveTab] = useState<'calendar' | 'members'>('calendar');
+  const [activeTab, setActiveTab] = useState<TabType>('calendar');
   const [error, setError] = useState<string | null>(null);
   // Add a key to force refresh the calendar component when needed
   const [calendarKey, setCalendarKey] = useState(Date.now());
@@ -48,11 +56,11 @@ const GuildPage: React.FC = () => {
     fetchGuildData();
   }, [guildId, user?.id]);
 
-  const handleEventSelect = (event: any) => {
+  const handleEventSelect = (event: Event): void => {
     navigate(`/event/${event.id}`);
   };
 
-  const handleSlotSelect = (slotInfo: { start: Date; end: Date }) => {
+  const handleSlotSelect = (slotInfo: SlotInfo): void => {
     if (!guildId) return;
     
     // Format dates for the form
@@ -64,12 +72,12 @@ const GuildPage: React.FC = () => {
     });
   };
 
-  const handleCreateEvent = () => {
+  const handleCreateEvent = (): void => {
     if (!guildId) return;
     navigate(`/guild/${guildId}/event/create`);
   };
 
-  const handleManageGuild = () => {
+  const handleManageGuild = (): void => {
     if (!guildId) return;
     navigate(`/guild/${guildId}/manage`);
   };

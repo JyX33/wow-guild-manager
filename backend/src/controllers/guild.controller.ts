@@ -3,10 +3,6 @@ import {
   BattleNetGuildMember,
   BattleNetGuildRoster,
   DbGuild,
-  EnhancedGuildMember,
-  BattleNetCharacter,
-  BattleNetCharacterEquipment,
-  BattleNetMythicKeystoneProfile 
 } from '../../../shared/types/guild';
 import * as guildModel from '../models/guild.model';
 import * as rankModel from '../models/rank.model';
