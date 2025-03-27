@@ -126,8 +126,13 @@ export function useApi<T, P extends any[] = any[]>(
 
   // Call the API function on mount if immediate is true
   useEffect(() => {
-    if (options.immediate !== false && options.args) {
-      execute(...options.args);
+    if (options.immediate !== false) {
+      // If args are provided use them, otherwise call without args
+      if (options.args) {
+        execute(...options.args);
+      } else {
+        execute();
+      }
     }
   }, options.deps || []);
 

@@ -564,7 +564,8 @@ export interface Guild {
     region: string;
     last_updated?: string;
     guild_data: BattleNetGuild;
-    leader_id?: number;    
+    leader_id?: number;
+    is_guild_master?: boolean;
 }
 
 export interface GuildMember {

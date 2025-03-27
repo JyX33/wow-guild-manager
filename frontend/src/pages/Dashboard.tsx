@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import withAuth from '../components/withAuth';
 import GuildSelector from '../components/GuildSelector';
+import UserGuilds from '../components/UserGuilds';
 import { useAuth } from '../context/AuthContext';
 
 const Dashboard: React.FC = () => {
@@ -30,6 +31,10 @@ const Dashboard: React.FC = () => {
           <h2 className="text-xl font-bold mb-4">Recent Guilds</h2>
           <p className="text-gray-500">You haven't visited any guilds yet.</p>
         </div>
+      </div>
+      
+      <div className="mt-8 mb-8">
+        <UserGuilds />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

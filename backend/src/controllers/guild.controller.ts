@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { 
+import {
   BattleNetGuildMember,
   BattleNetGuildRoster,
   DbGuild,
@@ -8,9 +8,9 @@ import * as guildModel from '../models/guild.model';
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model';
 import * as battleNetService from '../services/battlenet.service';
-import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 import * as guildLeadershipService from '../services/guild-leadership.service';
 import * as guildRosterService from '../services/guild-roster.service';
+import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 
 export default {
   getGuildByName: asyncHandler(async (req: Request, res: Response) => {
@@ -196,21 +196,35 @@ export default {
       user.region || 'eu',
       user.access_token
     );
-    const guilds = [];
     
+    const guilds = [];
+    const processedGuilds = new Set();
+    
+    // Get user's characters from the database for guild master check
+    const userCharacters = await userModel.getUserCharacters(req.user.id);
+    console.log(`[DEBUG] Found ${userCharacters.length} characters for user ${user.id}`);
+    // Iterate through all WoW accounts
     for (const account of profile.wow_accounts || []) {
+      // Iterate through all characters in each account
       for (const character of account.characters || []) {
+        // Skip characters not in a guild
         const characterData = await battleNetService.getWowCharacter(
-         user.region || 'eu',
+          user.region || 'eu',
           character.realm.slug,
           character.name,
           user.access_token
         );
         if (!characterData.guild) continue;
         
+        const guildKey = `${characterData.guild.name}`;
+        
+        // Skip if we've already processed this guild
+        if (processedGuilds.has(guildKey)) continue;
+        processedGuilds.add(guildKey);
+        
         try {
           const guildInfo = await battleNetService.getGuildData(
-            characterData.realm.slug,
+            characterData.guild.realm.slug,
             characterData.guild.name,
             user.access_token,
             user.region
@@ -218,27 +232,30 @@ export default {
           
           const roster = await battleNetService.getGuildMembers(
             user.region || 'eu',
-            characterData.realm.slug,
+            characterData.guild.realm.slug,
             characterData.guild.name,
             user.access_token
           ) as BattleNetGuildRoster;
+          
+          // Check if any of user's characters is guild master
           const isGuildMaster = roster.members.some(member => 
-            characterData.name.toLowerCase() === member.character.name.toLowerCase() && 
-            member.rank === 0
+            userCharacters.some(char => 
+              char.name.toLowerCase() === member.character.name.toLowerCase() && 
+              member.rank === 0 // Rank 0 is guild master
+            )
           );
+          console.log(`[DEBUG] User ${user.id} is guild master: ${isGuildMaster}`);
           guilds.push({
             ...guildInfo,
             is_guild_master: isGuildMaster
           });
         } catch (error) {
-          throw new AppError(`Error fetching guild data for ${characterData.guild.name}`, 500, {
-            code: ERROR_CODES.API_ERROR,
-            details: error,
-            request: req
-          });
+          console.error(`Error fetching guild data for ${characterData.guild.name}:`, error);
+          // Continue with other guilds instead of failing the entire request
         }
       }
     }
+    
     console.log(`[DEBUG] Processed ${guilds.length} unique guilds for user ${user.id}`);
     res.json({
       success: true,
