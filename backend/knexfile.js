@@ -17,7 +17,7 @@ module.exports = {
       max: 10
     },
     migrations: {
-      directory: path.join(__dirname, 'database/migrations'),
+      directory: path.join(__dirname, 'migrations'), // Corrected directory
       tableName: 'knex_migrations'
     },
     seeds: {
@@ -38,7 +38,7 @@ module.exports = {
       max: 10
     },
     migrations: {
-      directory: path.join(__dirname, 'database/migrations'),
+      directory: path.join(__dirname, 'migrations'), // Corrected directory
       tableName: 'knex_migrations'
     },
     seeds: {

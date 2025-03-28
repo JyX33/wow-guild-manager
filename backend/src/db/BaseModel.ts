@@ -76,15 +76,25 @@ export default class BaseModel<T> {
   async update(id: number, data: Partial<T>): Promise<T | null> {
     try {
       const keys = Object.keys(data);
-      const values = Object.values(data);
-      
+      // Process values: Stringify objects/arrays for JSON/JSONB columns
+      const values = Object.values(data).map(value => {
+        if (typeof value === 'object' && value !== null) {
+          // Check if it's an array or a plain object
+          // Stringify if it's intended for a JSON/JSONB column
+          // Note: This assumes any object/array value is meant for a JSON column.
+          // A more robust solution might involve checking column types, but this is simpler.
+          return JSON.stringify(value);
+        }
+        return value; // Keep non-object values as they are
+      });
+
       const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(', ');
-      
+
       const result = await db.query(
         `UPDATE ${this.tableName} SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`,
-        [...values, id]
+        [...values, id] // Use the processed values
       );
-      
+
       return result.rows[0] || null;
     } catch (error) {
       throw new AppError(`Error updating ${this.tableName}: ${error instanceof Error ? error.message : String(error)}`, 500);

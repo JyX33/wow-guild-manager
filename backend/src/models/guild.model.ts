@@ -1,5 +1,5 @@
-import { Guild, GuildMember, BattleNetGuildRoster } from '../../../shared/types/index';
-import { DbGuild } from '../../../shared/types/guild';
+import { Guild, GuildMember } from '../../../shared/types/index'; // Keep Guild, GuildMember if they are from index
+import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember } from '../../../shared/types/guild'; // Import DbGuild, BattleNetGuildRoster, BattleNetGuildMember from guild.ts
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';
 import db from '../db/db';
@@ -15,11 +15,12 @@ class GuildModel extends BaseModel<DbGuild> {
       oneDayAgo.setDate(oneDayAgo.getDate() - 1);
       
       const result = await db.query(
-        `SELECT * FROM ${this.tableName} 
-         WHERE last_updated IS NULL OR last_updated < $1
+        `SELECT * FROM ${this.tableName}
+         -- WHERE last_updated IS NULL OR last_updated < $1 -- Temporarily commented out
          ORDER BY last_updated ASC NULLS FIRST
          LIMIT 50`,
-        [oneDayAgo.toISOString()]
+        // [oneDayAgo.toISOString()] -- Temporarily commented out
+        [] // Pass empty array as no parameters are needed now
       );
       
       return result.rows;
@@ -37,19 +38,40 @@ class GuildModel extends BaseModel<DbGuild> {
   }
 
   /**
-   * Get a guild with its members
+   * Find multiple guilds by their IDs.
    */
-  async getGuildWithMembers(guildId: number): Promise<{ guild: Guild; members: GuildMember[] } | null> {
+  async findByIds(ids: number[]): Promise<DbGuild[]> {
+    if (!ids || ids.length === 0) {
+      return [];
+    }
     try {
-      // Get the guild first
+      // Use the underlying query builder from BaseModel or db directly
+      const result = await db.query(
+        `SELECT * FROM ${this.tableName} WHERE id = ANY($1::int[])`,
+        [ids]
+      );
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error finding guilds by IDs: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+
+  /**
+   * Get a guild with its raw Battle.net members from roster_json
+   */
+  async getGuildWithMembers(guildId: number): Promise<{ guild: DbGuild; members: BattleNetGuildMember[] } | null> {
+    try {
+      // Get the guild first (ensure findById returns DbGuild including roster_json)
       const guild = await this.findById(guildId);
       
       if (!guild) {
         return null;
       }
       
-      // Get members from guild_data, or return empty array if none
-      const members = guild.guild_data?.members || [];
+      // Get members from roster_json (assuming the column exists on the guild object)
+      const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
+      const members: BattleNetGuildMember[] = rosterData?.members || [];
       
       return {
         guild,
@@ -63,10 +85,11 @@ class GuildModel extends BaseModel<DbGuild> {
   /**
    * Update guild data from the API
    */
-  async updateGuildData(id: number, guildData: any): Promise<Guild | null> {
+  async updateGuildData(id: number, guildDataJson: any): Promise<DbGuild | null> { // Return DbGuild type
     try {
+      // Use the new column name
       return await this.update(id, {
-        guild_data: guildData,
+        guild_data_json: guildDataJson,
         last_updated: new Date().toISOString()
       });
     } catch (error) {
@@ -108,5 +131,6 @@ export const getGuildWithMembers = guildModel.getGuildWithMembers.bind(guildMode
 export const updateGuildData = guildModel.updateGuildData.bind(guildModel);
 export const needsRefresh = guildModel.needsRefresh.bind(guildModel);
 export const findOutdatedGuilds = guildModel.findOutdatedGuilds.bind(guildModel);
+export const findByIds = guildModel.findByIds.bind(guildModel);
 
 export default guildModel;

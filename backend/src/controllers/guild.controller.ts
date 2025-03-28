@@ -1,108 +1,58 @@
 import { Request, Response } from 'express';
 import {
   BattleNetGuildMember,
-  BattleNetGuildRoster,
+  BattleNetGuildRoster, // Keep for parsing roster_json
   DbGuild,
+  Guild, // Import the application-level Guild type
+  DbCharacter, // Added
+  EnhancedGuildMember, // Added
+  BattleNetCharacter, // Added
+  BattleNetCharacterEquipment, // Added
+  BattleNetMythicKeystoneProfile, // Added
+  BattleNetProfessions, // Added
+  CharacterRole, // Added
 } from '../../../shared/types/guild';
 import * as guildModel from '../models/guild.model';
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model';
-import * as battleNetService from '../services/battlenet.service';
-import * as guildLeadershipService from '../services/guild-leadership.service';
-import * as guildRosterService from '../services/guild-roster.service';
+import * as guildMemberModel from '../models/guild_member.model'; // Added
+import * as characterModel from '../models/character.model'; // Added
+// Removed battleNetService, guildLeadershipService, guildRosterService imports for refactored methods
+// import * as battleNetService from '../services/battlenet.service';
+// import * as guildLeadershipService from '../services/guild-leadership.service';
+// import * as guildRosterService from '../services/guild-roster.service';
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 
+// Keep battleNetService import ONLY if still needed by methods NOT yet refactored
+import * as battleNetService from '../services/battlenet.service';
+// Keep guildLeadershipService import ONLY if still needed by methods NOT yet refactored
+import * as guildLeadershipService from '../services/guild-leadership.service';
+// Keep guildRosterService import ONLY if still needed by methods NOT yet refactored
+import * as guildRosterService from '../services/guild-roster.service';
+
+
 export default {
+  // --- REFACTORED getGuildByName ---
   getGuildByName: asyncHandler(async (req: Request, res: Response) => {
     const { region, realm, name } = req.params;
-    // Check if guild exists in database
-    let guild = await guildModel.findByNameRealmRegion(name, realm, region);
-    
+    const guild = await guildModel.findByNameRealmRegion(name, realm, region);
     if (!guild) {
-      // Get user with tokens
-      const user = await userModel.getUserWithTokens(req.user.id);
-      
-      if (!user?.access_token) {
-        throw new AppError('User authentication token not found', 401, {
-          code: ERROR_CODES.AUTH_ERROR,
-          request: req
-        });
-      }
-      
-      // Fetch guild data from Battle.net API
-      const guildData = await battleNetService.getGuildData(realm, name, user.access_token, region);
-      
-      // Create guild in database
-      guild = await guildModel.create({
-        name,
-        realm,
-        region,
-        guild_data: guildData,
-        last_updated: new Date().toISOString()
-      });
-      
-      if (!guild) {
-        throw new AppError('Failed to create guild', 500, {
-          code: ERROR_CODES.DATABASE_ERROR,
-          request: req
-        });
-      }
-
-      // After creating the guild, fetch roster to establish leadership
-      const guildRoster = await battleNetService.getGuildRoster(
-        region, 
-        realm, 
-        name, 
-        user.access_token
-      );
-      
-      // Find the guild master in roster
-      const guildMaster = guildRoster.members.find(member => member.rank === 0);
-      
-      if (guildMaster) {
-        // Find user who owns this character
-        const guildMasterUser = await userModel.findByCharacterName(
-          guildMaster.character.name,
-          guildMaster.character.realm.slug
-        );
-        
-        if (guildMasterUser) {
-          // Update guild with leader_id
-          await guildModel.update(guild.id, { 
-            leader_id: guildMasterUser.id,
-            last_updated: new Date().toISOString()
-          });
-          
-          // Refresh guild data
-          guild = await guildModel.findById(guild.id);
-        }
-      }
-      
-      if (guild) {
-        // Sync guild ranks
-        await guildRosterService.syncGuildRanks(guild.id, guildRoster);
-        // Update rank counts
-        await guildRosterService.updateGuildRankInfo(guild.id, guildRoster);
-      }
-    }
-    
-    if (!guild) {
-      throw new AppError('Failed to retrieve guild', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+       throw new AppError('Guild not found in local database', 404, {
+        code: ERROR_CODES.NOT_FOUND,
         request: req
       });
     }
-
     res.json({
       success: true,
       data: guild
     });
   }),
+  // --- END REFACTORED getGuildByName ---
 
   getGuildById: asyncHandler(async (req: Request, res: Response) => {
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
-    
+
     if (isNaN(guildIdInt)) {
       throw new AppError('Invalid guild ID', 400, {
         code: ERROR_CODES.VALIDATION_ERROR,
@@ -111,7 +61,7 @@ export default {
     }
 
     const guild = await guildModel.findById(guildIdInt);
-    
+
     if (!guild) {
       throw new AppError('Guild not found', 404, {
         code: ERROR_CODES.NOT_FOUND,
@@ -119,17 +69,30 @@ export default {
       });
     }
 
+    // TODO: Ensure the returned guild object structure matches frontend expectations,
+    // potentially parsing from guild_data_json if needed here or in the model.
     res.json({
       success: true,
       data: guild
     });
   }),
 
+  // --- REFACTORED getGuildMembers ---
   getGuildMembers: asyncHandler(async (req: Request, res: Response) => {
     const { guildId } = req.params;
-    
-    const guild = await guildModel.findById(parseInt(guildId));
-    
+    const guildIdInt = parseInt(guildId);
+
+     if (isNaN(guildIdInt)) {
+      throw new AppError('Invalid guild ID', 400, {
+        code: ERROR_CODES.VALIDATION_ERROR,
+        request: req
+      });
+    }
+
+    // Fetch guild data including the roster_json column
+    // Assuming findById is updated or returns all columns including roster_json
+    const guild = await guildModel.findById(guildIdInt);
+
     if (!guild) {
       throw new AppError('Guild not found', 404, {
         code: ERROR_CODES.NOT_FOUND,
@@ -137,416 +100,395 @@ export default {
       });
     }
 
-    // Get user access token
-    const user = await userModel.getUserWithTokens(req.user.id);
-    
-    if (!user?.access_token) {
-      throw new AppError('Authentication token not found', 401, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
-    }
+    // --- BATTLE.NET & SYNC LOGIC REMOVED ---
 
-    // Get fresh roster data from Battle.net
-    const guildRoster = await battleNetService.getGuildRoster(
-      guild.region,
-      guild.realm,
-      guild.name,
-      user.access_token
-    ) as BattleNetGuildRoster;
+    // Parse members from the roster_json column
+    // Need to cast 'guild' to access the potentially new column if type isn't updated yet
+    // Also ensure the DbGuild type includes roster_json
+    const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
+    const members: BattleNetGuildMember[] = rosterData?.members || [];
 
-    // Find the rank 0 member (Guild Master)
-    const guildMaster = guildRoster.members.find(member => member.rank === 0);
-    
-    if (guildMaster && guild) {
-      // Update guild data
-      await guildModel.updateGuildData(guild.id, {
-        ...guild,
-        guild_data: {
-          ...guild.guild_data,
-          guild_master: guildMaster.character.name.toLowerCase()
-        }
-      });
-      
-      // Update leader_id if needed
-      await guildLeadershipService.findAndUpdateGuildLeader(guild.id, guildRoster);
-    }
-    
-    // Update guild ranks and rank counts 
-    await guildRosterService.syncGuildRanks(guild.id, guildRoster);
-    await guildRosterService.updateGuildRankInfo(guild.id, guildRoster);
-    
+    // Return the members array from the stored JSON
     res.json({
       success: true,
-      data: guildRoster.members
+      data: members
     });
   }),
+  // --- END REFACTORED getGuildMembers ---
 
+
+  // --- REFACTORED getUserGuilds ---
   getUserGuilds: asyncHandler(async (req: Request, res: Response) => {
-    const user = await userModel.getUserWithTokens(req.user.id);
-    
-    if (!user?.access_token) {
-      throw new AppError('Authentication token not found', 401, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
+    const userId = req.user.id; // Get user ID from authenticated request
+
+    // 1. Get user's characters from the database
+    // Assuming getUserCharacters returns characters with guild_id populated
+    const userCharacters = await userModel.getUserCharacters(userId);
+    console.log(`[DEBUG] Found ${userCharacters.length} characters for user ${userId}`);
+
+    // 2. Extract unique guild IDs from characters that have one
+    const guildIds = [
+      ...new Set(
+        userCharacters
+          .map(char => char.guild_id)
+          .filter((id): id is number => id !== null && id !== undefined) // Filter out null/undefined IDs
+      )
+    ];
+
+    if (guildIds.length === 0) {
+      // User has no characters in any guilds known to the system
+      console.log(`[DEBUG] User ${userId} has no characters in known guilds.`);
+      return res.json({ success: true, data: [] });
     }
 
-    const profile = await battleNetService.getWowProfile(
-      user.region || 'eu',
-      user.access_token
-    );
-    
-    const guilds = [];
-    const processedGuilds = new Set();
-    
-    // Get user's characters from the database for guild master check
-    const userCharacters = await userModel.getUserCharacters(req.user.id);
-    console.log(`[DEBUG] Found ${userCharacters.length} characters for user ${user.id}`);
-    // Iterate through all WoW accounts
-    for (const account of profile.wow_accounts || []) {
-      // Iterate through all characters in each account
-      for (const character of account.characters || []) {
-        // Skip characters not in a guild
-        const characterData = await battleNetService.getWowCharacter(
-          user.region || 'eu',
-          character.realm.slug,
-          character.name,
-          user.access_token
-        );
-        if (!characterData.guild) continue;
-        
-        const guildKey = `${characterData.guild.name}`;
-        
-        // Skip if we've already processed this guild
-        if (processedGuilds.has(guildKey)) continue;
-        processedGuilds.add(guildKey);
-        
-        try {
-          const guildInfo = await battleNetService.getGuildData(
-            characterData.guild.realm.slug,
-            characterData.guild.name,
-            user.access_token,
-            user.region
-          );
-          
-          const roster = await battleNetService.getGuildMembers(
-            user.region || 'eu',
-            characterData.guild.realm.slug,
-            characterData.guild.name,
-            user.access_token
-          ) as BattleNetGuildRoster;
-          
-          // Check if any of user's characters is guild master
-          const isGuildMaster = roster.members.some(member => 
-            userCharacters.some(char => 
-              char.name.toLowerCase() === member.character.name.toLowerCase() && 
-              member.rank === 0 // Rank 0 is guild master
-            )
-          );
-          console.log(`[DEBUG] User ${user.id} is guild master: ${isGuildMaster}`);
-          guilds.push({
-            ...guildInfo,
-            is_guild_master: isGuildMaster
-          });
-        } catch (error) {
-          console.error(`Error fetching guild data for ${characterData.guild.name}:`, error);
-          // Continue with other guilds instead of failing the entire request
-        }
-      }
-    }
-    
-    console.log(`[DEBUG] Processed ${guilds.length} unique guilds for user ${user.id}`);
+    // 3. Fetch the corresponding guild records from the database
+    const dbGuilds = await guildModel.findByIds(guildIds);
+
+    // 4. Map DB guilds to the response format, checking leadership
+    const responseGuilds: Guild[] = dbGuilds.map(dbGuild => {
+      // Determine if the current user is the leader of this guild
+      const isGuildMaster = dbGuild.leader_id === userId;
+
+      // Construct the response object using the Guild type
+      // Use the guild_data_json field from DbGuild for the guild_data property
+      const guildData = (dbGuild as any).guild_data_json || {}; // Use the correct JSONB field
+
+      return {
+        id: dbGuild.id,
+        name: dbGuild.name,
+        realm: dbGuild.realm,
+        region: dbGuild.region,
+        last_updated: dbGuild.last_updated,
+        leader_id: dbGuild.leader_id,
+        guild_data_json: guildData, // Assign the JSON data - MATCHES UPDATED Guild TYPE
+        is_guild_master: isGuildMaster,
+      };
+    });
+
+    console.log(`[DEBUG] Returning ${responseGuilds.length} unique guilds for user ${userId}`);
     res.json({
       success: true,
-      data: guilds
+      data: responseGuilds
     });
   }),
-  
+  // --- END REFACTORED getUserGuilds ---
+
+
+  // --- REFACTORED getEnhancedGuildMembers ---
   getEnhancedGuildMembers: asyncHandler(async (req: Request, res: Response) => {
     console.log('[DEBUG] Starting getEnhancedGuildMembers for guildId:', req.params.guildId);
     const { guildId } = req.params;
+    const guildIdInt = parseInt(guildId);
 
-    const guild = await guildModel.findById(parseInt(guildId));
-    
-    if (!guild) {
-      throw new AppError('Guild not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
-      });
-    }
-    
-    const user = await userModel.getUserWithTokens(req.user.id);
-    
-    if (!user?.access_token) {
-      throw new AppError('Authentication token not found', 401, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
+     if (isNaN(guildIdInt)) {
+      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
     }
 
-    const userToken = user.access_token;
-    
-    const guildRoster = await battleNetService.getGuildMembers(
-      guild.region,
-      guild.realm,
-      guild.name,
-      userToken
-    ) as BattleNetGuildRoster;
-    
-    console.log('[DEBUG] Guild roster fetched, total members:', guildRoster.members.length);
-    
-    const allowedRanks = new Set([0, 1, 3, 4, 5]);
-    const membersToEnhance = guildRoster.members.filter(member => allowedRanks.has(member.rank));
-    
-    console.log(`[DEBUG] Processing ${membersToEnhance.length} members with ranks 0,1,3,4,5 for enhancement`);
-    console.log('[DEBUG] Starting enhancement of members');
-    
+    // 1. Fetch relevant guild members from DB
+    const allowedRanks = [0, 1, 3, 4, 5]; // Define ranks to fetch
+    const dbGuildMembers = await guildMemberModel.findByGuildAndRanks(guildIdInt, allowedRanks);
+    console.log(`[DEBUG] Found ${dbGuildMembers.length} members with allowed ranks in DB`);
+
+    if (dbGuildMembers.length === 0) {
+      return res.json({ success: true, data: [], stats: { total: 0, successful: 0, failed: 0, errors: [] } });
+    }
+
+    // 2. Extract character IDs
+    const characterIds = dbGuildMembers.map(member => member.character_id);
+
+    // 3. Fetch corresponding character details from DB
+    const dbCharacters = await characterModel.findByIds(characterIds);
+    console.log(`[DEBUG] Fetched ${dbCharacters.length} character details from DB`);
+
+    // 4. Create a map for easy lookup
+    const characterMap = new Map<number, DbCharacter>();
+    dbCharacters.forEach(char => characterMap.set(char.id, char));
+
+    // 5. Iterate, parse JSONB, and construct response
     let successCount = 0;
     let errorCount = 0;
-    const errors: Array<{name: string; error: string}> = [];
-    
-    const enhancedMembers = await Promise.all(
-      membersToEnhance.map(async (member: BattleNetGuildMember) => {
-        try {
-          console.log(`[DEBUG] Enhancing member: ${member.character.name} (${member.character.realm.slug}) - Rank ${member.rank}`);
-          const enhancedData = await battleNetService.getEnhancedCharacterData(
-            member.character.realm.slug,
-            member.character.name,
-            userToken,
-            guild.region
-          );
-          
-          successCount++;
-          
-          return {
-            id: 0,
-            guild_id: parseInt(guildId),
-            character_name: member.character.name,
-            character_class: enhancedData.character_class?.name || 'Unknown',
-            character_role: 'DPS',
-            rank: member.rank,
-            character: {
-              id: enhancedData.id,
-              user_id: 0,
-              name: member.character.name,
-              realm: member.character.realm.slug,
-              class: enhancedData.character_class?.name || 'Unknown',
-              level: enhancedData.level || member.character.level,
-              role: 'DPS',
-              is_main: false,
-              achievement_points: enhancedData.achievement_points || 0,
-              equipped_item_level: enhancedData.equipped_item_level || 0,
-              average_item_level: enhancedData.average_item_level || 0,
-              last_login_timestamp: enhancedData.last_login_timestamp || 0,
-              character_data: enhancedData,
-              itemLevel: enhancedData.equipped_item_level || 0,
-              mythicKeystone: null,
-              activeSpec: enhancedData.active_spec || null,
-              professions: enhancedData.professions || []
-            }
-          };           
-        } catch (error) {
-          errorCount++;
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.warn(`[ERROR] Could not fetch enhanced data for ${member.character.name}:`, errorMessage);
-          errors.push({ name: member.character.name, error: errorMessage });
-          
-          return {
-            id: 0,
-            guild_id: parseInt(guildId),
-            character_name: member.character.name,
-            character_class: 'Unknown',
-            character_role: 'DPS',
-            rank: member.rank,
-            character: {
-              id: 0,
-              user_id: 0,
-              name: member.character.name,
-              realm: member.character.realm.slug,
-              class: 'Unknown',
-              level: member.character.level,
-              role: 'DPS',
-              is_main: false,
-              achievement_points: 0,
-              equipped_item_level: 0,
-              average_item_level: 0,
-              last_login_timestamp: 0,
-              character_data: null,
-              itemLevel: 0,
-              mythicKeystone: null,
-              activeSpec: null,
-              professions: []
-            }
-          };
-        }
-      })
-    );
-    
+    const errors: Array<{ name: string; error: string }> = [];
+
+    // Use map and filter to handle potential nulls from error cases
+    const mappedMembers = dbGuildMembers.map(member => {
+      const character = characterMap.get(member.character_id);
+      const memberName = member.character_name; // Use name from guild_members table
+
+      if (!character) {
+        console.warn(`[ERROR] Character data not found in DB for guild member ID ${member.id}, character ID ${member.character_id}`);
+        errorCount++;
+        errors.push({ name: memberName || `Unknown (ID: ${member.character_id})`, error: 'Character data missing in DB' });
+        return null; // Return null for filtering later
+      }
+
+      try {
+        // Parse JSONB fields (handle potential nulls)
+        const profileData = (character as any).profile_json as BattleNetCharacter | null;
+        const equipmentData = (character as any).equipment_json as BattleNetCharacterEquipment | null;
+        const mythicData = (character as any).mythic_profile_json as BattleNetMythicKeystoneProfile | null;
+        const professionsData = (character as any).professions_json as BattleNetProfessions | null;
+
+        // Determine role (example logic, adjust as needed)
+        const specName = profileData?.active_spec?.name;
+        const role: CharacterRole = specName?.includes('Protection') || specName?.includes('Guardian') || specName?.includes('Blood') || specName?.includes('Brewmaster') || specName?.includes('Vengeance') ? 'Tank'
+                                   : specName?.includes('Holy') || specName?.includes('Discipline') || specName?.includes('Restoration') || specName?.includes('Preservation') || specName?.includes('Mistweaver') ? 'Healer'
+                                   : 'DPS';
+
+        successCount++;
+
+        // Construct the EnhancedGuildMember object
+        const enhancedMember: EnhancedGuildMember = {
+          id: member.id,
+          guild_id: member.guild_id,
+          character_name: member.character_name || 'Unknown', // Use DB value
+          character_class: member.character_class || 'Unknown', // Use DB value
+          character_role: role,
+          rank: member.rank,
+          character: { // Construct this from DB character record + parsed JSONB
+            id: character.id,
+            user_id: character.user_id,
+            name: character.name,
+            realm: character.realm,
+            class: character.class,
+            level: character.level,
+            role: role, // Use determined role
+            is_main: character.is_main,
+            // Parse specific fields from JSONB data
+            achievement_points: profileData?.achievement_points || 0,
+            equipped_item_level: profileData?.equipped_item_level || 0,
+            average_item_level: profileData?.average_item_level || 0,
+            last_login_timestamp: profileData?.last_login_timestamp || 0,
+            itemLevel: profileData?.equipped_item_level || 0, // Redundant? Keep for compatibility?
+            mythicKeystone: mythicData || null, // Assign parsed mythic data
+            activeSpec: profileData?.active_spec || null, // Assign parsed spec data
+            professions: professionsData?.primaries || [], // Assign parsed professions
+            // Include other relevant fields from DbCharacter if needed
+            character_data: profileData || undefined, // Optional: include parsed profile for flexibility?
+            equipment: equipmentData || undefined, // Optional: include parsed equipment
+          }
+        };
+        return enhancedMember;
+
+      } catch (parseError) {
+        errorCount++;
+        const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+        console.warn(`[ERROR] Could not parse JSONB data for character ${character.name}:`, errorMessage);
+        errors.push({ name: character.name, error: `JSONB parse error: ${errorMessage}` });
+        return null; // Return null for filtering later
+      }
+    });
+
+    // Filter out null entries caused by errors
+    const enhancedMembers = mappedMembers.filter((m): m is EnhancedGuildMember => m !== null);
+
     const completionStats = {
-      total: membersToEnhance.length,
+      total: dbGuildMembers.length,
       successful: successCount,
       failed: errorCount,
       errors: errors
     };
-    
+
     console.log('[DEBUG] Enhancement complete:', JSON.stringify(completionStats, null, 2));
-    
+
     res.json({
       success: true,
       data: enhancedMembers,
       stats: completionStats
     });
   }),
+  // --- END REFACTORED getEnhancedGuildMembers ---
 
+
+  // --- REFACTORED getGuildRanks ---
   getGuildRanks: asyncHandler(async (req: Request, res: Response) => {
     const { guildId } = req.params;
-    
-    const guild = await guildModel.findById(parseInt(guildId));
-    
+    const guildIdInt = parseInt(guildId);
+
+     if (isNaN(guildIdInt)) {
+      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+    }
+
+    const guild = await guildModel.findById(guildIdInt);
+
     if (!guild) {
       throw new AppError('Guild not found', 404, {
         code: ERROR_CODES.NOT_FOUND,
         request: req
       });
     }
-    
-    const customRanks = await rankModel.getGuildRanks(parseInt(guildId));
-    const user = await userModel.getUserWithTokens(req.user.id);
-    
-    if (!user?.access_token) {
-      throw new AppError('Authentication token not found', 401, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
-    }
-    
-    const guildRoster = await battleNetService.getGuildMembers(
-      guild.region,
-      guild.realm,
-      guild.name,
-      user.access_token
-    ) as BattleNetGuildRoster;
-    
+
+    const customRanks = await rankModel.getGuildRanks(guildIdInt);
+
+    // --- BATTLE.NET LOGIC REMOVED ---
+
     const rankMap = new Map();
-    
-    const uniqueRanks = new Set(guildRoster.members.map(member => member.rank));
+
+    // Get unique ranks from DB roster_json
+    const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null; // Assuming roster_json column exists
+    const uniqueRanks = new Set(rosterData?.members?.map(member => member.rank) || []); // Get ranks from JSONB
+
+    // TODO: Potentially fetch default rank names from guild_data_json if stored there
+    // const guildData = (guild as any).guild_data_json as BattleNetGuild | null;
+    // const defaultRankNames = guildData?.ranks?.reduce(...) // If ranks are in guild data
+
     uniqueRanks.forEach(rankId => {
+      // Use default names for now, enhance later if needed by parsing guild_data_json
       rankMap.set(rankId, {
         rank_id: rankId,
-        rank_name: rankId === 0 ? "Guild Master" : `Rank ${rankId}`,
+        rank_name: rankId === 0 ? "Guild Master" : `Rank ${rankId}`, // Placeholder name
         is_custom: false
       });
     });
-    
+
+    // Merge custom names from DB
     customRanks.forEach(rank => {
-      rankMap.set(rank.rank_id, {
-        ...rank,
-        is_custom: true
-      });
+      if (rankMap.has(rank.rank_id)) {
+         rankMap.set(rank.rank_id, {
+           ...rankMap.get(rank.rank_id), // Keep original rank_id
+           rank_name: rank.rank_name, // Override name
+           is_custom: true
+         });
+      } else {
+         // This case shouldn't happen if sync is correct, but handle defensively
+         rankMap.set(rank.rank_id, {
+           ...rank,
+           is_custom: true
+         });
+      }
     });
-    
+
     const ranks = Array.from(rankMap.values()).sort((a, b) => a.rank_id - b.rank_id);
-    
+
     res.json({
       success: true,
       data: ranks
     });
   }),
+  // --- END REFACTORED getGuildRanks ---
 
+
+  // --- updateRankName (Likely OK) ---
   updateRankName: asyncHandler(async (req: Request, res: Response) => {
     const { guildId, rankId } = req.params;
     const { rank_name } = req.body;
-    
+
     if (!rank_name || typeof rank_name !== 'string') {
       throw new AppError('Rank name is required', 400, {
         code: ERROR_CODES.VALIDATION_ERROR,
         request: req
       });
     }
-    
+
     if (rank_name.length > 50) {
       throw new AppError('Rank name cannot exceed 50 characters', 400, {
         code: ERROR_CODES.VALIDATION_ERROR,
         request: req
       });
     }
-    
+
     const guild = await guildModel.findById(parseInt(guildId));
-    
+
     if (!guild) {
       throw new AppError('Guild not found', 404, {
         code: ERROR_CODES.NOT_FOUND,
         request: req
       });
     }
-    
+
+    // This interacts only with the DB rankModel, so it should be fine.
     const updatedRank = await rankModel.setGuildRank(
       parseInt(guildId),
       parseInt(rankId),
       rank_name
     );
-    
+
     res.json({
       success: true,
       data: updatedRank
     });
   }),
+  // --- END updateRankName ---
 
+
+  // --- syncGuildCharacters (Needs Refactoring/Removal) ---
+  // This endpoint forces a sync, which contradicts the background sync goal.
+  // It should likely be removed or heavily modified (e.g., trigger background job, return status).
+  // For now, keep it but note it needs removal/rethinking.
   syncGuildCharacters: asyncHandler(async (req: Request, res: Response) => {
     const { guildId } = req.params;
     const userId = req.user.id;
-    
+
     // Verify user has permission (guild member or leader)
     const user = await userModel.getUserWithTokens(userId);
-    
+
     if (!user?.access_token) {
       throw new AppError('Authentication token not found', 401, {
         code: ERROR_CODES.AUTH_ERROR,
         request: req
       });
     }
-    
-    // Sync roster
-    const result = await guildRosterService.synchronizeGuildRoster(
-      parseInt(guildId),
-      user.access_token
-    );
-    
-    res.json({
-      success: true,
-      data: {
-        message: 'Guild roster synchronized successfully',
-        members_updated: result.members.length
-      }
+
+    // Sync roster - This service call needs to be removed/replaced
+    // TODO: Replace this with logic to trigger the background sync job for this guild?
+    // Or simply remove the endpoint entirely.
+    console.warn("DEPRECATED: syncGuildCharacters endpoint called. Should be handled by background job.");
+    // const result = await guildRosterService.synchronizeGuildRoster(
+    //   parseInt(guildId),
+    //   user.access_token
+    // );
+
+    res.status(501).json({ // Return 501 Not Implemented or similar
+      success: false,
+      message: 'Manual sync endpoint is deprecated. Data is updated periodically.',
+      // data: {
+      //   message: 'Guild roster synchronization triggered (or removed)', // Message might change
+      //   members_updated: result.members.length // This result structure will change or be removed
+      // }
     });
   }),
+  // --- END syncGuildCharacters ---
 
+
+  // --- REFACTORED getGuildRankStructure ---
   getGuildRankStructure: asyncHandler(async (req: Request, res: Response) => {
     const { guildId } = req.params;
-    
-    const guild = await guildModel.findById(parseInt(guildId)) as DbGuild;
-    
+    const guildIdInt = parseInt(guildId);
+
+     if (isNaN(guildIdInt)) {
+      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+    }
+
+    const guild = await guildModel.findById(guildIdInt); // Cast removed, assuming findById returns correct type
+
     if (!guild) {
       throw new AppError('Guild not found', 404, {
         code: ERROR_CODES.NOT_FOUND,
         request: req
       });
     }
-    
-    const ranks = await rankModel.getGuildRanks(parseInt(guildId));
-    
-    // Convert rank_counts to the right type or use empty object
-    const rankCounts = (guild.guild_data as any)?.rank_counts || {};
-    
+
+    const ranks = await rankModel.getGuildRanks(guildIdInt); // Fetch custom names
+
+    // Get rank counts from parsed roster_json or guild_members table aggregation
+    // Assuming roster_json column exists on the guild object returned by findById
+    const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
+    const rankCounts: { [key: number]: number } = {};
+    if (rosterData?.members) {
+        rosterData.members.forEach(member => {
+            rankCounts[member.rank] = (rankCounts[member.rank] || 0) + 1;
+        });
+    }
+
+
     const enhancedRanks = ranks.map(rank => ({
       ...rank,
-      member_count: rankCounts[rank.rank_id] || 0
+      member_count: rankCounts[rank.rank_id] || 0 // Use counts derived from DB/JSONB
     }));
-    
+
     res.json({
       success: true,
       data: enhancedRanks
     });
   })
+  // --- END REFACTORED getGuildRankStructure ---
 };

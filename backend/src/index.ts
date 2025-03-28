@@ -5,6 +5,8 @@ import session from 'express-session';
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
+import schedule from 'node-schedule';
+import battleNetSyncService from './jobs/battlenet-sync.service';
 import config from './config';
 
 import authRoutes from './routes/auth.routes';
@@ -80,3 +82,22 @@ https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
   console.log(`HTTPS Server running on port ${PORT} (${config.server.nodeEnv} mode, accessible from all interfaces)`);
   console.log(`Frontend URL: ${config.server.frontendUrl}`);
 });
+
+// Schedule background sync job (e.g., run every hour at the start of the hour)
+const syncJob = schedule.scheduleJob('0 * * * *', async () => {
+  console.log(`[Scheduler] Running scheduled Battle.net sync job at ${new Date().toISOString()}`);
+  try {
+    await battleNetSyncService.runSync();
+  } catch (error) {
+    console.error('[Scheduler] Error during scheduled sync job:', error);
+  }
+});
+console.log(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()}`);
+
+// Optional: Run sync once on startup after a short delay
+setTimeout(() => {
+  console.log('[Startup] Triggering initial Battle.net sync...');
+  battleNetSyncService.runSync().catch(error => {
+    console.error('[Startup] Error during initial sync:', error);
+  });
+}, 10000); // Delay 10 seconds

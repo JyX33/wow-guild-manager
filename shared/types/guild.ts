@@ -512,8 +512,11 @@ export interface DbGuild {
     region: string;
     leader_id?: number;
     last_updated?: string;
-    last_roster_sync?: string;
-    guild_data: BattleNetGuild;
+    last_roster_sync?: string; // Added by migration 20240325161500
+    bnet_guild_id?: number; // Added by new migration
+    member_count?: number; // Added for direct access
+    guild_data_json?: BattleNetGuild; // Renamed and potentially nullable
+    roster_json?: BattleNetGuildRoster; // Added by new migration
 }
 
 export interface DbGuildMember {
@@ -521,6 +524,9 @@ export interface DbGuildMember {
     guild_id: number;
     character_id: number;
     rank: number;
+    character_name?: string; // Added by migration
+    character_class?: string; // Added by migration
+    member_data_json?: BattleNetGuildMember; // Added by migration
     created_at?: string;
     updated_at?: string;
 }
@@ -538,7 +544,15 @@ export interface DbCharacter {
     updated_at?: string;
     guild_id?: number;
     guild_rank?: number;
-    character_data: BattleNetCharacter;
+    // character_data: BattleNetCharacter; // Removed
+    bnet_character_id?: number; // Added by migration
+    region?: string; // Added by migration
+    last_synced_at?: string; // Added by migration
+    profile_json?: BattleNetCharacter; // Added by migration
+    equipment_json?: BattleNetCharacterEquipment; // Added by migration
+    mythic_profile_json?: BattleNetMythicKeystoneProfile; // Added by migration
+    // Store only the primaries array for simplicity
+    professions_json?: BattleNetProfessions['primaries']; // Changed type
 }
 
 export interface DbGuildRank {
@@ -563,7 +577,7 @@ export interface Guild {
     realm: string;
     region: string;
     last_updated?: string;
-    guild_data: BattleNetGuild;
+    guild_data_json?: BattleNetGuild; // Renamed property
     leader_id?: number;
     is_guild_master?: boolean;
 }
@@ -590,8 +604,13 @@ export interface Character {
     user_id: number;
     guild_id?: number;
     guild_rank?: number;
-    character_data?: BattleNetCharacter;
+    character_data?: BattleNetCharacter; // Keep for now if needed elsewhere, or remove if fully replaced by JSONB fields
     equipment?: BattleNetCharacterEquipment;
+    // Add fields from BattleNetCharacter that might be useful at the application level
+    achievement_points?: number;
+    equipped_item_level?: number;
+    average_item_level?: number;
+    last_login_timestamp?: number;
 }
 
 export interface Item {
@@ -713,8 +732,8 @@ export interface Item {
 export interface EnhancedGuildMember extends GuildMember {
     character: Character & {
         itemLevel: number;
-        mythicKeystone: BattleNetMythicKeystoneProfile;
-        activeSpec: PlayableClass;
+        mythicKeystone: BattleNetMythicKeystoneProfile | null; // Make nullable
+        activeSpec: PlayableClass | null; // Make nullable
         professions: Array<{
             profession: {
                 key: KeyReference;

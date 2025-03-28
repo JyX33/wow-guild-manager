@@ -486,6 +486,47 @@ class BattleNetService {
     }
   }
 
+
+  /**
+   * Get an access token using the client credentials grant type.
+   * Assumes a default region if none is provided.
+   */
+  async getClientCredentialsToken(region: string = 'eu'): Promise<TokenResponse> {
+    try {
+      const validRegion = this.validateRegion(region);
+      const regionConfig = config.battlenet.regions[validRegion];
+
+      const response = await axios.post<TokenResponse>(
+        `${regionConfig.authBaseUrl}/token`,
+        new URLSearchParams({
+          grant_type: 'client_credentials'
+        }),
+        {
+          auth: {
+            username: config.battlenet.clientId,
+            password: config.battlenet.clientSecret
+          },
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
+      );
+
+      // Client credentials tokens typically don't include refresh tokens
+      // Adjust TokenResponse if needed or handle potential missing fields
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new AppError(
+          `Battle.net client credentials token error: ${error.response?.data?.error_description || error.message}`,
+          error.response?.status || 500
+        );
+      }
+      throw new AppError(`Battle.net client credentials token error: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+
  
 }
 
@@ -504,4 +545,5 @@ export const refreshAccessToken = battleNetService.refreshAccessToken.bind(battl
 export const getUserInfo = battleNetService.getUserInfo.bind(battleNetService);
 export const getMetrics = battleNetService.getMetrics.bind(battleNetService);
 
+export const getClientCredentialsToken = battleNetService.getClientCredentialsToken.bind(battleNetService);
 export default battleNetService;
