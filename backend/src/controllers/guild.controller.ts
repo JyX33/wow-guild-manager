@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import {
   BattleNetGuildMember,
   BattleNetGuildRoster, // Keep for parsing roster_json
-  DbGuild,
   Guild, // Import the application-level Guild type
+  GuildMember, // Added for mapping
   DbCharacter, // Added
   EnhancedGuildMember, // Added
   BattleNetCharacter, // Added
@@ -22,13 +22,6 @@ import * as characterModel from '../models/character.model'; // Added
 // import * as guildLeadershipService from '../services/guild-leadership.service';
 // import * as guildRosterService from '../services/guild-roster.service';
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
-
-// Keep battleNetService import ONLY if still needed by methods NOT yet refactored
-import * as battleNetService from '../services/battlenet.service';
-// Keep guildLeadershipService import ONLY if still needed by methods NOT yet refactored
-import * as guildLeadershipService from '../services/guild-leadership.service';
-// Keep guildRosterService import ONLY if still needed by methods NOT yet refactored
-import * as guildRosterService from '../services/guild-roster.service';
 
 
 export default {
@@ -90,7 +83,6 @@ export default {
     }
 
     // Fetch guild data including the roster_json column
-    // Assuming findById is updated or returns all columns including roster_json
     const guild = await guildModel.findById(guildIdInt);
 
     if (!guild) {
@@ -100,25 +92,56 @@ export default {
       });
     }
 
-    // --- BATTLE.NET & SYNC LOGIC REMOVED ---
-
     // Parse members from the roster_json column
-    // Need to cast 'guild' to access the potentially new column if type isn't updated yet
-    // Also ensure the DbGuild type includes roster_json
     const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
-    const members: BattleNetGuildMember[] = rosterData?.members || [];
+    const bnetMembers: BattleNetGuildMember[] = rosterData?.members || [];
 
-    // Return the members array from the stored JSON
+    // Map BattleNetGuildMember[] to GuildMember[]
+    const guildMembers: GuildMember[] = bnetMembers.map(bnetMember => {
+      // Basic role determination (can be enhanced if spec info is available)
+      const className = bnetMember.character.playable_class.name;
+      let role: CharacterRole = 'DPS'; // Default to DPS
+      if (['Warrior', 'Paladin', 'Death Knight', 'Monk', 'Demon Hunter', 'Druid'].includes(className)) {
+         // Classes that *can* be tanks - refine if spec available
+         // For simplicity, we might not have spec here. Defaulting based on class is rough.
+         // Let's stick to DPS as default unless class is clearly healer-only like Priest.
+      }
+      if (['Priest', 'Paladin', 'Shaman', 'Monk', 'Druid', 'Evoker'].includes(className)) {
+         // Classes that *can* be healers. Priest is often healer.
+         if (className === 'Priest') role = 'Healer';
+         // Again, rough without spec.
+      }
+      // A more robust approach would fetch character spec if needed, but keep it simple for basic list.
+
+      // Note: The GuildMember type has an 'id' field, likely referring to the
+      // guild_members table PK. We don't have that easily here.
+      // We also don't have user_id or battletag without more joins.
+      // We return what's available from the roster data.
+      return {
+        // id: ???, // Not available directly from roster_json
+        guild_id: guildIdInt,
+        character_name: bnetMember.character.name,
+        character_class: className,
+        character_role: role, // Basic role guess
+        rank: bnetMember.rank,
+        // user_id: ???, // Optional, not available
+        // battletag: ???, // Optional, not available
+      };
+    });
+
+    // Return the mapped members array
     res.json({
       success: true,
-      data: members
+      data: guildMembers // Return the mapped GuildMember array
     });
   }),
   // --- END REFACTORED getGuildMembers ---
 
 
   // --- REFACTORED getUserGuilds ---
+  // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
   getUserGuilds: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id; // Get user ID from authenticated request
 
     // 1. Get user's characters from the database
@@ -175,6 +198,7 @@ export default {
 
 
   // --- REFACTORED getEnhancedGuildMembers ---
+  // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
   getEnhancedGuildMembers: asyncHandler(async (req: Request, res: Response) => {
     console.log('[DEBUG] Starting getEnhancedGuildMembers for guildId:', req.params.guildId);
     const { guildId } = req.params;
@@ -408,45 +432,6 @@ export default {
     });
   }),
   // --- END updateRankName ---
-
-
-  // --- syncGuildCharacters (Needs Refactoring/Removal) ---
-  // This endpoint forces a sync, which contradicts the background sync goal.
-  // It should likely be removed or heavily modified (e.g., trigger background job, return status).
-  // For now, keep it but note it needs removal/rethinking.
-  syncGuildCharacters: asyncHandler(async (req: Request, res: Response) => {
-    const { guildId } = req.params;
-    const userId = req.user.id;
-
-    // Verify user has permission (guild member or leader)
-    const user = await userModel.getUserWithTokens(userId);
-
-    if (!user?.access_token) {
-      throw new AppError('Authentication token not found', 401, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
-    }
-
-    // Sync roster - This service call needs to be removed/replaced
-    // TODO: Replace this with logic to trigger the background sync job for this guild?
-    // Or simply remove the endpoint entirely.
-    console.warn("DEPRECATED: syncGuildCharacters endpoint called. Should be handled by background job.");
-    // const result = await guildRosterService.synchronizeGuildRoster(
-    //   parseInt(guildId),
-    //   user.access_token
-    // );
-
-    res.status(501).json({ // Return 501 Not Implemented or similar
-      success: false,
-      message: 'Manual sync endpoint is deprecated. Data is updated periodically.',
-      // data: {
-      //   message: 'Guild roster synchronization triggered (or removed)', // Message might change
-      //   members_updated: result.members.length // This result structure will change or be removed
-      // }
-    });
-  }),
-  // --- END syncGuildCharacters ---
 
 
   // --- REFACTORED getGuildRankStructure ---

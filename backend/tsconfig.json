@@ -22,7 +22,6 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "*": ["node_modules/*"],
       "@shared/*": ["../shared/*"]
     }
   },

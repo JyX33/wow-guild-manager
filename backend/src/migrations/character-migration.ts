@@ -1,7 +1,5 @@
 import { Pool } from 'pg';
 import { withTransaction } from '../utils/transaction';
-import db from '../db/db';
-import characterModel from '../models/character.model';
 
 /**
  * Migration script to create characters from event subscriptions

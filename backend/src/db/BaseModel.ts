@@ -111,7 +111,8 @@ export default class BaseModel<T> {
         [id]
       );
       
-      return result.rowCount > 0;
+      // Check if rowCount is not null before comparing
+      return (result.rowCount !== null && result.rowCount > 0);
     } catch (error) {
       throw new AppError(`Error deleting ${this.tableName}: ${error instanceof Error ? error.message : String(error)}`, 500);
     }

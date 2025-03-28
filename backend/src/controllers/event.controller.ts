@@ -9,18 +9,16 @@ interface ApiResponse<T> {
   data: T;
 }
 
+import { UserWithTokens } from '../../../shared/types/user'; // Ensure UserWithTokens is imported
+
 interface EventRequest extends Request {
   body: EventFormValues;
-  user: {
-    id: number;
-  };
+  user: UserWithTokens; // Use the correct type
 }
 
 interface SubscriptionRequest extends Request {
   body: Omit<EventSubscription, 'id' | 'event_id' | 'user_id'>;
-  user: {
-    id: number;
-  };
+  user: UserWithTokens; // Use the correct type
 }
 
 export default {
@@ -227,6 +225,37 @@ export default {
     res.json({
       success: true,
       data: subscribers
+    });
+  }), // Closing the getEventSubscribers function definition
+  
+  unsubscribeFromEvent: asyncHandler(async (req: Request<{ eventId: string }> & { user: { id: number } }, res: Response<ApiResponse<{ message: string }>>) => {
+    const { eventId } = req.params;
+    const userId = req.user.id;
+
+    const existingSubscription = await subscriptionModel.findByEventAndUser(
+      parseInt(eventId),
+      userId
+    );
+
+    if (!existingSubscription) {
+      throw new AppError('Subscription not found', 404, {
+        code: ERROR_CODES.NOT_FOUND,
+        request: req
+      });
+    }
+
+    const deleted = await subscriptionModel.delete(existingSubscription.id);
+
+    if (!deleted) {
+      throw new AppError('Failed to delete subscription', 500, {
+        code: ERROR_CODES.DATABASE_ERROR,
+        request: req
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { message: 'Successfully unsubscribed from event' }
     });
   })
 };

@@ -1,8 +1,8 @@
-import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/index';
+import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/user';
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';
 import db from '../db/db';
-import { Character, DbCharacter } from '../../../shared/types/guild';
+import { Character } from '../../../shared/types/guild'; // Removed unused DbCharacter
 
 class UserModel extends BaseModel<DbUser> {
   constructor() {

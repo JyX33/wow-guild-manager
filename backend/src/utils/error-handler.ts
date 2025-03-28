@@ -43,7 +43,7 @@ export const errorHandlerMiddleware = (
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction // Prefixed unused parameter
 ) => {
   const status = 'status' in err ? err.status : 500;
   const message = err.message || 'Something went wrong';
@@ -92,11 +92,12 @@ export const asyncHandler = (fn: Function) => {
         });
       }
       next(err);
+      return; // Add explicit return
     });
   };
 };
 
-export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
+export const notFoundHandler = (req: Request, _res: Response, next: NextFunction) => { // Prefixed unused parameter
   const error = new AppError(`Resource not found - ${req.originalUrl}`, 404, {
     request: req,
     code: 'RESOURCE_NOT_FOUND'

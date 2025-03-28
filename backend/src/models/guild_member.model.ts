@@ -39,6 +39,5 @@ export const findById = guildMemberModel.findById.bind(guildMemberModel); // Ass
 export const findOne = guildMemberModel.findOne.bind(guildMemberModel); // Assuming BaseModel has findOne
 export const create = guildMemberModel.create.bind(guildMemberModel); // Assuming BaseModel has create
 export const update = guildMemberModel.update.bind(guildMemberModel); // Assuming BaseModel has update
-export const deleteMember = guildMemberModel.delete.bind(guildMemberModel); // Use 'delete' from BaseModel
 
 export default guildMemberModel;

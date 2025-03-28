@@ -97,11 +97,6 @@ class BattleNetService {
     }
   }
 
-  // Get current API metrics
-  public getMetrics(): APIMetrics {
-    return { ...this.metrics };
-  }
-
   private validateRegion(region: string): BattleNetRegion {
     if (region in config.battlenet.regions) {
       return region as BattleNetRegion;
@@ -248,7 +243,7 @@ class BattleNetService {
     itemLevel: number;
     mythicKeystone: BattleNetMythicKeystoneProfile | null;
     professions: BattleNetProfessions['primaries'];
-  }> {
+  } | null> { // Allow returning null if character fetch fails (e.g., 404)
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
@@ -342,14 +337,26 @@ class BattleNetService {
         professions: professions.primaries || []
       };
     } catch (error) {
+      // Check if it's a 404 error specifically
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Log a warning instead of throwing an error for 404s (character likely inactive/not found)
+        // Use function parameters characterName and realm here
+        console.warn(`[BattleNetService] Character ${characterName} on ${realm} not found (404). Skipping enhanced data fetch.`);
+        // Return null to indicate failure without stopping the whole sync
+        return null;
+      }
+
+      // Handle other Axios errors
       if (axios.isAxiosError(error)) {
         throw new AppError(
-          `Failed to fetch enhanced character data: ${error.response?.data?.detail || error.message}`,
+          `Failed to fetch enhanced character data for ${characterName} on ${realm}: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
+
+      // Handle non-Axios errors
       throw new AppError(
-        `Failed to fetch enhanced character data: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to fetch enhanced character data for ${characterName} on ${realm}: ${error instanceof Error ? error.message : String(error)}`,
         500,
         {
           code: 'API_ERROR',
@@ -466,7 +473,7 @@ class BattleNetService {
   /**
    * Get user information from Battle.net
    */
-  async getUserInfo(region: string, accessToken: string): Promise<BattleNetUserProfile> {
+  async getUserInfo(_region: string, accessToken: string): Promise<BattleNetUserProfile> {
     try {
       const response = await axios.get<BattleNetUserProfile>('https://oauth.battle.net/userinfo', {
         headers: {
@@ -543,7 +550,6 @@ export const getAuthorizationUrl = battleNetService.getAuthorizationUrl.bind(bat
 export const getAccessToken = battleNetService.getAccessToken.bind(battleNetService);
 export const refreshAccessToken = battleNetService.refreshAccessToken.bind(battleNetService);
 export const getUserInfo = battleNetService.getUserInfo.bind(battleNetService);
-export const getMetrics = battleNetService.getMetrics.bind(battleNetService);
 
 export const getClientCredentialsToken = battleNetService.getClientCredentialsToken.bind(battleNetService);
 export default battleNetService;

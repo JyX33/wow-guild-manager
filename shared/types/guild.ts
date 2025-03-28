@@ -583,7 +583,7 @@ export interface Guild {
 }
 
 export interface GuildMember {
-    id: number;
+    id?: number; // Made optional as it's not always available (e.g., from roster_json)
     guild_id: number;
     character_name: string;
     character_class: string;

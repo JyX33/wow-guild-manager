@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { guildService } from '../services/api/guild.service';
 import { Guild } from '../../../shared/types/guild';
 import { GuildRankManager } from '../components/GuildRankManager';
-import { SyncGuildRosterButton } from '../components/SyncGuildRosterButton';
 import LoadingSpinner from '../components/LoadingSpinner';
 import withAuth from '@/components/withAuth';
 
@@ -148,16 +147,7 @@ const GuildManagePage: React.FC = () => {
               {syncMessage}
             </div>
           )}
-          
-          <SyncGuildRosterButton 
-            guildId={parseInt(guildId || '0')} 
-            onSyncComplete={(result) => {
-              setSyncMessage(`Successfully synchronized ${result.members_updated} guild members.`);
-              setTimeout(() => setSyncMessage(null), 5000);
-            }}
-            className="mb-4"
-          />
-          
+          {/* Sync button removed as sync is now automatic */}
           <div className="mt-4 border-t pt-4">
             <h3 className="text-lg font-semibold mb-2">Current Status</h3>
             <p className="text-gray-600">

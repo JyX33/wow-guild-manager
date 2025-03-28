@@ -1,4 +1,5 @@
-import { CharacterRole, BattleNetCharacter } from '../../../shared/types';
+import { CharacterRole } from '../../../shared/types'; // Removed BattleNetCharacter
+import { BattleNetWoWAccount } from '../../../shared/types/user'; // Import the correct account type
 import { Character, DbCharacter } from '../../../shared/types/guild';
 import BaseModel from '../db/BaseModel';
 import db from '../db/db';
@@ -220,7 +221,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
    */
   async syncCharactersFromBattleNet(
     userId: number,
-    wowAccounts: Array<{characters: BattleNetCharacter[]}>
+    wowAccounts: BattleNetWoWAccount[] // Use the imported type
   ): Promise<{added: number, updated: number, total: number}> {
     try {
       return await withTransaction(async (client) => {

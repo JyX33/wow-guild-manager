@@ -1,8 +1,5 @@
-import { Request, Response } from 'express';
+// Removed unused imports: Request, Response, userModel, battleNetService, BattleNetGuildRoster
 import * as guildModel from '../models/guild.model';
-import * as userModel from '../models/user.model';
-import * as battleNetService from './battlenet.service';
-import { BattleNetGuildRoster } from '../../../shared/types/guild';
 
 export const verifyGuildLeadership = async (guildId: number, userId: number): Promise<boolean> => {
   // First check database for leader_id

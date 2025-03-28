@@ -8,11 +8,15 @@
     "start:dev": "bun --watch src/index.ts",
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/index.ts --target=node --outdir=dist",
-    "migrate": "node database/migrate.js"
+    "migrate": "node database/migrate.js",
+    "backfill:chars": "ts-node -P tsconfig.json src/scripts/backfill-character-data.ts",
+    "type-check": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@types/connect-pg-simple": "^7.0.3",
     "@types/node-schedule": "^2.1.7",
     "axios": "^1.8.4",
+    "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

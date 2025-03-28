@@ -45,7 +45,7 @@ export const UserGuilds: React.FC = () => {
                 <p className="text-sm text-gray-600">
                   {typeof guild.realm === 'object' && 'name' in guild.realm 
                     ? guild.realm.name 
-                    : guild.realm} • {guild.guild_data?.member_count || 0} members
+                    : guild.realm} • {guild?.member_count || 0} members
                 </p>
               </div>
             </div>
@@ -69,7 +69,7 @@ export const UserGuilds: React.FC = () => {
               
               {guild.is_guild_master && (
                 <a 
-                  href={`/guild/${guild.guild_data.id}/manage`} 
+                  href={`/guild/${guild.id}/manage`} 
                   className="flex-1 ml-2 text-center text-sm bg-green-50 text-green-600 p-2 rounded hover:bg-green-100"
                 >
                   Manage

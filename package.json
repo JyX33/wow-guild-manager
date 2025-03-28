@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "find-dead-code": "ts-prune",
+    "type-check": "cd frontend && tsc --noEmit -p tsconfig.json && cd .. && cd backend && tsc --noEmit -p tsconfig.json && cd .."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "ts-prune": "^0.10.3",
+    "typescript": "^5.8.2"
+  }
+}

@@ -28,4 +28,7 @@ router.put('/:eventId/subscribe', authMiddleware.authenticate, eventController.u
 // Get event subscribers
 router.get('/:eventId/subscribers', authMiddleware.authenticate, eventController.getEventSubscribers);
 
+// Unsubscribe from an event
+router.delete('/:eventId/subscribe', authMiddleware.authenticate, eventController.unsubscribeFromEvent);
+
 export default router;

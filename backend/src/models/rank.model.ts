@@ -25,10 +25,15 @@ class RankModel extends BaseModel<DbGuildRank> {
       
       if (existingRank !== null) {
         // Update existing rank
-        return await this.update(existingRank.id, { 
+        const updatedRank = await this.update(existingRank.id!, { // Assert id is non-null
           rank_name: rankName,
           updated_at: new Date().toISOString()
         });
+        if (updatedRank === null) {
+          // This shouldn't happen if findOne succeeded, but handle defensively
+          throw new AppError('Failed to update rank after finding it', 500);
+        }
+        return updatedRank; // Return the non-null updated rank
       }
 
       // Create new rank
@@ -56,7 +61,7 @@ class RankModel extends BaseModel<DbGuildRank> {
       }
       
       // Update the member count
-      return await this.update(rank.id, {
+      return await this.update(rank.id!, { // Assert id is non-null
         member_count: count,
         updated_at: new Date().toISOString()
       });

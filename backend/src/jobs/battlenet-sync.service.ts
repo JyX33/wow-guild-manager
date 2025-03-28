@@ -1,14 +1,14 @@
 import * as battleNetService from '../services/battlenet.service';
 import * as guildModel from '../models/guild.model';
 import * as characterModel from '../models/character.model';
-import * as guildMemberModel from '../models/guild_member.model';
+// Removed unused: import * as guildMemberModel from '../models/guild_member.model';
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model'; // Needed? Maybe for leader lookup
-import { DbGuild, BattleNetGuildRoster, BattleNetGuild, DbCharacter, BattleNetGuildMember, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild'; // Added DbCharacter & BattleNetGuildMember
+import { DbGuild, BattleNetGuildRoster, DbCharacter, BattleNetGuildMember } from '../../../shared/types/guild'; // Removed unused types
 import { AppError } from '../utils/error-handler';
-import config from '../config'; // For client credentials
+// Removed unused: import config from '../config'; // For client credentials
 import { withTransaction } from '../utils/transaction'; // Added withTransaction import
-import db from '../db/db'; // Import db for raw queries if needed
+// Removed unused: import db from '../db/db'; // Import db for raw queries if needed
 
 // TODO: Implement caching mechanism (e.g., Redis, in-memory cache) if desired
 
@@ -146,14 +146,13 @@ class BattleNetSyncService {
          const membersToUpdate: { memberId: number; rank?: number; characterId?: number; memberData?: BattleNetGuildMember }[] = [];
          const memberIdsToRemove: number[] = [];
          const charactersToCreate: Partial<DbCharacter>[] = [];
-        const characterLinkUpdates: { memberId: number; characterId: number }[] = [];
 
-        // Pre-fetch or identify characters that might need creation
-        const potentialNewCharKeys = roster.members
-            .map(m => `${m.character.name.toLowerCase()}-${m.character.realm.slug.toLowerCase()}`)
-            .filter(key => !existingMembersMap.has(key));
+       // Pre-fetch or identify characters that might need creation
+       // const potentialNewCharKeys = roster.members // Removed unused variable
+       //     .map(m => `${m.character.name.toLowerCase()}-${m.character.realm.slug.toLowerCase()}`)
+       //     .filter(key => !existingMembersMap.has(key));
 
-        // TODO: Improve efficiency - Query only for characters matching potentialNewCharKeys
+       // TODO: Improve efficiency - Query only for characters matching potentialNewCharKeys
         const existingCharacters = await characterModel.findAll(); // Inefficient, better to query by name/realm list
         const existingCharacterMap = new Map<string, number>();
         existingCharacters.forEach(char => {
@@ -403,6 +402,42 @@ class BattleNetSyncService {
             character.region // Assuming region is on the DbCharacter object
         );
 
+        // Check if enhancedData is null (meaning fetch failed, e.g., 404)
+        if (enhancedData === null) {
+          console.log(`[SyncService] Skipping update for character ${character.name} (ID: ${character.id}) due to fetch failure.`);
+          // Optionally update last_synced_at with an error flag or just skip? Skipping for now.
+          return; // Exit the syncCharacter function for this character
+        }
+
+        // --- Start Additions ---
+        const bnet_character_id = enhancedData.id;
+        const bnet_guild_id = enhancedData.guild?.id; // This is the Battle.net Guild ID
+        let localGuild: DbGuild | null = null; // Variable to hold the local guild record
+        let region: string | undefined = undefined;
+
+        if (bnet_guild_id) {
+          try {
+            // Find the local guild record using the Battle.net guild ID
+            localGuild = await guildModel.findOne({ bnet_guild_id: bnet_guild_id }); // <<< CORRECT: Use findOne with bnet_guild_id
+            if (localGuild) {
+              region = localGuild.region; // Use region from the found local guild
+            } else {
+              console.warn(`[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id} (Character: ${character.name})`);
+              // Fallback to existing character region if local guild not found
+              region = character.region;
+            }
+          } catch (guildError) {
+             console.error(`[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id} (Character: ${character.name}):`, guildError);
+             // Fallback to existing character region on error
+             region = character.region;
+          }
+        } else {
+           // If character has no guild in profile, use existing region if available
+           region = character.region;
+        }
+        // --- End Additions ---
+
+
         // Prepare update payload - Pass objects directly, DB driver handles JSONB conversion
         const updatePayload: Partial<DbCharacter> = {
             profile_json: enhancedData, // Pass the object directly
@@ -412,7 +447,12 @@ class BattleNetSyncService {
             level: enhancedData.level, // Update level
             class: enhancedData.character_class.name, // Update class
             // Update other relevant fields if necessary (e.g., average_item_level?)
-            last_synced_at: new Date().toISOString()
+            last_synced_at: new Date().toISOString(),
+            // --- Additions to payload ---
+            bnet_character_id: bnet_character_id,
+            guild_id: localGuild?.id, // <<< CORRECT: Use local guild's primary key (or undefined if not found)
+            region: region,     // Region determined from local guild or fallback
+            // --- End Additions to payload ---
         };
 
         // Update character record in DB

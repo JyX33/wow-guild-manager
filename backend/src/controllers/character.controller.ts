@@ -11,6 +11,7 @@ export default {
    * Get all characters for the logged-in user
    */
   getUserCharacters: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     const characters = await characterModel.findByUserId(userId);
     
@@ -25,6 +26,7 @@ export default {
    */
   getCharacterById: asyncHandler(async (req: Request, res: Response) => {
     const characterId = parseInt(req.params.id);
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     
     const character = await characterModel.findOne({
@@ -45,7 +47,9 @@ export default {
   /**
    * Get the main character for the logged-in user
    */
+  // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
   getMainCharacter: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     const character = await characterModel.getMainCharacter(userId);
     
@@ -66,6 +70,7 @@ export default {
    * Create a new character for the logged-in user
    */
   createCharacter: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     const { name, realm, class: characterClass, level, role, is_main } = req.body;
     
@@ -102,6 +107,7 @@ export default {
    */
   updateCharacter: asyncHandler(async (req: Request, res: Response) => {
     const characterId = parseInt(req.params.id);
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     const { name, realm, class: characterClass, level, role, character_data } = req.body;
     
@@ -137,6 +143,7 @@ export default {
    */
   deleteCharacter: asyncHandler(async (req: Request, res: Response) => {
     const characterId = parseInt(req.params.id);
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     
     const deleted = await characterModel.deleteUserCharacter(characterId, userId);
@@ -156,6 +163,7 @@ export default {
    */
   setMainCharacter: asyncHandler(async (req: Request, res: Response) => {
     const characterId = parseInt(req.params.id);
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     
     const updatedCharacter = await characterModel.setMainCharacter(characterId, userId);
@@ -171,6 +179,7 @@ export default {
    * Sync characters from Battle.net
    */
   syncCharacters: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
     
     // Get user with tokens

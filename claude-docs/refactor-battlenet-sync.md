@@ -62,27 +62,27 @@ graph TD
         Frontend[Browser Frontend]
     end
 
-    subgraph Backend API (Node.js/Express)
+    subgraph "Backend API (Node.js/Express)"
         direction TB
-        APIRoutes[API Routes (/api/...)] --> Controllers[Controllers (guild, character)]
-        Controllers -->|Reads/Writes (incl. JSONB parsing)| DBModels[Database Models (guild, character, rank)]
-        Controllers -->|Uses| AuthService[Auth Service (User Login/Token)]
-        AuthService -->|OAuth Flow| BNetAPI[(Battle.net API)]
-        AuthService -->|User Tokens| Database[(Database w/ JSONB)]
-        DBModels -->|CRUD Ops| Database
+        APIRoutes["API Routes (/api/...)"] --> Controllers["Controllers (guild, character)"]
+        Controllers -->|"Reads/Writes (incl. JSONB parsing)"| DBModels["Database Models (guild, character, rank)"]
+        Controllers -->|Uses| AuthService["Auth Service (User Login/Token)"]
+        AuthService -->|"OAuth Flow"| BNetAPI["(Battle.net API)"]
+        AuthService -->|"User Tokens"| Database["(Database w/ JSONB)"]
+        DBModels -->|"CRUD Ops"| Database
     end
 
-    subgraph Background Sync Process (Scheduled Job/Script)
+    subgraph "Background Sync Process (Scheduled Job/Script)"
         direction TB
-        Scheduler[Scheduler (Cron/Task Scheduler/node-schedule)] --> SyncService[Sync Service Logic]
-        SyncService -->|Fetches Data| BNetService[Battle.net Service (w/ Rate Limit, Cache)]
-        SyncService -->|Updates Data (Stores Raw JSON)| DBModelsSync[Database Models]
-        BNetService -->|API Calls| BNetAPI
-        BNetService -->|Client Creds| BNetAPI
-        DBModelsSync -->|CRUD Ops| Database
+        Scheduler["Scheduler (Cron/Task Scheduler/node-schedule)"] --> SyncService[Sync Service Logic]
+        SyncService -->|"Fetches Data"| BNetService["Battle.net Service (w/ Rate Limit, Cache)"]
+        SyncService -->|"Updates Data (Stores Raw JSON)"| DBModelsSync[Database Models]
+        BNetService -->|"API Calls"| BNetAPI["(Battle.net API)"]
+        BNetService -->|"Client Creds"| BNetAPI["(Battle.net API)"]
+        DBModelsSync -->|"CRUD Ops"| Database
     end
 
-    Frontend -->|HTTPS Requests| APIRoutes
+    Frontend -->|"HTTPS Requests"| APIRoutes
 
     %% Styling
     classDef api fill:#f9f,stroke:#333,stroke-width:2px;
@@ -95,3 +95,4 @@ graph TD
     class Database db;
     class BNetAPI external;
     class Frontend external;
+```

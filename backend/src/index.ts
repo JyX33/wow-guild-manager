@@ -2,6 +2,8 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import session from 'express-session';
+import pg from 'pg'; // Import pg
+import connectPgSimple from 'connect-pg-simple'; // Import connect-pg-simple
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
@@ -28,27 +30,40 @@ app.use(cors({
   credentials: true
 }));
 
+// PostgreSQL session store setup
+const PgStore = connectPgSimple(session); // Keep this as per library usage
+const connectionString = `postgresql://${config.database.user}:${config.database.password}@${config.database.host}:${config.database.port}/${config.database.name}`;
+const pgPool = new pg.Pool({ connectionString });
+
+const sessionStore = new PgStore({
+  pool: pgPool,
+  tableName: 'user_sessions', // Name of the session table
+  createTableIfMissing: true, // Automatically create the table
+});
+
+
 // Session middleware
 app.use(session({
+  store: sessionStore, // Use the PostgreSQL store
   secret: config.auth.jwtSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: config.server.nodeEnv === 'production',
+    secure: true, // Always true since we use HTTPS
     httpOnly: true,
     maxAge: config.auth.cookieMaxAge
   }
-}));
+}) as any); // Cast to any to bypass complex type error for now
+
 
 // API Health check routes
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
-    timestamp: new Date().toISOString()
   });
 });
 
-app.get('/api/healthcheck', (req, res) => {
+app.get('/api/healthcheck', (_req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString()
