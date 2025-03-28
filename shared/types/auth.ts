@@ -10,3 +10,15 @@ export interface AuthContextType {
   hasRole: (roles: UserRole | UserRole[]) => boolean;
   refreshUser: () => Promise<void>;
 }
+
+
+/**
+ * Represents the response from Battle.net token endpoints.
+ */
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token?: string; // Optional for client_credentials
+  scope: string;
+}

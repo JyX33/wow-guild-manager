@@ -420,6 +420,40 @@ class CharacterModel extends BaseModel<DbCharacter> {
     }
   }
 
+
+  /**
+   * Find multiple characters by their name and realm slugs.
+   * @param keys An array of objects containing name and realm slug.
+   * @returns A promise that resolves to an array of matching DbCharacter objects.
+   */
+  async findByMultipleNameRealm(keys: { name: string; realm: string }[]): Promise<DbCharacter[]> {
+    if (!keys || keys.length === 0) {
+      return [];
+    }
+    try {
+      // Prepare values for the query: [[name1, realm1], [name2, realm2], ...]
+      // Ensure case-insensitivity by converting to lowercase.
+      const values = keys.map(key => [key.name.toLowerCase(), key.realm.toLowerCase()]);
+
+      // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
+      // This is generally more efficient than multiple OR conditions.
+      // We need to generate placeholders like ($1, $2), ($3, $4), ...
+      const placeholders = values.map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`).join(', ');
+      const flatValues = values.flat(); // Flatten the array for query parameters
+
+      const query = `
+        SELECT *
+        FROM ${this.tableName}
+        WHERE (lower(name), lower(realm)) IN (${placeholders})
+      `;
+
+      const result = await db.query(query, flatValues);
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error finding characters by multiple name/realm: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
   /**
    * Find characters that haven't been synced recently.
    */
@@ -454,6 +488,8 @@ export const update = characterModel.update.bind(characterModel);
 export const findByUserId = characterModel.findByUserId.bind(characterModel);
 export const getMainCharacter = characterModel.getMainCharacter.bind(characterModel);
 export const setMainCharacter = characterModel.setMainCharacter.bind(characterModel);
+export const findByMultipleNameRealm = characterModel.findByMultipleNameRealm.bind(characterModel); // Added export
+
 export const createCharacter = characterModel.createCharacter.bind(characterModel);
 export const updateCharacter = characterModel.updateCharacter.bind(characterModel);
 export const deleteUserCharacter = characterModel.deleteUserCharacter.bind(characterModel);

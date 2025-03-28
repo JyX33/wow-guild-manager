@@ -9,6 +9,7 @@ import {
   BattleNetMythicKeystoneProfile,
   BattleNetProfessions
 } from '../../../shared/types/guild';
+import { TokenResponse } from '../../../shared/types/auth'; // Added import
 import config from '../config';
 import { AppError } from '../utils/error-handler';
 
@@ -26,13 +27,7 @@ interface APIMetrics {
   queueSize: number;
 }
 
-interface TokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  refresh_token: string;
-  scope: string;
-}
+// TokenResponse interface moved to shared/types/auth.ts
 
 // BattleNetRegion is now imported from shared types
 
