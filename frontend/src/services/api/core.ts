@@ -15,22 +15,37 @@ export const apiClient = axios.create({
 
 // Axios response interceptor for error handling
 apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    console.error('API Error:', error.response?.data?.error || error.message);
-    
+  (response: AxiosResponse) => response, // Add type for clarity
+  async (error: AxiosError<any>) => { // Explicitly type error as AxiosError
+    // Define expected error data structure for better type safety
+    interface ErrorData {
+      error?: {
+        message?: string;
+        details?: { expired?: boolean; [key: string]: any }; // Allow other details
+      };
+      message?: string; // Allow top-level message if present
+    }
+    // Assert the type of error.response.data
+    const errorData = error.response?.data as ErrorData | undefined;
+
+    console.error('API Error:', errorData?.error?.message || errorData?.message || error.message);
+
     // If token expired, attempt refresh
-    if (error.response?.status === 401 && error.response?.data?.error?.details?.expired) {
+    // Also check if error.config exists before retrying the request
+    if (error.response?.status === 401 && errorData?.error?.details?.expired && error.config) {
       try {
         // Attempt token refresh
         await axios.get(`${API_URL}/auth/refresh`, { withCredentials: true });
-        // Retry the original request
-        return apiClient(error.config);
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
+        // Retry the original request, asserting config type for safety
+        return apiClient(error.config as AxiosRequestConfig);
+      } catch (refreshError: any) { // Type refreshError for better handling
+        console.error('Token refresh failed:', refreshError?.message || refreshError);
+        // Consider redirecting to login or showing a notification here
+        // e.g., window.location.href = '/login';
       }
     }
-    
+
+    // Reject with the original error if refresh fails or is not applicable
     return Promise.reject(error);
   }
 );
@@ -71,7 +86,7 @@ export const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResp
 
 // Add a timeout utility
 export const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  let timeoutId: NodeJS.Timeout;
+  let timeoutId: number; // Use 'number' for browser setTimeout return type
   
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
