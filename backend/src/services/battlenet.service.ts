@@ -65,7 +65,14 @@ class BattleNetService {
 
     this.rateLimiter.on('error', (error) => { // Added error parameter
       this.metrics.errorCount++;
-      logger.error({ err: error }, '[BattleNetService] Rate limiter error event.'); // Log limiter errors
+      // Check if the error is an Axios error and specifically a 404
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Log 404s caught by the queue handler at DEBUG level, as they are expected to be handled by the calling function.
+        logger.debug({ err: error }, '[BattleNetService] Axios 404 caught by queue handler (handled by caller).');
+      } else {
+        // Log all other errors caught by the queue handler as ERROR, as they might be unexpected.
+        logger.error({ err: error }, '[BattleNetService] Unhandled rate limiter/queue error event.');
+      }
     });
   }
 
