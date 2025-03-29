@@ -1,4 +1,4 @@
-import { User, UserRole } from '../../../../shared/types/index';
+import { User, UserRole } from '../../../../shared/types/user';
 import { apiRequest } from './core';
 
 interface LoginResponse {

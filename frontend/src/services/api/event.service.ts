@@ -1,4 +1,4 @@
-import { Event, EventSubscription } from '../../../shared/types/index';
+import { Event, EventSubscription } from '../../../../shared/types/index';
 import { apiRequest } from './core';
 
 export const eventService = {
