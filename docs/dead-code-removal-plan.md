@@ -1,47 +1,22 @@
-# Dead Code and Comment Removal Plan
+# Frontend Dead Code Removal Plan (2025-03-29)
 
-This plan outlines the steps to clean up the `backend/src/` directory by removing commented-out code, deprecated code, and unused files.
+## Objective
+
+Identify and remove unused components, hooks, and utility files from the `frontend/src` directory to reduce codebase size and improve maintainability.
 
 ## Analysis Summary
 
-*   **File to Delete:** `backend/src/services/guild-roster.service.ts` (Deprecated and unused).
-*   **File to Modify:** `backend/src/services/guild-leadership.service.ts` (Remove comments about removed functions).
-*   **Files with Commented Tests:** Several `*.test.ts` files contain commented-out test blocks (e.g., `battlenet-api.client.test.ts`, `battlenet-sync.service.test.ts`).
+- **Endpoint Verification:** A review confirmed that the frontend API configuration correctly uses the `/api` base URL, matching the backend setup. All defined API services (`auth`, `character`, `event`, `guild`) are imported and utilized within the frontend application. No endpoint mismatches were identified.
+- **Dead Code Identification:** A thorough search for imports across all `.ts` and `.tsx` files within `frontend/src` was conducted.
 
-## Proposed Plan Steps
+## Files Identified for Removal
 
-1.  **Delete Unused Deprecated Service:**
-    *   Action: Delete the file `backend/src/services/guild-roster.service.ts`.
-    *   Reason: It's explicitly marked as deprecated in comments and confirmed to be unused via search.
+The following files were found to have no imports and are planned for removal:
 
-2.  **Clean Up Comments in `guild-leadership.service.ts`:**
-    *   Action: Read `backend/src/services/guild-leadership.service.ts`.
-    *   Action: Identify and remove the specific comment lines mentioning removed functions (e.g., lines 1, 28, 29 based on previous search results).
-    *   Reason: Keep the file clean and remove misleading comments about non-existent code.
+1. `frontend/src/components/SyncGuildRosterButton.tsx`
+2. `frontend/src/hooks/useRequireAuth.ts`
+3. `frontend/src/utils/api-helpers.ts`
 
-3.  **Clean Up Commented-Out Tests:**
-    *   Action: Read `backend/src/services/battlenet-api.client.test.ts`.
-    *   Action: Identify the blocks of commented-out tests (e.g., lines starting with `// // Temporarily commented out...` or similar patterns found in search results).
-    *   Action: Remove these commented-out test blocks.
-    *   Action: Read `backend/src/jobs/battlenet-sync.service.ts`.
-    *   Action: Identify and remove commented-out test blocks and related TODOs within that file.
-    *   Reason: Remove non-functional code from test suites to improve clarity and maintainability.
+## Action
 
-## Plan Diagram
-
-```mermaid
-graph TD
-    A[Start: Identify Cleanup Targets] --> B{File: guild-roster.service.ts};
-    A --> C{File: guild-leadership.service.ts};
-    A --> D{Files: *.test.ts};
-
-    B --> E[Action: Delete File];
-    C --> F[Action: Read File];
-    F --> G[Action: Remove Deprecated Comments];
-    D --> H[Action: Read Test Files];
-    H --> I[Action: Identify Commented Tests];
-    I --> J[Action: Remove Commented Tests];
-
-    E --> K[End: Cleanup Complete];
-    G --> K;
-    J --> K;
+Proceed with deleting the three files listed above.
