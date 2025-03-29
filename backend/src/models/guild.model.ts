@@ -1,4 +1,4 @@
-import { Guild, GuildMember } from '../../../shared/types/index'; // Keep Guild, GuildMember if they are from index
+import { Guild } from '../../../shared/types/index'; // Removed unused GuildMember
 import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember } from '../../../shared/types/guild'; // Import DbGuild, BattleNetGuildRoster, BattleNetGuildMember from guild.ts
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';

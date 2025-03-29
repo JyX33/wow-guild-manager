@@ -79,13 +79,4 @@ export const guildService = {
       method: 'GET', 
       url: `/guilds/${guildId}/rank-structure`
     }),
-    
-  /**
-   * Synchronize guild roster with database
-   */
-  syncGuildRoster: (guildId: number) =>
-    apiRequest<{message: string, members_updated: number}>({
-      method: 'POST',
-      url: `/guilds/${guildId}/sync-roster`
-    }),
 };

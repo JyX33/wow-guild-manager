@@ -1,4 +1,4 @@
-import { EventSubscription, LegacyEventSubscription } from '../../../shared/types/index';
+import { EventSubscription } from '../../../shared/types/index'; // Removed unused LegacyEventSubscription
 import BaseModel from '../db/BaseModel';
 import db from '../db/db';
 import { AppError } from '../utils/error-handler';

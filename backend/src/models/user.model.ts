@@ -1,8 +1,8 @@
-import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/index';
+import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/user';
 import BaseModel from '../db/BaseModel';
 import { AppError } from '../utils/error-handler';
 import db from '../db/db';
-import { Character, DbCharacter } from '../../../shared/types/guild';
+import { Character } from '../../../shared/types/guild'; // Removed unused DbCharacter
 
 class UserModel extends BaseModel<DbUser> {
   constructor() {
@@ -42,21 +42,28 @@ class UserModel extends BaseModel<DbUser> {
   }
 
   /**
-   * Update user tokens with type safety
+   * Update user tokens with type safety. Refresh token can be null.
    */
   async updateTokens(
-    id: number, 
-    accessToken: string, 
-    refreshToken: string, 
+    id: number,
+    accessToken: string,
+    refreshToken: string | null, // Allow null for refresh token
     expiresAt: Date
   ): Promise<UserWithTokens | null> {
     try {
-      return await this.update(id, {
+      // Prepare update payload, handling null refresh token
+      const updateData: Partial<DbUser> = {
         access_token: accessToken,
-        refresh_token: refreshToken,
         token_expires_at: expiresAt.toISOString(),
         updated_at: new Date().toISOString()
-      });
+      };
+      // Only include refresh_token in the update if it's not null
+      // If it is null, the database column should ideally allow NULLs
+      // or be handled appropriately by the underlying update logic.
+      // Convert null to undefined to match the expected type 'string | undefined'.
+      updateData.refresh_token = refreshToken === null ? undefined : refreshToken;
+
+      return await this.update(id, updateData);
     } catch (error) {
       throw new AppError(`Error updating user tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
     }

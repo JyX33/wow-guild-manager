@@ -15,6 +15,7 @@ AppError: Connected realm not found for slug: members
 ```
 
 This shows that when requesting `/guilds/1/members/enhanced`, it's being incorrectly interpreted as:
+
 - region: "1" (which should be guildId)
 - realm: "members"
 - name: "enhanced"
@@ -37,11 +38,12 @@ router.get('/:guildId/members/enhanced', authMiddleware.authenticate, guildContr
 ```
 
 Express matches routes in the order they are defined. When requesting `/guilds/1/members/enhanced`, the route `:region/:realm/:name` is matched first because it appears earlier in the file, so it interprets:
+
 - 1 as region
 - members as realm
 - enhanced as name
 
-## Solution 
+## Solution
 
 Reorder the routes in `backend/src/routes/guild.routes.ts` to prioritize more specific routes before the generic ones:
 
