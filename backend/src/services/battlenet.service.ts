@@ -432,7 +432,7 @@ class BattleNetService {
     // Generate URL with OAuth parameters
     return `${regionConfig.authBaseUrl}/authorize?` +
       `client_id=${encodeURIComponent(config.battlenet.clientId)}` +
-      `&scope=${encodeURIComponent('wow.profile')}` +
+      `&scope=${encodeURIComponent('offline_access wow.profile')}` +
       `&state=${encodeURIComponent(state)}` +
       `&redirect_uri=${encodeURIComponent(config.battlenet.redirectUri)}` +
       `&response_type=code`;
@@ -465,6 +465,7 @@ class BattleNetService {
         }
       );
       logger.info({ region: validRegion }, '[BattleNetService] Access token obtained successfully.');
+      logger.debug({ tokenResponse: response.data }, '[BattleNetService] Raw token response received.');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {

@@ -135,17 +135,11 @@ export default {
         ? tokenData.refresh_token
         : user.refresh_token; // Fallback to existing token from the fetched user
 
-      // Check if we have a valid refresh token string before calling updateTokens
-      if (typeof refreshTokenToUpdate !== 'string') {
-         // This case should be rare if the user previously had a refresh token.
-         logger.error({ userId: user.id }, 'Cannot update tokens: Missing new and existing refresh token.');
-         throw new AppError('Failed to update tokens due to missing refresh token', 500);
-      }
-
+      // Refresh token is not reliably provided by Battle.net, update only access token
       user = await userModel.updateTokens(
         user.id,
         tokenData.access_token,
-        refreshTokenToUpdate, // Pass the determined non-null, non-undefined string refresh token
+        null, // Pass null as refresh token is not available/used
         tokenExpiryDate
       ) as User; // Cast back to User as updateTokens might return more fields
     }
