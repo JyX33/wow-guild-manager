@@ -35,17 +35,17 @@ export const UserGuilds: React.FC = () => {
         {guilds.map(guild => (
           <div key={`${guild.realm}-${guild.name}`} className="bg-white p-4 rounded-lg shadow">
             <div className="flex items-center">
-              {guild.guild_data?.crest && (
+              {guild.guild_data_json?.crest && (
                 <div className="mr-3">
                   {/* Guild crest can be rendered here */}
                 </div>
               )}
               <div>
-                <h3 className="font-medium">{guild.name}</h3>
+                <h3 className="font-medium">{guild?.guild_data_json?.name}</h3>
                 <p className="text-sm text-gray-600">
                   {typeof guild.realm === 'object' && 'name' in guild.realm 
-                    ? guild.realm.name 
-                    : guild.realm} • {guild?.member_count || 0} members
+                    ? guild.realm 
+                    : guild.realm} • {guild?.guild_data_json?.member_count || 0} members
                 </p>
               </div>
             </div>

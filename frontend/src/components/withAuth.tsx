@@ -1,7 +1,7 @@
 import React, { ComponentType, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../../../shared/types/index';
+import { UserRole } from '../../../shared/types/user';
 import LoadingSpinner from './LoadingSpinner';
 
 interface WithAuthProps {
@@ -20,7 +20,7 @@ const withAuth = <P extends object>(
   options: WithAuthProps = {}
 ) => {
   const WithAuthComponent: React.FC<P> = (props) => {
-    const { isAuthenticated, user, loading, hasRole } = useAuth();
+    const { isAuthenticated, loading, hasRole } = useAuth();
     const location = useLocation();
     const { requiredRoles } = options;
 
