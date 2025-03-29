@@ -17,6 +17,7 @@ import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model';
 import * as guildMemberModel from '../models/guild_member.model'; // Added
 import * as characterModel from '../models/character.model'; // Added
+import logger from '../utils/logger'; // Import the logger
 // Removed battleNetService, guildLeadershipService, guildRosterService imports for refactored methods
 // import * as battleNetService from '../services/battlenet.service';
 // import * as guildLeadershipService from '../services/guild-leadership.service';
@@ -27,6 +28,7 @@ import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 export default {
   // --- REFACTORED getGuildByName ---
   getGuildByName: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildByName request');
     const { region, realm, name } = req.params;
     const guild = await guildModel.findByNameRealmRegion(name, realm, region);
     if (!guild) {
@@ -43,6 +45,7 @@ export default {
   // --- END REFACTORED getGuildByName ---
 
   getGuildById: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildById request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
@@ -72,6 +75,7 @@ export default {
 
   // --- REFACTORED getGuildMembers ---
   getGuildMembers: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildMembers request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
@@ -141,13 +145,14 @@ export default {
   // --- REFACTORED getUserGuilds ---
   // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
   getUserGuilds: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getUserGuilds request');
     if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id; // Get user ID from authenticated request
 
     // 1. Get user's characters from the database
     // Assuming getUserCharacters returns characters with guild_id populated
     const userCharacters = await userModel.getUserCharacters(userId);
-    console.log(`[DEBUG] Found ${userCharacters.length} characters for user ${userId}`);
+    logger.debug({ userId, characterCount: userCharacters.length }, `Found ${userCharacters.length} characters for user ${userId}`);
 
     // 2. Extract unique guild IDs from characters that have one
     const guildIds = [
@@ -160,7 +165,7 @@ export default {
 
     if (guildIds.length === 0) {
       // User has no characters in any guilds known to the system
-      console.log(`[DEBUG] User ${userId} has no characters in known guilds.`);
+      logger.debug({ userId }, `User ${userId} has no characters in known guilds.`);
       return res.json({ success: true, data: [] });
     }
 
@@ -188,7 +193,7 @@ export default {
       };
     });
 
-    console.log(`[DEBUG] Returning ${responseGuilds.length} unique guilds for user ${userId}`);
+    logger.debug({ userId, guildCount: responseGuilds.length }, `Returning ${responseGuilds.length} unique guilds for user ${userId}`);
     res.json({
       success: true,
       data: responseGuilds
@@ -200,7 +205,7 @@ export default {
   // --- REFACTORED getEnhancedGuildMembers ---
   // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
   getEnhancedGuildMembers: asyncHandler(async (req: Request, res: Response) => {
-    console.log('[DEBUG] Starting getEnhancedGuildMembers for guildId:', req.params.guildId);
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getEnhancedGuildMembers request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
@@ -211,7 +216,7 @@ export default {
     // 1. Fetch relevant guild members from DB
     const allowedRanks = [0, 1, 3, 4, 5]; // Define ranks to fetch
     const dbGuildMembers = await guildMemberModel.findByGuildAndRanks(guildIdInt, allowedRanks);
-    console.log(`[DEBUG] Found ${dbGuildMembers.length} members with allowed ranks in DB`);
+    logger.debug({ guildId: guildIdInt, count: dbGuildMembers.length }, `Found ${dbGuildMembers.length} members with allowed ranks in DB`);
 
     if (dbGuildMembers.length === 0) {
       return res.json({ success: true, data: [], stats: { total: 0, successful: 0, failed: 0, errors: [] } });
@@ -222,7 +227,7 @@ export default {
 
     // 3. Fetch corresponding character details from DB
     const dbCharacters = await characterModel.findByIds(characterIds);
-    console.log(`[DEBUG] Fetched ${dbCharacters.length} character details from DB`);
+    logger.debug({ guildId: guildIdInt, count: dbCharacters.length }, `Fetched ${dbCharacters.length} character details from DB`);
 
     // 4. Create a map for easy lookup
     const characterMap = new Map<number, DbCharacter>();
@@ -239,7 +244,7 @@ export default {
       const memberName = member.character_name; // Use name from guild_members table
 
       if (!character) {
-        console.warn(`[ERROR] Character data not found in DB for guild member ID ${member.id}, character ID ${member.character_id}`);
+        logger.warn({ guildMemberId: member.id, characterId: member.character_id, guildId: guildIdInt }, `Character data not found in DB for guild member ID ${member.id}, character ID ${member.character_id}`);
         errorCount++;
         errors.push({ name: memberName || `Unknown (ID: ${member.character_id})`, error: 'Character data missing in DB' });
         return null; // Return null for filtering later
@@ -296,7 +301,7 @@ export default {
       } catch (parseError) {
         errorCount++;
         const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
-        console.warn(`[ERROR] Could not parse JSONB data for character ${character.name}:`, errorMessage);
+        logger.warn({ err: parseError, charName: character.name, charId: character.id, guildId: guildIdInt }, `Could not parse JSONB data for character ${character.name}: ${errorMessage}`);
         errors.push({ name: character.name, error: `JSONB parse error: ${errorMessage}` });
         return null; // Return null for filtering later
       }
@@ -312,7 +317,7 @@ export default {
       errors: errors
     };
 
-    console.log('[DEBUG] Enhancement complete:', JSON.stringify(completionStats, null, 2));
+    logger.debug({ guildId: guildIdInt, stats: completionStats }, 'Enhancement complete');
 
     res.json({
       success: true,
@@ -325,6 +330,7 @@ export default {
 
   // --- REFACTORED getGuildRanks ---
   getGuildRanks: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildRanks request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
@@ -374,6 +380,7 @@ export default {
          });
       } else {
          // This case shouldn't happen if sync is correct, but handle defensively
+         logger.warn({ guildId: guildIdInt, rankId: rank.rank_id }, `Custom rank ${rank.rank_id} found in DB but not in roster_json.`);
          rankMap.set(rank.rank_id, {
            ...rank,
            is_custom: true
@@ -393,6 +400,7 @@ export default {
 
   // --- updateRankName (Likely OK) ---
   updateRankName: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, body: req.body, userId: req.session?.userId }, 'Handling updateRankName request');
     const { guildId, rankId } = req.params;
     const { rank_name } = req.body;
 
@@ -436,6 +444,7 @@ export default {
 
   // --- REFACTORED getGuildRankStructure ---
   getGuildRankStructure: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildRankStructure request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 

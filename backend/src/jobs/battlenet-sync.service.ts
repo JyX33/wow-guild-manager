@@ -1,4 +1,4 @@
-// Removed direct import of battleNetService
+import logger from '../utils/logger'; // Import the logger
 import { BattleNetApiClient } from '../services/battlenet-api.client'; // Added import
 import * as guildModel from '../models/guild.model';
 import * as characterModel from '../models/character.model';
@@ -70,24 +70,24 @@ export class BattleNetSyncService { // Added export keyword
         );
         if (guildMasterUser) {
           updatePayload.leader_id = guildMasterUser.id;
-          console.log(`[SyncService] Found user ${guildMasterUser.id} for GM ${guildMasterMember.character.name}, updating leader_id.`);
+          logger.info({ userId: guildMasterUser.id, gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] Found user ${guildMasterUser.id} for GM ${guildMasterMember.character.name}, updating leader_id.`);
         } else {
-          console.log(`[SyncService] User for GM ${guildMasterMember.character.name} not found in DB.`);
+          logger.info({ gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] User for GM ${guildMasterMember.character.name} not found in DB.`);
           // Optionally clear leader_id if GM character no longer linked to a user?
           // updatePayload.leader_id = null;
         }
       } catch (userLookupError) {
-        console.error(`[SyncService] Error looking up user for GM ${guildMasterMember.character.name}:`, userLookupError);
+        logger.error({ err: userLookupError, gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] Error looking up user for GM ${guildMasterMember.character.name}:`);
         // Decide if we should clear leader_id or leave it as is on error
       }
     } else {
-      console.log(`[SyncService] No Guild Master (rank 0) found in roster for ${guild.name}.`);
+      logger.info({ guildName: guild.name, guildId: guild.id }, `[SyncService] No Guild Master (rank 0) found in roster for ${guild.name}.`);
       // Optionally clear leader_id if no GM found?
       // updatePayload.leader_id = null;
     }
 
     await this.guildModel.update(guild.id, updatePayload);
-    console.log(`[SyncService] Updated core guild data for ${guild.name}.`);
+    logger.info({ guildName: guild.name, guildId: guild.id }, `[SyncService] Updated core guild data for ${guild.name}.`);
   }
 
 
@@ -95,7 +95,7 @@ export class BattleNetSyncService { // Added export keyword
    * Syncs basic data and roster for a single guild.
    */
   async syncGuild(guild: DbGuild): Promise<void> {
-    console.log(`[SyncService] Starting sync for guild: ${guild.name} (${guild.realm})`);
+    logger.info({ guildName: guild.name, realm: guild.realm, guildId: guild.id }, `[SyncService] Starting sync for guild: ${guild.name} (${guild.realm})`);
     try {
       // Token fetching is now handled within the apiClient methods
       // const token = await this.ensureClientToken(); // Removed
@@ -117,7 +117,7 @@ export class BattleNetSyncService { // Added export keyword
 
 
     } catch (error) {
-      console.error(`[SyncService] Error syncing guild ${guild.name} (ID: ${guild.id}):`, error);
+      logger.error({ err: error, guildId: guild.id, guildName: guild.name }, `[SyncService] Error syncing guild ${guild.name} (ID: ${guild.id}):`);
       // Optionally update guild record with error state/timestamp
     }
   }
@@ -212,7 +212,7 @@ export class BattleNetSyncService { // Added export keyword
    * Syncs the dedicated guild_members table based on roster data.
    */
   async syncGuildMembersTable(guildId: number, roster: BattleNetGuildRoster, region: BattleNetRegion): Promise<void> { // Added region parameter
-    console.log(`[SyncService] Syncing guild_members table for guild ID: ${guildId}. Roster size: ${roster.members.length}`);
+    logger.info({ guildId, rosterSize: roster.members.length }, `[SyncService] Syncing guild_members table for guild ID: ${guildId}. Roster size: ${roster.members.length}`);
     try {
       await withTransaction(async (client) => { // Use transaction helper
         // 1. Fetch existing members for the guild (including character_id for linking)
@@ -229,7 +229,7 @@ export class BattleNetSyncService { // Added export keyword
           const key = `${row.character_name?.toLowerCase()}-${row.realm?.toLowerCase()}`;
           existingMembersMap.set(key, { id: row.id, character_id: row.character_id, rank: row.rank });
         });
-        console.log(`[SyncService] Found ${existingMembersMap.size} existing members in DB for guild ${guildId}.`);
+        logger.info({ count: existingMembersMap.size, guildId }, `[SyncService] Found ${existingMembersMap.size} existing members in DB for guild ${guildId}.`);
 
         const rosterMembersMap = new Map<string, BattleNetGuildMember>();
         roster.members.forEach(member => {
@@ -273,7 +273,7 @@ export class BattleNetSyncService { // Added export keyword
           charactersToCreate
         } = this._compareGuildMembers(rosterMembersMap, existingMembersMap, existingCharacterMap, region); // Pass region
 
-        console.log(`[SyncService] Changes determined: Add ${membersToAdd.length + charactersToCreate.length}, Update ${membersToUpdate.length}, Remove ${memberIdsToRemove.length}`);
+        logger.info({ add: membersToAdd.length + charactersToCreate.length, update: membersToUpdate.length, remove: memberIdsToRemove.length, guildId }, `[SyncService] Changes determined: Add ${membersToAdd.length + charactersToCreate.length}, Update ${membersToUpdate.length}, Remove ${memberIdsToRemove.length}`);
 
         // 3. Create new character records if any
         const createdCharacterMap = new Map<string, number>();
@@ -282,9 +282,9 @@ export class BattleNetSyncService { // Added export keyword
                 const newChar = await this.characterModel.create(charData); // Use model's create
                 const key = `${newChar.name.toLowerCase()}-${newChar.realm.toLowerCase()}`;
                 createdCharacterMap.set(key, newChar.id);
-                console.log(`[SyncService] Created character ${newChar.name}-${newChar.realm} with ID ${newChar.id}`);
+                logger.info({ charName: newChar.name, realm: newChar.realm, charId: newChar.id }, `[SyncService] Created character ${newChar.name}-${newChar.realm} with ID ${newChar.id}`);
             } catch (createError) {
-                console.error(`[SyncService] Failed to create character record for ${charData.name}:`, createError);
+                logger.error({ err: createError, charName: charData.name }, `[SyncService] Failed to create character record for ${charData.name}:`);
             }
         }
 
@@ -310,7 +310,7 @@ export class BattleNetSyncService { // Added export keyword
             const rosterMember = rosterMembersMap.get(key);
 
             if (!characterId || !rosterMember) {
-                console.error(`[SyncService] Mismatch finding character/roster data for new member ${key}`);
+                logger.error({ key, guildId }, `[SyncService] Mismatch finding character/roster data for new member ${key}`);
                 continue; // Skip if data is inconsistent
             }
             newMembersData.push({
@@ -326,24 +326,26 @@ export class BattleNetSyncService { // Added export keyword
         // Perform bulk insert using the model method
         if (newMembersData.length > 0) {
           await this.guildMemberModel.bulkCreate(newMembersData, client);
-          console.log(`[SyncService] Attempted to bulk insert ${newMembersData.length} new members.`);
+          logger.info({ count: newMembersData.length, guildId }, `[SyncService] Attempted to bulk insert ${newMembersData.length} new members.`);
         }
 
         // 5. Update existing members using the model method
         if (membersToUpdate.length > 0) {
           await this.guildMemberModel.bulkUpdate(membersToUpdate, client);
-          console.log(`[SyncService] Attempted to bulk update ${membersToUpdate.length} existing members.`);
+          logger.info({ count: membersToUpdate.length, guildId }, `[SyncService] Attempted to bulk update ${membersToUpdate.length} existing members.`);
         }
 
         // 6. Remove members no longer in roster using the model method
         if (memberIdsToRemove.length > 0) {
           await this.guildMemberModel.bulkDelete(memberIdsToRemove, client);
-          console.log(`[SyncService] Attempted to bulk delete ${memberIdsToRemove.length} members.`);
+          logger.info({ count: memberIdsToRemove.length, guildId }, `[SyncService] Attempted to bulk delete ${memberIdsToRemove.length} members.`);
         }
 
-        console.log(`[SyncService] Finished syncing guild_members table for guild ID: ${guildId}.`);
+        logger.info({ guildId }, `[SyncService] Finished syncing guild_members table for guild ID: ${guildId}.`);
       }); // End transaction
     } catch (error) {
+      // Log the error before throwing the AppError
+      logger.error({ err: error, guildId }, `Error syncing guild members table for guild ${guildId}`);
       throw new AppError(`Error syncing guild members table for guild ${guildId}: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
@@ -363,7 +365,7 @@ export class BattleNetSyncService { // Added export keyword
    * @private
    */
   private async _syncGuildRanks(guildId: number, rosterData: BattleNetGuildRoster): Promise<void> {
-    console.log(`[SyncService] Syncing ranks for guild ID: ${guildId}`);
+    logger.info({ guildId }, `[SyncService] Syncing ranks for guild ID: ${guildId}`);
     try {
       // 1. Calculate rank counts from roster
       const rankCounts: { [key: number]: number } = {};
@@ -385,16 +387,16 @@ export class BattleNetSyncService { // Added export keyword
         // Create rank if it doesn't exist
         if (!rankRecord) {
           const defaultName = rankId === 0 ? "Guild Master" : `Rank ${rankId}`;
-          console.log(`[SyncService] Creating default rank entry for guild ${guildId}, rank ${rankId}`);
+          logger.info({ guildId, rankId }, `[SyncService] Creating default rank entry for guild ${guildId}, rank ${rankId}`);
           try {
             // Use setGuildRank which handles create/update (returns the created/updated rank)
             rankRecord = await this.rankModel.setGuildRank(guildId, rankId, defaultName);
             if (!rankRecord) {
-              console.error(`[SyncService] Failed to create or retrieve rank ${rankId} for guild ${guildId}. Skipping count update.`);
+              logger.error({ rankId, guildId }, `[SyncService] Failed to create or retrieve rank ${rankId} for guild ${guildId}. Skipping count update.`);
               continue; // Skip count update if creation failed
             }
           } catch (createError) {
-            console.error(`[SyncService] Error creating rank ${rankId} for guild ${guildId}:`, createError);
+            logger.error({ err: createError, rankId, guildId }, `[SyncService] Error creating rank ${rankId} for guild ${guildId}:`);
             continue; // Skip count update on error
           }
         }
@@ -405,23 +407,23 @@ export class BattleNetSyncService { // Added export keyword
           try {
             await this.rankModel.updateMemberCount(guildId, rankId, currentCount);
           } catch (updateError) {
-            console.error(`[SyncService] Error updating member count for rank ${rankId}, guild ${guildId}:`, updateError);
+            logger.error({ err: updateError, rankId, guildId }, `[SyncService] Error updating member count for rank ${rankId}, guild ${guildId}:`);
           }
         } else {
-           // console.log(`[SyncService] Rank ${rankId} count (${currentCount}) is already up-to-date.`);
+           // logger.debug({ rankId, count: currentCount, guildId }, `[SyncService] Rank ${rankId} count (${currentCount}) is already up-to-date.`);
         }
       }
 
       // Optionally: Handle ranks that exist in DB but not in roster (e.g., set count to 0?)
       // for (const existingRank of existingRanks) {
       //   if (!rosterRankIds.has(existingRank.rank_id) && existingRank.member_count !== 0) {
-      //     console.log(`[SyncService] Rank ${existingRank.rank_id} no longer in roster, setting count to 0.`);
+      //     logger.info({ rankId: existingRank.rank_id, guildId }, `[SyncService] Rank ${existingRank.rank_id} no longer in roster, setting count to 0.`);
       //     await this.rankModel.updateMemberCount(guildId, existingRank.rank_id, 0);
       //   }
       // }
 
     } catch (error) {
-      console.error(`[SyncService] Error syncing ranks for guild ${guildId}:`, error);
+      logger.error({ err: error, guildId }, `[SyncService] Error syncing ranks for guild ${guildId}:`);
     }
   }
 
@@ -449,11 +451,11 @@ export class BattleNetSyncService { // Added export keyword
         if (localGuild) {
           region = localGuild.region;
         } else {
-          console.warn(`[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id} (Character: ${character.name})`);
+          logger.warn({ bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id} (Character: ${character.name})`);
           region = character.region; // Fallback to existing character region
         }
       } catch (guildError) {
-        console.error(`[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id} (Character: ${character.name}):`, guildError);
+        logger.error({ err: guildError, bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id} (Character: ${character.name}):`);
         region = character.region; // Fallback to existing character region on error
       }
     } else {
@@ -480,11 +482,11 @@ export class BattleNetSyncService { // Added export keyword
 
 
   async syncCharacter(character: DbCharacter): Promise<void> {
-    console.log(`[SyncService] Starting sync for character: ${character.name} (${character.realm}) ID: ${character.id}`);
+    logger.info({ charName: character.name, realm: character.realm, charId: character.id }, `[SyncService] Starting sync for character: ${character.name} (${character.realm}) ID: ${character.id}`);
      try {
         // Ensure character region is defined before proceeding
         if (!character.region) {
-          console.warn(`[SyncService] Skipping character sync for ${character.name} (ID: ${character.id}) due to missing region.`);
+          logger.warn({ charName: character.name, charId: character.id }, `[SyncService] Skipping character sync for ${character.name} (ID: ${character.id}) due to missing region.`);
           return; // Cannot sync without region
         }
 
@@ -501,7 +503,7 @@ export class BattleNetSyncService { // Added export keyword
 
         // Check if enhancedData is null (meaning fetch failed, e.g., 404)
         if (enhancedData === null) {
-          console.log(`[SyncService] Skipping update for character ${character.name} (ID: ${character.id}) due to fetch failure.`);
+          logger.info({ charName: character.name, charId: character.id }, `[SyncService] Skipping update for character ${character.name} (ID: ${character.id}) due to fetch failure.`);
           // Optionally update last_synced_at with an error flag or just skip? Skipping for now.
           return; // Exit the syncCharacter function for this character
         }
@@ -511,10 +513,10 @@ export class BattleNetSyncService { // Added export keyword
 
         // Update character record in DB
         await this.characterModel.update(character.id, updatePayload);
-        console.log(`[SyncService] Successfully synced character ${character.name} (ID: ${character.id})`);
+        logger.info({ charName: character.name, charId: character.id }, `[SyncService] Successfully synced character ${character.name} (ID: ${character.id})`);
 
      } catch (error) {
-       console.error(`[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`, error);
+       logger.error({ err: error, charName: character.name, charId: character.id }, `[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`);
        // Optionally update character record with error state/timestamp
      }
   }
@@ -524,22 +526,22 @@ export class BattleNetSyncService { // Added export keyword
    */
   async runSync(): Promise<void> {
     if (this.isSyncing) {
-      console.log('[SyncService] Sync already in progress. Skipping.');
+      logger.info('[SyncService] Sync already in progress. Skipping.');
       return;
     }
 
-    console.log('[SyncService] Starting background sync run...');
+    logger.info('[SyncService] Starting background sync run...');
     this.isSyncing = true;
 
     try {
       // 1. Sync Guilds in parallel
       const outdatedGuilds = await this.guildModel.findOutdatedGuilds();
-      console.log(`[SyncService] Found ${outdatedGuilds.length} guilds to sync.`);
+      logger.info({ count: outdatedGuilds.length }, `[SyncService] Found ${outdatedGuilds.length} guilds to sync.`);
       if (outdatedGuilds.length > 0) {
         const guildSyncPromises = outdatedGuilds.map(guild =>
           this.syncGuild(guild).catch(error => {
             // Log individual guild sync errors but don't stop others
-            console.error(`[SyncService] Error syncing guild ${guild.id} (${guild.name}):`, error);
+            logger.error({ err: error, guildId: guild.id, guildName: guild.name }, `[SyncService] Error syncing guild ${guild.id} (${guild.name}):`);
             // Return an error object to be identifiable in results
             return { status: 'rejected', reason: error, guildId: guild.id };
           })
@@ -547,30 +549,30 @@ export class BattleNetSyncService { // Added export keyword
         const guildResults = await Promise.allSettled(guildSyncPromises);
         const guildsFulfilled = guildResults.filter(r => r.status === 'fulfilled').length;
         const guildsRejected = guildResults.length - guildsFulfilled;
-        console.log(`[SyncService] Guild sync results: ${guildsFulfilled} fulfilled, ${guildsRejected} rejected.`);
+        logger.info({ fulfilled: guildsFulfilled, rejected: guildsRejected }, `[SyncService] Guild sync results: ${guildsFulfilled} fulfilled, ${guildsRejected} rejected.`);
       }
 
       // 2. Sync Characters in parallel
       const outdatedCharacters = await this.characterModel.findOutdatedCharacters();
-      console.log(`[SyncService] Found ${outdatedCharacters.length} characters to sync.`);
+      logger.info({ count: outdatedCharacters.length }, `[SyncService] Found ${outdatedCharacters.length} characters to sync.`);
       if (outdatedCharacters.length > 0) {
         const characterSyncPromises = outdatedCharacters.map(character =>
           this.syncCharacter(character).catch(error => {
             // Log individual character sync errors
-            console.error(`[SyncService] Error syncing character ${character.id} (${character.name}):`, error);
+            logger.error({ err: error, charId: character.id, charName: character.name }, `[SyncService] Error syncing character ${character.id} (${character.name}):`);
             return { status: 'rejected', reason: error, characterId: character.id };
           })
         );
         const characterResults = await Promise.allSettled(characterSyncPromises);
         const charsFulfilled = characterResults.filter(r => r.status === 'fulfilled').length;
         const charsRejected = characterResults.length - charsFulfilled;
-        console.log(`[SyncService] Character sync results: ${charsFulfilled} fulfilled, ${charsRejected} rejected.`);
+        logger.info({ fulfilled: charsFulfilled, rejected: charsRejected }, `[SyncService] Character sync results: ${charsFulfilled} fulfilled, ${charsRejected} rejected.`);
       }
 
-      console.log('[SyncService] Background sync run finished processing guilds and characters.');
+      logger.info('[SyncService] Background sync run finished processing guilds and characters.');
 
     } catch (error) {
-      console.error('[SyncService] Error during sync run:', error);
+      logger.error({ err: error }, '[SyncService] Error during sync run:');
     } finally {
       this.isSyncing = false;
     }

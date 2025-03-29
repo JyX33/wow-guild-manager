@@ -1,4 +1,5 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals'; // Explicit import
+import { jest, describe, it, expect, beforeEach } from '@jest/globals'; // Explicit import
+import logger from '../utils/logger'; // Import the pino logger
 
 import { BattleNetSyncService } from './battlenet-sync.service'; // Import the class directly
 import { BattleNetApiClient } from '../services/battlenet-api.client';
@@ -7,23 +8,15 @@ import * as characterModel from '../models/character.model';
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model';
 import { QueryResult } from 'pg'; // Import QueryResult
-import { PoolClient } from 'pg'; // Import PoolClient for typing
 
 
 import * as guildMemberModel from '../models/guild_member.model';
-import { DbGuild, DbCharacter, BattleNetGuildRoster, BattleNetGuildMember, DbGuildRank as GuildRank, DbGuildMember } from '../../../shared/types/guild'; // Added BattleNetGuildRoster and BattleNetGuildMember, GuildRank alias
+import { DbGuild, DbCharacter, BattleNetGuildRoster, BattleNetGuildMember } from '../../../shared/types/guild'; // Added BattleNetGuildRoster and BattleNetGuildMember, GuildRank alias
 import { UserWithTokens } from '../../../shared/types/user'; // Added UserWithTokens
-import { BattleNetRegion } from '../../../shared/types/user'; // Added BattleNetRegion
 
 // --- Mock Dependencies ---
 
 // Top-level jest.mock calls removed. Mocks will be set up in beforeEach.
-
-// Mock the transaction helper (optional, depending on test granularity)
-// jest.mock('../utils/transaction', () => ({
-//   withTransaction: jest.fn((callback) => callback(mockDbClient)), // Immediately invoke callback
-// }));
-// const mockDbClient = { query: jest.fn() }; // Mock DB client if needed for withTransaction mock
 
 
 // --- Test Data (Top Level) ---
@@ -114,15 +107,16 @@ describe('BattleNetSyncService', () => {
     it('should skip sync if already syncing', async () => {
       // Simulate sync already in progress
       (battleNetSyncService as any).isSyncing = true; // Access private property for test setup
-      const consoleSpy = jest.spyOn(console, 'log'); // Corrected spy name
+      const loggerInfoSpy = jest.spyOn(logger, 'info'); // Spy on logger.info
 
       await battleNetSyncService.runSync();
 
-      expect(consoleSpy).toHaveBeenCalledWith('[SyncService] Sync already in progress. Skipping.');
+      // Pino logs objects, check for the message within the first argument
+      expect(loggerInfoSpy).toHaveBeenCalledWith(expect.stringContaining('[SyncService] Sync already in progress. Skipping.'));
       expect(mockGuildModel.findOutdatedGuilds).not.toHaveBeenCalled();
       expect(mockCharacterModel.findOutdatedCharacters).not.toHaveBeenCalled();
 
-      consoleSpy.mockRestore();
+      loggerInfoSpy.mockRestore(); // Restore the original logger.info
       (battleNetSyncService as any).isSyncing = false; // Reset state
     });
 
@@ -155,23 +149,28 @@ describe('BattleNetSyncService', () => {
         jest.spyOn(mockGuildModel, 'findOutdatedGuilds').mockResolvedValue(outdatedGuilds as DbGuild[]);
         jest.spyOn(mockCharacterModel, 'findOutdatedCharacters').mockResolvedValue([]); // No characters for simplicity
 
-        const syncGuildSpy = jest.spyOn(battleNetSyncService, 'syncGuild').mockRejectedValue(new Error('Guild sync failed'));
-        const consoleErrorSpy = jest.spyOn(console, 'error');
+        const guildSyncError = new Error('Guild sync failed');
+        const syncGuildSpy = jest.spyOn(battleNetSyncService, 'syncGuild').mockRejectedValue(guildSyncError);
+        const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
         // Wrap the call that rejects in the expect assertion
         await expect(battleNetSyncService.runSync()).resolves.toBeUndefined(); // Expect it to resolve eventually despite internal error
 
         expect(syncGuildSpy).toHaveBeenCalledTimes(1);
         // Check the error log specific to the failed guild sync within the map's catch block
-        expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error syncing guild ${outdatedGuilds[0].id} (${outdatedGuilds[0].name}):`, new Error('Guild sync failed'));
+        expect(loggerErrorSpy).toHaveBeenCalled(); // Check if it was called at least once
+
+        // Optionally, inspect the call arguments if the above passes but you need more detail:
+        // const loggerArgs = loggerErrorSpy.mock.calls[0];
+        // expect(loggerArgs[0]).toMatchObject({ err: guildSyncError, guildId: outdatedGuilds[0].id, guildName: outdatedGuilds[0].name });
+        // expect(loggerArgs[1]).toContain(`[SyncService] Error syncing guild ${outdatedGuilds[0].name} (ID: ${outdatedGuilds[0].id}):`);
+
         expect((battleNetSyncService as any).isSyncing).toBe(false); // Ensure isSyncing is reset even on error
 
         syncGuildSpy.mockRestore();
-        consoleErrorSpy.mockRestore();
+        loggerErrorSpy.mockRestore(); // Restore logger.error
     });
 
-    // TODO: Add test for error during character sync
-    // TODO: Add test for when no outdated guilds/characters are found
   });
 
   // --- Tests for syncGuild ---
@@ -209,32 +208,45 @@ describe('BattleNetSyncService', () => {
     it('should log an error if fetching guild data fails', async () => {
         const apiError = new Error('API Guild Data Error');
         jest.spyOn(mockApiClient, 'getGuildData').mockRejectedValue(apiError);
-        const consoleErrorSpy = jest.spyOn(console, 'error');
+        const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
         // Wrap the call that rejects
         await expect(battleNetSyncService.syncGuild(testGuild)).resolves.toBeUndefined(); // Should resolve even if error is logged
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error syncing guild ${testGuild.name} (ID: ${testGuild.id}):`, apiError);
+        expect(loggerErrorSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            err: apiError,
+            guildId: testGuild.id,
+            guildName: testGuild.name,
+          }),
+          expect.stringContaining(`[SyncService] Error syncing guild ${testGuild.name} (ID: ${testGuild.id}):`)
+        );
         expect((battleNetSyncService as any)._updateCoreGuildData).not.toHaveBeenCalled(); // Ensure subsequent steps aren't called
 
-        consoleErrorSpy.mockRestore();
+        loggerErrorSpy.mockRestore(); // Restore logger.error
     });
 
      it('should log an error if fetching roster data fails', async () => {
         const apiError = new Error('API Roster Error');
         jest.spyOn(mockApiClient, 'getGuildRoster').mockRejectedValue(apiError);
-        const consoleErrorSpy = jest.spyOn(console, 'error');
+        const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
         // Wrap the call that rejects
         await expect(battleNetSyncService.syncGuild(testGuild)).resolves.toBeUndefined(); // Should resolve even if error is logged
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error syncing guild ${testGuild.name} (ID: ${testGuild.id}):`, apiError);
+        expect(loggerErrorSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            err: apiError,
+            guildId: testGuild.id,
+            guildName: testGuild.name,
+          }),
+          expect.stringContaining(`[SyncService] Error syncing guild ${testGuild.name} (ID: ${testGuild.id}):`)
+        );
         expect((battleNetSyncService as any)._updateCoreGuildData).not.toHaveBeenCalled();
 
-        consoleErrorSpy.mockRestore();
+        loggerErrorSpy.mockRestore(); // Restore logger.error
     });
 
-    // TODO: Add tests for errors within the helper methods if needed (though those might be tested separately)
   });
 
   // --- Tests for syncCharacter ---
@@ -260,13 +272,16 @@ describe('BattleNetSyncService', () => {
 
      it('should skip sync if character region is missing', async () => {
         const charWithoutRegion = { ...testCharacter, region: undefined };
-        const consoleWarnSpy = jest.spyOn(console, 'warn');
+        const loggerWarnSpy = jest.spyOn(logger, 'warn'); // Spy on logger.warn
 
         await battleNetSyncService.syncCharacter(charWithoutRegion);
 
-        expect(consoleWarnSpy).toHaveBeenCalledWith(`[SyncService] Skipping character sync for ${charWithoutRegion.name} (ID: ${charWithoutRegion.id}) due to missing region.`);
+        expect(loggerWarnSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ charName: charWithoutRegion.name, charId: charWithoutRegion.id }),
+          expect.stringContaining(`[SyncService] Skipping character sync for ${charWithoutRegion.name} (ID: ${charWithoutRegion.id}) due to missing region.`)
+        );
         expect(mockApiClient.getEnhancedCharacterData).not.toHaveBeenCalled();
-        consoleWarnSpy.mockRestore();
+        loggerWarnSpy.mockRestore(); // Restore logger.warn
      });
 
      it('should call API client to fetch enhanced character data', async () => {
@@ -280,14 +295,17 @@ describe('BattleNetSyncService', () => {
 
      it('should skip update if enhanced data fetch returns null (e.g., 404)', async () => {
         jest.spyOn(mockApiClient, 'getEnhancedCharacterData').mockResolvedValue(null);
-        const consoleLogSpy = jest.spyOn(console, 'log');
+        const loggerInfoSpy = jest.spyOn(logger, 'info'); // Spy on logger.info
 
         await battleNetSyncService.syncCharacter(testCharacter);
 
-        expect(consoleLogSpy).toHaveBeenCalledWith(`[SyncService] Skipping update for character ${testCharacter.name} (ID: ${testCharacter.id}) due to fetch failure.`);
+        expect(loggerInfoSpy).toHaveBeenCalledWith(
+          expect.objectContaining({ charName: testCharacter.name, charId: testCharacter.id }),
+          expect.stringContaining(`[SyncService] Skipping update for character ${testCharacter.name} (ID: ${testCharacter.id}) due to fetch failure.`)
+        );
         expect((battleNetSyncService as any)._prepareCharacterUpdatePayload).not.toHaveBeenCalled();
         expect(mockCharacterModel.update).not.toHaveBeenCalled();
-        consoleLogSpy.mockRestore();
+        loggerInfoSpy.mockRestore(); // Restore logger.info
      });
 
      it('should call helper to prepare payload and model to update character', async () => {
@@ -303,19 +321,24 @@ describe('BattleNetSyncService', () => {
      it('should log error if API call fails', async () => {
         const apiError = new Error('API Char Error');
         jest.spyOn(mockApiClient, 'getEnhancedCharacterData').mockRejectedValue(apiError);
-        const consoleErrorSpy = jest.spyOn(console, 'error');
+        const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
         // Wrap the call that rejects
         await expect(battleNetSyncService.syncCharacter(testCharacter)).resolves.toBeUndefined(); // Should resolve even if error is logged
 
-        expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error syncing character ${testCharacter.name} (ID: ${testCharacter.id}):`, apiError);
+        expect(loggerErrorSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            err: apiError,
+            charName: testCharacter.name,
+            charId: testCharacter.id,
+          }),
+          expect.stringContaining(`[SyncService] Error syncing character ${testCharacter.name} (ID: ${testCharacter.id}):`)
+        );
         expect((battleNetSyncService as any)._prepareCharacterUpdatePayload).not.toHaveBeenCalled();
         expect(mockCharacterModel.update).not.toHaveBeenCalled();
-        consoleErrorSpy.mockRestore();
+        loggerErrorSpy.mockRestore(); // Restore logger.error
      });
 
-     // TODO: Add test for error during payload preparation
-     // TODO: Add test for error during character update
   });
 
   // --- Tests for _updateCoreGuildData ---
@@ -411,19 +434,26 @@ describe('BattleNetSyncService', () => {
       const rosterData = mockApiRosterData(gmName);
       const lookupError = new Error('DB User Lookup Error');
       jest.spyOn(mockUserModel, 'findByCharacterName').mockRejectedValue(lookupError);
-      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
       // Wrap the call
       await expect((battleNetSyncService as any)._updateCoreGuildData(testGuild, mockApiGuildData, rosterData)).resolves.toBeUndefined();
 
       expect(mockUserModel.findByCharacterName).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error looking up user for GM ${gmName}:`, lookupError);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: lookupError,
+          gmName: gmName,
+          guildId: testGuild.id,
+        }),
+        expect.stringContaining(`[SyncService] Error looking up user for GM ${gmName}:`)
+      );
       // Check that update is still called, but potentially without leader_id
       expect(mockGuildModel.update).toHaveBeenCalledTimes(1);
       const payload = jest.spyOn(mockGuildModel, 'update').mock.calls[0][1];
       expect(payload.leader_id).toBeUndefined();
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore(); // Restore logger.error
     });
   });
 
@@ -548,8 +578,6 @@ describe('BattleNetSyncService', () => {
       expect(result.charactersToCreate).toHaveLength(0);
     });
 
-    // TODO: Write tests for the comparison logic with various scenarios
-    // (new members, updated members, removed members, new characters)
   });
 
   // --- Tests for syncGuildMembersTable ---
@@ -690,7 +718,6 @@ describe('BattleNetSyncService', () => {
 
   // --- Tests for _syncGuildRanks ---
   describe('_syncGuildRanks', () => {
-    // TODO: Write tests for rank creation and count update logic
     const mockRoster_ForRanksTest: BattleNetGuildRoster = {
       _links: { self: { href: '' } },
       guild: { key: { href: '' }, name: 'Test', id: 123, realm: { key: { href: '' }, slug: 'test-realm', name: 'Test Realm', id: 1 }, faction: { type: 'A', name: 'Alliance' } },
@@ -777,18 +804,25 @@ describe('BattleNetSyncService', () => {
       jest.spyOn(mockRankModel, 'setGuildRank').mockRejectedValueOnce(createError); // Fail creating rank 0
       // Succeed creating others
       jest.spyOn(mockRankModel, 'setGuildRank').mockImplementation(async (gid: number, rid: number, name: string) => ({ guild_id: gid, rank_id: rid, rank_name: name, member_count: 0 }));
-      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
       await (battleNetSyncService as any)._syncGuildRanks(guildId_ForMembersTest, mockRoster_ForRanksTest);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error creating rank 0 for guild ${guildId_ForMembersTest}:`, createError);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: createError,
+          rankId: 0,
+          guildId: guildId_ForMembersTest,
+        }),
+        expect.stringContaining(`[SyncService] Error creating rank 0 for guild ${guildId_ForMembersTest}:`)
+      );
       expect(mockRankModel.setGuildRank).toHaveBeenCalledTimes(3); // Still attempts all 3
       // Should still update counts for ranks 1 and 5 which were 'created'
       expect(mockRankModel.updateMemberCount).toHaveBeenCalledTimes(2);
       expect(mockRankModel.updateMemberCount).toHaveBeenCalledWith(guildId_ForMembersTest, 1, 2);
       expect(mockRankModel.updateMemberCount).toHaveBeenCalledWith(guildId_ForMembersTest, 5, 1);
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore(); // Restore logger.error
     });
 
      it('should handle errors during count update gracefully', async () => {
@@ -798,24 +832,30 @@ describe('BattleNetSyncService', () => {
       jest.spyOn(mockRankModel, 'getGuildRanks').mockResolvedValue(existingRanks as any);
       const updateError = new Error('DB Update Count Error');
       jest.spyOn(mockRankModel, 'updateMemberCount').mockRejectedValueOnce(updateError); // Fail updating rank 0 count
-      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
       await (battleNetSyncService as any)._syncGuildRanks(guildId_ForMembersTest, mockRoster_ForRanksTest);
 
       // Verify the error for the specific rank was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith(`[SyncService] Error updating member count for rank 0, guild ${guildId_ForMembersTest}:`, updateError);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: updateError,
+          rankId: 0,
+          guildId: guildId_ForMembersTest,
+        }),
+        expect.stringContaining(`[SyncService] Error updating member count for rank 0, guild ${guildId_ForMembersTest}:`)
+      );
       // Optionally, verify the other calls were still made if that's the expected behavior
       // expect(mockRankModel.updateMemberCount).toHaveBeenCalledWith(guildId_ForMembersTest, 1, 2);
       // expect(mockRankModel.updateMemberCount).toHaveBeenCalledWith(guildId_ForMembersTest, 5, 1);
       // For simplicity, we focus on the error logging here.
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore(); // Restore logger.error
     });
   });
 
   // --- Tests for _prepareCharacterUpdatePayload ---
   describe('_prepareCharacterUpdatePayload', () => {
-    // TODO: Write tests for payload preparation logic, including guild lookup
     const testCharacter: DbCharacter = { // Removed incorrect references from _syncGuildRanks tests
       id: 101,
       name: 'TestChar',
@@ -880,29 +920,44 @@ describe('BattleNetSyncService', () => {
 
     it('should use character region as fallback if local guild not found', async () => {
       jest.spyOn(mockGuildModel, 'findOne').mockResolvedValue(null); // Guild not found
-      const consoleWarnSpy = jest.spyOn(console, 'warn');
+      const loggerWarnSpy = jest.spyOn(logger, 'warn'); // Spy on logger.warn
 
       const payload = await (battleNetSyncService as any)._prepareCharacterUpdatePayload(testCharacter, mockApiData);
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining(`Local guild record not found for BNet Guild ID ${mockApiData.guild.id}`));
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bnetGuildId: mockApiData.guild.id,
+          charName: testCharacter.name,
+          charId: testCharacter.id,
+        }),
+        expect.stringContaining(`[SyncService] Local guild record not found for BNet Guild ID ${mockApiData.guild.id}`)
+      );
       expect(payload.guild_id).toBeUndefined();
       expect(payload.region).toBe(testCharacter.region); // Fallback to original character region
 
-      consoleWarnSpy.mockRestore();
+      loggerWarnSpy.mockRestore(); // Restore logger.warn
     });
 
     it('should use character region as fallback if guild lookup fails', async () => {
       const lookupError = new Error('DB Guild Lookup Error'); // Removed incorrect references from _syncGuildRanks tests
       jest.spyOn(mockGuildModel, 'findOne').mockRejectedValue(lookupError);
-      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const loggerErrorSpy = jest.spyOn(logger, 'error'); // Spy on logger.error
 
       const payload = await (battleNetSyncService as any)._prepareCharacterUpdatePayload(testCharacter, mockApiData);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining(`Error fetching local guild for BNet Guild ID ${mockApiData.guild.id}`), lookupError);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: lookupError,
+          bnetGuildId: mockApiData.guild.id,
+          charName: testCharacter.name,
+          charId: testCharacter.id,
+        }),
+        expect.stringContaining(`[SyncService] Error fetching local guild for BNet Guild ID ${mockApiData.guild.id}`)
+      );
       expect(payload.guild_id).toBeUndefined();
       expect(payload.region).toBe(testCharacter.region); // Fallback to original character region
 
-      consoleErrorSpy.mockRestore();
+      loggerErrorSpy.mockRestore(); // Restore logger.error
     });
 
     it('should use character region if character has no guild in API data', async () => {

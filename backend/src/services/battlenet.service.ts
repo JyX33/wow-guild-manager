@@ -1,9 +1,9 @@
 import axios from 'axios';
 import PQueue from 'p-queue';
 import { BattleNetUserProfile, BattleNetRegion, BattleNetWoWProfile } from '../../../shared/types/user';
-import { 
-  BattleNetGuild, 
-  BattleNetGuildRoster, 
+import {
+  BattleNetGuild,
+  BattleNetGuildRoster,
   BattleNetCharacter,
   BattleNetCharacterEquipment,
   BattleNetMythicKeystoneProfile,
@@ -12,6 +12,7 @@ import {
 import { TokenResponse } from '../../../shared/types/auth'; // Added import
 import config from '../config';
 import { AppError } from '../utils/error-handler';
+import logger from '../utils/logger'; // Import the logger
 
 class RateLimitRetryError extends Error {
   constructor() {
@@ -62,8 +63,9 @@ class BattleNetService {
       }, 60000);
     });
 
-    this.rateLimiter.on('error', () => {
+    this.rateLimiter.on('error', (error) => { // Added error parameter
       this.metrics.errorCount++;
+      logger.error({ err: error }, '[BattleNetService] Rate limiter error event.'); // Log limiter errors
     });
   }
 
@@ -75,6 +77,7 @@ class BattleNetService {
       } catch (error) {
         if (axios.isAxiosError(error) && error.response?.status === 429) {
           const retryAfter = parseInt(error.response.headers['retry-after'] || '1000', 10);
+          logger.warn({ retryAfter, url: error.config?.url }, `[BattleNetService] Rate limit hit (429). Retrying after ${retryAfter}ms.`);
           await new Promise(resolve => setTimeout(resolve, retryAfter));
           throw new RateLimitRetryError();
         }
@@ -86,6 +89,9 @@ class BattleNetService {
       return await this.rateLimiter.add(executeOperation) as Promise<T>;
     } catch (error) {
       if (error instanceof RateLimitRetryError) {
+        // This path should ideally not be hit frequently if retry logic above works,
+        // but log it if it does occur.
+        logger.warn('[BattleNetService] Retrying operation after RateLimitRetryError.');
         return this.rateLimit(operation);
       }
       throw error;
@@ -96,8 +102,9 @@ class BattleNetService {
     if (region in config.battlenet.regions) {
       return region as BattleNetRegion;
     }
+    logger.warn({ providedRegion: region, fallbackRegion: 'eu' }, '[BattleNetService] Invalid region provided, falling back to EU.');
     return 'eu';
-  }  
+  }
 
   async getWowCharacter(region: string, realm: string, character: string, accessToken: string): Promise<BattleNetCharacter> {
     try {
@@ -105,8 +112,9 @@ class BattleNetService {
       const regionConfig = config.battlenet.regions[validRegion];
       const realmSlug = realm.toLowerCase();
       const normalizedCharacter = character.toLowerCase();
-      console.log('Fetching character data for:', { region, realm, character, accessToken, realmSlug, normalizedCharacter });
-      const response = await axios.get(`${regionConfig.apiBaseUrl}/profile/wow/character/${realmSlug}/${encodeURIComponent(normalizedCharacter)}`, {
+      const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${realmSlug}/${encodeURIComponent(normalizedCharacter)}`;
+      logger.debug({ region: validRegion, realmSlug, character: normalizedCharacter, url }, '[BattleNetService] Fetching character data.');
+      const response = await axios.get(url, {
         params: {
           namespace: `profile-${validRegion}`,
           locale: 'en_US'
@@ -115,15 +123,17 @@ class BattleNetService {
           Authorization: `Bearer ${accessToken}`
         }
       });
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, character, realm, region }, `[BattleNetService] WoW character profile error`);
         throw new AppError(
           `Battle.net WoW profile error: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, character, realm, region }, `[BattleNetService] WoW character profile error (non-Axios)`);
       throw new AppError(`Battle.net WoW profile error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
@@ -132,8 +142,10 @@ class BattleNetService {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
-      
-      const response = await axios.get(`${regionConfig.apiBaseUrl}/profile/user/wow`, {
+      const url = `${regionConfig.apiBaseUrl}/profile/user/wow`;
+      logger.debug({ region: validRegion, url }, '[BattleNetService] Fetching WoW profile.');
+
+      const response = await axios.get(url, {
         params: {
           namespace: `profile-${validRegion}`,
           locale: 'en_US'
@@ -142,15 +154,17 @@ class BattleNetService {
           Authorization: `Bearer ${accessToken}`
         }
       });
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, region }, `[BattleNetService] WoW profile error`);
         throw new AppError(
           `Battle.net WoW profile error: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, region }, `[BattleNetService] WoW profile error (non-Axios)`);
       throw new AppError(`Battle.net WoW profile error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
@@ -163,9 +177,11 @@ class BattleNetService {
       // Get connected realm ID first
       const realmSlug = realm.toLowerCase();
       const normalizedGuildName = guildName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-      
+      const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${encodeURIComponent(normalizedGuildName)}/roster`;
+      logger.debug({ region: validRegion, realmSlug, guildName: normalizedGuildName, url }, '[BattleNetService] Fetching guild roster.');
+
       const response = await axios.get(
-        `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${encodeURIComponent(normalizedGuildName)}/roster`,
+        url,
         {
           params: {
             namespace: `profile-${validRegion}`,
@@ -176,33 +192,37 @@ class BattleNetService {
           }
         }
       );
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, guildName, realm, region }, `[BattleNetService] Guild roster error`);
         throw new AppError(
           `Battle.net guild roster error: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, guildName, realm, region }, `[BattleNetService] Guild roster error (non-Axios)`);
       throw new AppError(`Battle.net guild roster error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
-  
+
   // Keeping this method for backward compatibility
   async getGuildMembers(region: string, realm: string, guildName: string, accessToken: string) {
+    logger.warn({ region, realm, guildName }, '[BattleNetService] getGuildMembers called (deprecated, use getGuildRoster)');
     return this.getGuildRoster(region, realm, guildName, accessToken);
   }
 
   async getGuildData(realm: string, guildName: string, accessToken: string, region: string = 'eu'): Promise<BattleNetGuild> {
     try {
       const validRegion = this.validateRegion(region);
-      const regionConfig = config.battlenet.regions[validRegion];      
-    
+      const regionConfig = config.battlenet.regions[validRegion];
+
       const normalizedGuildName = guildName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-      console.log('Fetching guild data for:', { region, realm, guildName, accessToken, normalizedGuildName });
+      const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realm.toLowerCase()}/${encodeURIComponent(normalizedGuildName)}`;
+      logger.debug({ region: validRegion, realm: realm.toLowerCase(), guildName: normalizedGuildName, url }, '[BattleNetService] Fetching guild data.');
       const response = await axios.get(
-        `${regionConfig.apiBaseUrl}/data/wow/guild/${realm.toLowerCase()}/${encodeURIComponent(normalizedGuildName)}`,
+        url,
         {
           params: {
             namespace: `profile-${validRegion}`,
@@ -213,15 +233,17 @@ class BattleNetService {
           }
         }
       );
-      
+
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, guildName, realm, region }, `[BattleNetService] Guild data error`);
         throw new AppError(
           `Failed to fetch guild data: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, guildName, realm, region }, `[BattleNetService] Guild data error (non-Axios)`);
       throw new AppError(
         `Failed to fetch guild data: ${error instanceof Error ? error.message : String(error)}`,
         500,
@@ -244,12 +266,15 @@ class BattleNetService {
       const regionConfig = config.battlenet.regions[validRegion];
       const normalizedRealm = realm.toLowerCase();
       const normalizedCharacter = characterName.toLowerCase();
+      logger.debug({ region: validRegion, realm: normalizedRealm, character: normalizedCharacter }, '[BattleNetService] Fetching enhanced character data.');
 
       const [profile, equipment, mythicKeystone, professions] = await Promise.all([
         // Get character profile
         this.rateLimit(async () => {
+          const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}`;
+          logger.debug({ url, subCall: 'profile' }, '[BattleNetService] Fetching sub-data: profile');
           const response = await axios.get(
-            `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}`,
+            url,
             {
               params: {
                 namespace: `profile-${validRegion}`,
@@ -265,8 +290,10 @@ class BattleNetService {
 
         // Get equipment data
         this.rateLimit(async () => {
+          const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/equipment`;
+          logger.debug({ url, subCall: 'equipment' }, '[BattleNetService] Fetching sub-data: equipment');
           const response = await axios.get(
-            `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/equipment`,
+            url,
             {
               params: {
                 namespace: `profile-${validRegion}`,
@@ -282,9 +309,11 @@ class BattleNetService {
 
         // Get mythic keystone profile
         this.rateLimit(async () => {
+          const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/mythic-keystone-profile`;
+          logger.debug({ url, subCall: 'mythicKeystone' }, '[BattleNetService] Fetching sub-data: mythicKeystone');
           try {
             const response = await axios.get(
-              `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/mythic-keystone-profile`,
+              url,
               {
                 params: {
                   namespace: `profile-${validRegion}`,
@@ -296,16 +325,24 @@ class BattleNetService {
               }
             );
             return response.data;
-          } catch {
+          } catch (mythicError) {
+            // Log M+ profile fetch errors specifically if needed, but return null
+            if (axios.isAxiosError(mythicError) && mythicError.response?.status !== 404) {
+               logger.warn({ err: mythicError, status: mythicError.response?.status, character: normalizedCharacter, realm: normalizedRealm }, '[BattleNetService] Error fetching mythic keystone profile (non-404), returning null.');
+            } else if (!axios.isAxiosError(mythicError)) {
+               logger.warn({ err: mythicError, character: normalizedCharacter, realm: normalizedRealm }, '[BattleNetService] Non-Axios error fetching mythic keystone profile, returning null.');
+            }
             return null;
           }
         }),
 
         // Get character professions
         this.rateLimit(async () => {
+          const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/professions`;
+          logger.debug({ url, subCall: 'professions' }, '[BattleNetService] Fetching sub-data: professions');
           try {
             const response = await axios.get(
-              `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(normalizedRealm)}/${encodeURIComponent(normalizedCharacter)}/professions`,
+              url,
               {
                 params: {
                   namespace: `profile-${validRegion}`,
@@ -317,7 +354,13 @@ class BattleNetService {
               }
             );
             return response.data;
-          } catch {
+          } catch (profError) {
+             // Log profession fetch errors specifically if needed, but return empty
+             if (axios.isAxiosError(profError) && profError.response?.status !== 404) {
+               logger.warn({ err: profError, status: profError.response?.status, character: normalizedCharacter, realm: normalizedRealm }, '[BattleNetService] Error fetching professions (non-404), returning empty.');
+            } else if (!axios.isAxiosError(profError)) {
+               logger.warn({ err: profError, character: normalizedCharacter, realm: normalizedRealm }, '[BattleNetService] Non-Axios error fetching professions, returning empty.');
+            }
             return { primaries: [] };
           }
         })
@@ -332,17 +375,17 @@ class BattleNetService {
         professions: professions.primaries || []
       };
     } catch (error) {
-      // Check if it's a 404 error specifically
+      // Check if it's a 404 error specifically (likely from the main profile call)
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         // Log a warning instead of throwing an error for 404s (character likely inactive/not found)
-        // Use function parameters characterName and realm here
-        console.warn(`[BattleNetService] Character ${characterName} on ${realm} not found (404). Skipping enhanced data fetch.`);
+        logger.warn({ characterName, realm, region, status: 404 }, `[BattleNetService] Character ${characterName} on ${realm} not found (404). Skipping enhanced data fetch.`);
         // Return null to indicate failure without stopping the whole sync
         return null;
       }
 
       // Handle other Axios errors
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, characterName, realm, region }, `[BattleNetService] Enhanced character data error`);
         throw new AppError(
           `Failed to fetch enhanced character data for ${characterName} on ${realm}: ${error.response?.data?.detail || error.message}`,
           error.response?.status || 500
@@ -350,6 +393,7 @@ class BattleNetService {
       }
 
       // Handle non-Axios errors
+      logger.error({ err: error, characterName, realm, region }, `[BattleNetService] Enhanced character data error (non-Axios)`);
       throw new AppError(
         `Failed to fetch enhanced character data for ${characterName} on ${realm}: ${error instanceof Error ? error.message : String(error)}`,
         500,
@@ -363,13 +407,16 @@ class BattleNetService {
 
   async validateToken(accessToken: string): Promise<boolean> {
     try {
+      logger.debug('[BattleNetService] Validating token.');
       await axios.get('https://oauth.battle.net/oauth/check_token', {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
       });
+      logger.info('[BattleNetService] Token validation successful.');
       return true;
     } catch (error) {
+      logger.warn({ err: error }, '[BattleNetService] Token validation failed.');
       return false;
     }
   }
@@ -380,9 +427,10 @@ class BattleNetService {
   async getAuthorizationUrl(region: string, state: string): Promise<string> {
     const validRegion = this.validateRegion(region);
     const regionConfig = config.battlenet.regions[validRegion];
-    
+    logger.debug({ region: validRegion, state }, '[BattleNetService] Generating authorization URL.');
+
     // Generate URL with OAuth parameters
-    return `${regionConfig.authBaseUrl}/authorize?` + 
+    return `${regionConfig.authBaseUrl}/authorize?` +
       `client_id=${encodeURIComponent(config.battlenet.clientId)}` +
       `&scope=${encodeURIComponent('wow.profile')}` +
       `&state=${encodeURIComponent(state)}` +
@@ -397,7 +445,8 @@ class BattleNetService {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
-      
+      logger.debug({ region: validRegion }, '[BattleNetService] Exchanging authorization code for access token.');
+
       const response = await axios.post<TokenResponse>(
         `${regionConfig.authBaseUrl}/token`,
         new URLSearchParams({
@@ -415,15 +464,17 @@ class BattleNetService {
           }
         }
       );
-      
+      logger.info({ region: validRegion }, '[BattleNetService] Access token obtained successfully.');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, region }, `[BattleNetService] Access token exchange error`);
         throw new AppError(
           `Battle.net token error: ${error.response?.data?.error_description || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, region }, `[BattleNetService] Access token exchange error (non-Axios)`);
       throw new AppError(`Battle.net token error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
@@ -435,7 +486,8 @@ class BattleNetService {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
-      
+      logger.debug({ region: validRegion }, '[BattleNetService] Refreshing access token.');
+
       const response = await axios.post<TokenResponse>(
         `${regionConfig.authBaseUrl}/token`,
         new URLSearchParams({
@@ -452,15 +504,17 @@ class BattleNetService {
           }
         }
       );
-      
+      logger.info({ region: validRegion }, '[BattleNetService] Access token refreshed successfully.');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, region }, `[BattleNetService] Token refresh error`);
         throw new AppError(
           `Battle.net token refresh error: ${error.response?.data?.error_description || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, region }, `[BattleNetService] Token refresh error (non-Axios)`);
       throw new AppError(`Battle.net token refresh error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
@@ -469,21 +523,25 @@ class BattleNetService {
    * Get user information from Battle.net
    */
   async getUserInfo(_region: string, accessToken: string): Promise<BattleNetUserProfile> {
+    // Region is not needed for userinfo endpoint
     try {
+      logger.debug('[BattleNetService] Fetching user info.');
       const response = await axios.get<BattleNetUserProfile>('https://oauth.battle.net/userinfo', {
         headers: {
           Authorization: `Bearer ${accessToken}`
         }
       });
-      
+      logger.info({ battletag: response.data.battletag, userId: response.data.id }, '[BattleNetService] User info fetched successfully.');
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data }, `[BattleNetService] User info error`);
         throw new AppError(
           `Battle.net user info error: ${error.response?.data?.error_description || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error }, `[BattleNetService] User info error (non-Axios)`);
       throw new AppError(`Battle.net user info error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
@@ -497,6 +555,7 @@ class BattleNetService {
     try {
       const validRegion = this.validateRegion(region);
       const regionConfig = config.battlenet.regions[validRegion];
+      logger.debug({ region: validRegion }, '[BattleNetService] Obtaining client credentials token.');
 
       const response = await axios.post<TokenResponse>(
         `${regionConfig.authBaseUrl}/token`,
@@ -513,23 +572,24 @@ class BattleNetService {
           }
         }
       );
-
+      logger.info({ region: validRegion }, '[BattleNetService] Client credentials token obtained successfully.');
       // Client credentials tokens typically don't include refresh tokens
       // Adjust TokenResponse if needed or handle potential missing fields
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
+        logger.error({ err: error, status: error.response?.status, data: error.response?.data, region }, `[BattleNetService] Client credentials token error`);
         throw new AppError(
           `Battle.net client credentials token error: ${error.response?.data?.error_description || error.message}`,
           error.response?.status || 500
         );
       }
+      logger.error({ err: error, region }, `[BattleNetService] Client credentials token error (non-Axios)`);
       throw new AppError(`Battle.net client credentials token error: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 
 
- 
 }
 
 const battleNetService = new BattleNetService();

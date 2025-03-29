@@ -2,6 +2,7 @@
 
 import { Pool } from 'pg';
 import config from '../config';
+import logger from '../utils/logger'; // Import the logger
 
 // Create a connection pool
 const pool = new Pool({
@@ -15,9 +16,9 @@ const pool = new Pool({
 // Test the connection
 pool.query('SELECT NOW()', (err: Error | null) => {
   if (err) {
-    console.error('Error connecting to the database:', err);
+    logger.error({ err }, 'Error connecting to the database:');
   } else {
-    console.log('Database connected successfully');
+    logger.info('Database connected successfully');
   }
 });
 
@@ -27,15 +28,15 @@ export default {
     const client = await pool.connect();
     // const query = client.query; // Removed unused variable
     const release = client.release;
-    
+
       // Add a dynamic property for tracking
       (client as any).lastQuery = null;
 
       // Set a timeout of 5 seconds, after which we will log this client's last query
       const timeout = setTimeout(() => {
-        console.error('A client has been checked out for more than 5 seconds!');
+        logger.error({ lastQuery: (client as any).lastQuery }, 'A client has been checked out for more than 5 seconds!');
         // Access the dynamic property
-        console.error(`The last executed query on this client was: ${(client as any).lastQuery}`);
+        // logger.error(`The last executed query on this client was: ${(client as any).lastQuery}`); // Redundant log
       }, 5000);
 
       // Monkey patch the query method to track the last query executed
@@ -59,5 +60,8 @@ export default {
       return client;
   },
   // Add a method to end the pool
-  end: () => pool.end()
+  end: () => {
+    logger.info('Closing database connection pool.'); // Log pool closure
+    return pool.end();
+  }
 };

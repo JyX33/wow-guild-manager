@@ -1,43 +1,47 @@
-# Plan for Finding and Removing Dead Code
+# Dead Code and Comment Removal Plan
 
-This plan outlines the steps to identify and remove unused code from the `wow-guild-manager` codebase using `ts-prune`.
+This plan outlines the steps to clean up the `backend/src/` directory by removing commented-out code, deprecated code, and unused files.
 
-## Steps
+## Analysis Summary
 
-1.  **Install `ts-prune`:**
-    *   Add `ts-prune` as a development dependency to the project at the root level.
-2.  **Configure `ts-prune`:**
-    *   Add a script to the root `package.json` (e.g., `"find-dead-code": "ts-prune"`) for easy execution. `ts-prune` will use the root `tsconfig.json`.
-3.  **Run Analysis:**
-    *   Execute the `ts-prune` script.
-4.  **Review Results:**
-    *   Carefully examine the list of potentially unused exports reported by `ts-prune`.
-    *   **Crucially, manually verify each reported item.** Static analysis tools can have false positives. Confirm code is truly unused before removal.
-5.  **Remove Confirmed Dead Code:**
-    *   Delete the verified dead code (functions, classes, types, interfaces, constants, etc.).
-    *   Remove any associated imports that become unused after the deletion.
-6.  **Verification:**
-    *   Run the TypeScript compiler (`tsc --noEmit` or similar build/check command).
-    *   Run existing automated tests.
-    *   Perform a quick manual check of the application's main functionalities.
-7.  **Iteration (Optional):**
-    *   If the initial removal reveals more dead code, re-run `ts-prune` and repeat the review/removal process.
-8.  **Final Decision on Tool:**
-    *   Decide whether to keep `ts-prune` as a dev dependency for ongoing checks or remove it after this cleanup.
+*   **File to Delete:** `backend/src/services/guild-roster.service.ts` (Deprecated and unused).
+*   **File to Modify:** `backend/src/services/guild-leadership.service.ts` (Remove comments about removed functions).
+*   **Files with Commented Tests:** Several `*.test.ts` files contain commented-out test blocks (e.g., `battlenet-api.client.test.ts`, `battlenet-sync.service.test.ts`).
 
-## Process Flow
+## Proposed Plan Steps
+
+1.  **Delete Unused Deprecated Service:**
+    *   Action: Delete the file `backend/src/services/guild-roster.service.ts`.
+    *   Reason: It's explicitly marked as deprecated in comments and confirmed to be unused via search.
+
+2.  **Clean Up Comments in `guild-leadership.service.ts`:**
+    *   Action: Read `backend/src/services/guild-leadership.service.ts`.
+    *   Action: Identify and remove the specific comment lines mentioning removed functions (e.g., lines 1, 28, 29 based on previous search results).
+    *   Reason: Keep the file clean and remove misleading comments about non-existent code.
+
+3.  **Clean Up Commented-Out Tests:**
+    *   Action: Read `backend/src/services/battlenet-api.client.test.ts`.
+    *   Action: Identify the blocks of commented-out tests (e.g., lines starting with `// // Temporarily commented out...` or similar patterns found in search results).
+    *   Action: Remove these commented-out test blocks.
+    *   Action: Read `backend/src/jobs/battlenet-sync.service.ts`.
+    *   Action: Identify and remove commented-out test blocks and related TODOs within that file.
+    *   Reason: Remove non-functional code from test suites to improve clarity and maintainability.
+
+## Plan Diagram
 
 ```mermaid
 graph TD
-    A[Install ts-prune] --> B(Configure ts-prune Script);
-    B --> C(Run ts-prune);
-    C --> D{Review Results};
-    D -- False Positive --> E[Keep Code];
-    D -- Confirmed Dead --> F(Remove Code);
-    F --> G(Verification);
-    G -- Errors --> D;
-    G -- OK --> H{More Dead Code?};
-    H -- Yes --> C;
-    H -- No --> I(Decide: Keep/Remove ts-prune);
-    I --> J[End];
-    E --> J;
+    A[Start: Identify Cleanup Targets] --> B{File: guild-roster.service.ts};
+    A --> C{File: guild-leadership.service.ts};
+    A --> D{Files: *.test.ts};
+
+    B --> E[Action: Delete File];
+    C --> F[Action: Read File];
+    F --> G[Action: Remove Deprecated Comments];
+    D --> H[Action: Read Test Files];
+    H --> I[Action: Identify Commented Tests];
+    I --> J[Action: Remove Commented Tests];
+
+    E --> K[End: Cleanup Complete];
+    G --> K;
+    J --> K;

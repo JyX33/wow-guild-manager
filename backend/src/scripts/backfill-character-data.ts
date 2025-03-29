@@ -1,16 +1,17 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import logger from '../utils/logger'; // Import the logger
 
 // Load environment variables from .env file in the backend root directory
 const envPath = path.resolve(__dirname, '../../.env'); // Go up two levels from src/scripts to backend
-console.log(`Attempting to load .env file from: ${envPath}`);
+logger.info(`Attempting to load .env file from: ${envPath}`);
 const result = dotenv.config({ path: envPath });
 
 if (result.error) {
-  console.error('Error loading .env file:', result.error);
+  logger.error({ err: result.error }, 'Error loading .env file:');
   // process.exit(1); // Exit if .env is critical
 } else {
-  console.log('.env file loaded successfully.');
+  logger.info('.env file loaded successfully.');
 }
 
 
@@ -24,7 +25,7 @@ import { DbCharacter, BattleNetCharacter } from '../../../shared/types/guild'; /
  * based on data stored in the profile_json column.
  */
 async function backfillCharacterData(): Promise<void> {
-  console.log('Starting character data backfill...');
+  logger.info('Starting character data backfill...');
   let updatedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
@@ -32,21 +33,21 @@ async function backfillCharacterData(): Promise<void> {
   try {
     // Fetch all characters - consider batching if the table is very large
     const allCharacters = await characterModel.findAll();
-    console.log(`Found ${allCharacters.length} characters to process.`);
+    logger.info(`Found ${allCharacters.length} characters to process.`);
 
     for (let i = 0; i < allCharacters.length; i++) {
       const character = allCharacters[i];
-      console.log(`Processing character ${i + 1}/${allCharacters.length}: ${character.name}-${character.realm} (ID: ${character.id})`);
+      logger.info(`Processing character ${i + 1}/${allCharacters.length}: ${character.name}-${character.realm} (ID: ${character.id})`);
 
       if (!character.profile_json) {
-        console.log(`  Skipping character ${character.id}: No profile_json found.`);
+        logger.info({ charId: character.id }, `Skipping character ${character.id}: No profile_json found.`);
         skippedCount++;
         continue;
       }
 
       // Check if data already seems populated to avoid unnecessary updates
       if (character.bnet_character_id && character.guild_id && character.region) {
-         console.log(`  Skipping character ${character.id}: Fields already populated.`);
+         logger.info({ charId: character.id }, `Skipping character ${character.id}: Fields already populated.`);
          skippedCount++;
          continue;
       }
@@ -57,19 +58,22 @@ async function backfillCharacterData(): Promise<void> {
         const profileData = character.profile_json as BattleNetCharacter;
 
         const bnet_character_id = profileData.id;
-        const guild_id = profileData.guild?.id;
+        const guild_id = profileData.guild?.id; // This is BNet Guild ID, need to map
+        let local_guild_id: number | undefined = undefined; // Use a different variable name
         let region: string | undefined = undefined;
 
-        if (guild_id) {
+        if (guild_id) { // If BNet guild ID exists in profile
           try {
-            const guild = await guildModel.findById(guild_id);
+            // Find local guild using bnet_guild_id
+            const guild = await guildModel.findOne({ bnet_guild_id: guild_id });
             if (guild) {
               region = guild.region;
+              local_guild_id = guild.id; // Store the local DB guild ID
             } else {
-              console.warn(`  Guild with ID ${guild_id} not found for character ${character.id}. Region will be null.`);
+              logger.warn({ bnetGuildId: guild_id, charId: character.id }, `Guild with BNet ID ${guild_id} not found for character ${character.id}. Region and local guild ID will be null.`);
             }
           } catch (guildError) {
-            console.error(`  Error fetching guild ${guild_id} for character ${character.id}:`, guildError);
+            logger.error({ err: guildError, bnetGuildId: guild_id, charId: character.id }, `Error fetching guild with BNet ID ${guild_id} for character ${character.id}:`);
             // Decide on fallback: keep region undefined or use existing character.region?
             // Let's keep it undefined if guild fetch fails, to be conservative.
           }
@@ -83,9 +87,9 @@ async function backfillCharacterData(): Promise<void> {
             updatePayload.bnet_character_id = bnet_character_id;
             needsUpdate = true;
         }
-        // Update guild_id even if it's null (character might have left guild)
-        if (character.guild_id !== guild_id) {
-             updatePayload.guild_id = guild_id; // Can be undefined
+        // Update local guild_id even if it's null (character might have left guild)
+        if (character.guild_id !== local_guild_id) {
+             updatePayload.guild_id = local_guild_id; // Can be undefined
              needsUpdate = true;
         }
         if (region && character.region !== region) {
@@ -94,37 +98,37 @@ async function backfillCharacterData(): Promise<void> {
         }
 
         if (needsUpdate) {
-          console.log(`  Updating character ${character.id} with payload:`, updatePayload);
+          logger.info({ charId: character.id, payload: updatePayload }, `Updating character ${character.id}`);
           await characterModel.update(character.id, updatePayload);
           updatedCount++;
         } else {
-           console.log(`  Skipping character ${character.id}: No updates needed.`);
+           logger.info({ charId: character.id }, `Skipping character ${character.id}: No updates needed.`);
            skippedCount++;
         }
 
       } catch (parseOrUpdateError) {
-        console.error(`  Error processing character ${character.id}:`, parseOrUpdateError);
+        logger.error({ err: parseOrUpdateError, charId: character.id }, `Error processing character ${character.id}:`);
         errorCount++;
       }
        // Optional: Add a small delay to avoid overwhelming the DB/API if guild fetch was needed
        // await new Promise(resolve => setTimeout(resolve, 50));
     }
 
-    console.log('------------------------------------');
-    console.log('Backfill process completed.');
-    console.log(`  Characters updated: ${updatedCount}`);
-    console.log(`  Characters skipped: ${skippedCount}`);
-    console.log(`  Errors encountered: ${errorCount}`);
-    console.log('------------------------------------');
+    logger.info('------------------------------------');
+    logger.info('Backfill process completed.');
+    logger.info(`  Characters updated: ${updatedCount}`);
+    logger.info(`  Characters skipped: ${skippedCount}`);
+    logger.info(`  Errors encountered: ${errorCount}`);
+    logger.info('------------------------------------');
 
   } catch (error) {
-    console.error('Fatal error during backfill process:', error);
+    logger.error({ err: error }, 'Fatal error during backfill process:');
     process.exitCode = 1; // Indicate failure
   } finally {
     // Ensure database connection is closed if necessary
     // Knex might handle this automatically depending on setup
     await db.end(); // Explicitly end the connection pool
-    console.log('Database connection closed.');
+    logger.info('Database connection closed.');
   }
 }
 

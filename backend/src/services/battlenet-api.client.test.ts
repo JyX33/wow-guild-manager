@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from '@jest/globals'; // Explicit import (removed advanceTimersByTime)
+import { jest, describe, it, expect, beforeEach, afterEach, afterAll } from '@jest/globals'; // Consolidated imports, Added afterAll
 import { BattleNetApiClient } from './battlenet-api.client';
 import * as battleNetService from './battlenet.service'; // The actual service making HTTP calls
 import { AppError } from '../utils/error-handler';
@@ -16,6 +16,7 @@ describe('BattleNetApiClient', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // jest.useFakeTimers(); // Removed fake timer setup
 
     // Set up spies on the actual imported service module
     // Specific implementations (mockResolvedValue/mockRejectedValue) are set in tests
@@ -25,12 +26,17 @@ describe('BattleNetApiClient', () => {
     jest.spyOn(battleNetService, 'getEnhancedCharacterData');
 
     apiClient = new BattleNetApiClient();
-    // jest.useFakeTimers(); // Removed fake timer setup
   });
 
-  // afterEach(() => {
-  //   jest.useRealTimers(); // Removed fake timer cleanup
-  // });
+
+  afterAll(async () => { // Add afterAll hook for cleanup
+    if (apiClient) {
+      await apiClient.disconnect();
+    }
+  });
+
+  
+
 
   // --- Tests for ensureClientToken ---
   describe('ensureClientToken', () => {
@@ -61,11 +67,7 @@ describe('BattleNetApiClient', () => {
       expect(token).toBe(mockTokenResponse.access_token);
       expect(battleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1); // Still 1 call
     });
-
-    // Removed tests relying on fake timers due to environment incompatibility
-    // - should refresh the token if it is nearing expiry (within 1 minute)
-    // - should refresh the token if it has expired
-
+    
     it('should throw AppError if getClientCredentialsToken fails', async () => {
       const error = new Error('Network Error');
       jest.spyOn(battleNetService, 'getClientCredentialsToken').mockRejectedValue(error);
@@ -114,7 +116,8 @@ describe('BattleNetApiClient', () => {
     beforeEach(() => {
       // Mock ensureClientToken for these tests
       jest.spyOn(apiClient, 'ensureClientToken').mockResolvedValue('fake-token');
-      jest.spyOn(battleNetService, 'getGuildData').mockResolvedValue(mockData); // Spy on the actual module
+      // Reset mock implementation for getGuildData before each test in this block
+      jest.spyOn(battleNetService, 'getGuildData').mockResolvedValue(mockData);
     });
 
     it('should call ensureClientToken', async () => {
@@ -148,7 +151,9 @@ describe('BattleNetApiClient', () => {
           details: { realmSlug: realm, guildNameSlug: guild, region }
        });
     });
-  });
+    
+  }); // <-- Close describe('getGuildData', ...)
+  
 
    // --- Tests for getGuildRoster ---
    describe('getGuildRoster', () => {
@@ -164,7 +169,8 @@ describe('BattleNetApiClient', () => {
 
       beforeEach(() => {
         jest.spyOn(apiClient, 'ensureClientToken').mockResolvedValue('fake-token');
-        jest.spyOn(battleNetService, 'getGuildRoster').mockResolvedValue(mockData); // Spy on the actual module
+        // Reset mock implementation for getGuildRoster before each test
+        jest.spyOn(battleNetService, 'getGuildRoster').mockResolvedValue(mockData);
       });
 
       it('should call ensureClientToken', async () => {
@@ -198,7 +204,9 @@ describe('BattleNetApiClient', () => {
             details: { realmSlug: realm, guildNameSlug: guild, region }
          });
       });
-   });
+
+   }); // <-- Close describe('getGuildRoster', ...)
+
 
    // --- Tests for getEnhancedCharacterData ---
    describe('getEnhancedCharacterData', () => {
@@ -240,7 +248,8 @@ describe('BattleNetApiClient', () => {
 
        beforeEach(() => {
         jest.spyOn(apiClient, 'ensureClientToken').mockResolvedValue('fake-token');
-        jest.spyOn(battleNetService, 'getEnhancedCharacterData').mockResolvedValue(mockData); // Spy on the actual module
+        // Reset mock implementation before each test
+        jest.spyOn(battleNetService, 'getEnhancedCharacterData').mockResolvedValue(mockData);
       });
 
        it('should call ensureClientToken', async () => {
@@ -264,7 +273,7 @@ describe('BattleNetApiClient', () => {
         expect(data).toBeNull();
       });
 
-       it('should throw AppError if battleNetService throws an error', async () => {
+       it('should throw AppError if battleNetService throws an error (non-404)', async () => {
         const error = new Error('Character API Error');
          // Use mockImplementation to explicitly throw the error asynchronously
         jest.spyOn(battleNetService, 'getEnhancedCharacterData').mockImplementation(async () => {
@@ -280,6 +289,7 @@ describe('BattleNetApiClient', () => {
             details: { realmSlug: realm, characterNameLower: charName, region }
          });
       });
-   });
 
-});
+   }); // <-- Close describe('getEnhancedCharacterData', ...)
+
+}); // <-- Close describe('BattleNetApiClient', ...)
