@@ -266,7 +266,7 @@ export default {
           id: member.id,
           guild_id: member.guild_id,
           character_name: member.character_name || 'Unknown', // Use DB value
-          character_class: member.character_class || 'Unknown', // Use DB value
+          character_class: character.class || 'Unknown', // Use value from synced character record
           character_role: role,
           rank: member.rank,
           character: { // Construct this from DB character record + parsed JSONB

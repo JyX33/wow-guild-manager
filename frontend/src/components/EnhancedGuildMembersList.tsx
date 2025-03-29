@@ -168,11 +168,11 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
-                    {member.character?.active_spec ? (
+                    {member.character?.activeSpec ? (
                       <>
                         <span>{member.character_class}</span>
                         <span className="ml-1 text-xs text-gray-500">
-                          ({member.character?.active_spec?.name})
+                          ({member.character?.activeSpec?.name})
                         </span>
                       </>
                     ) : (
@@ -184,7 +184,7 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                   <div className="whitespace-nowrap">
                     Runs this week: {member.character?.mythicKeystone?.current_period?.best_runs?.length || 0}
                   </div>
-                  {member.character?.mythicKeystone?.current_period?.best_runs?.length > 0 && (
+                  {member.character?.mythicKeystone?.current_period?.best_runs && member.character?.mythicKeystone?.current_period?.best_runs.length > 0 && (
                     <div className="text-xs text-gray-500 mt-1">
                       rating : {Math.round(member.character?.mythicKeystone?.current_mythic_rating?.rating || 0)}
                     </div>
