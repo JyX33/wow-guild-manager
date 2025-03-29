@@ -1,6 +1,7 @@
 # CLAUDE.md - Development Guidelines
 
 ## Build & Run Commands
+
 - Backend: `cd backend && bun start:dev` or `bun --watch src/index.ts`
 - Frontend: `cd frontend && npm run dev`
 - Backend build: `cd backend && bun build`
@@ -9,6 +10,7 @@
 - Database migrations: `cd backend && node database/migrate.js`
 
 ## Code Style Guidelines
+
 - **Imports**: Group imports by external libraries, then internal modules with absolute paths
 - **TypeScript**: Use strict typing - all parameters, return values, and variables must be typed
 - **Naming**: camelCase for variables/functions, PascalCase for classes/interfaces/components
@@ -19,6 +21,7 @@
 - **API Patterns**: Use service layer for external API calls, follow rate limiting requirements
 
 ## Architecture
+
 - TypeScript + Express backend with PostgreSQL database
 - React + Vite frontend with TailwindCSS
 - Shared types between frontend and backend

@@ -1,6 +1,6 @@
 # Battle.net Game Data API Response Structures
 
-Generated on: 17/03/2025 20:29:11
+Generated on: 22/03/2025 11:34:47
 
 ## Table of Contents
 

@@ -237,12 +237,6 @@ export class BattleNetSyncService { // Added export keyword
           rosterMembersMap.set(key, member);
         });
 
-        // Removed initial declarations - these will be created by the _compareGuildMembers call
-        // const membersToAdd: { rosterMember: BattleNetGuildMember; characterId: number }[] = [];
-        // const membersToUpdate: { memberId: number; rank?: number; characterId?: number; memberData?: BattleNetGuildMember }[] = [];
-        // const memberIdsToRemove: number[] = [];
-        // const charactersToCreate: Partial<DbCharacter>[] = [];
-
        // Pre-fetch or identify characters that might need creation
        // const potentialNewCharKeys = roster.members // Removed unused variable
        //     .map(m => `${m.character.name.toLowerCase()}-${m.character.realm.slug.toLowerCase()}`)
@@ -349,14 +343,7 @@ export class BattleNetSyncService { // Added export keyword
       throw new AppError(`Error syncing guild members table for guild ${guildId}: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
-
-  // Removed syncGuildRanksTable and updateRankMemberCounts methods
-  // Their logic is combined in _syncGuildRanks
-
-
-  /**
-   * Syncs character details (profile, equipment, etc.).
-   */
+  
   /**
    * Syncs the guild ranks table: ensures ranks exist and updates member counts.
    * Combines logic from syncGuildRanksTable and updateRankMemberCounts.

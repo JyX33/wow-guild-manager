@@ -18,10 +18,6 @@ import * as userModel from '../models/user.model';
 import * as guildMemberModel from '../models/guild_member.model'; // Added
 import * as characterModel from '../models/character.model'; // Added
 import logger from '../utils/logger'; // Import the logger
-// Removed battleNetService, guildLeadershipService, guildRosterService imports for refactored methods
-// import * as battleNetService from '../services/battlenet.service';
-// import * as guildLeadershipService from '../services/guild-leadership.service';
-// import * as guildRosterService from '../services/guild-roster.service';
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 
 
