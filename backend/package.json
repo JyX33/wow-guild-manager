@@ -17,6 +17,7 @@
     "@types/connect-pg-simple": "^7.0.3",
     "@types/node-schedule": "^2.1.7",
     "axios": "^1.8.4",
+    "bottleneck": "^2.19.5",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

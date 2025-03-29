@@ -110,7 +110,7 @@ export class BattleNetSyncService { // Added export keyword
       await this._updateCoreGuildData(guild, guildData, guildRoster);
 
       // 4. Sync Guild Members Table
-      await this.syncGuildMembersTable(guild.id, guildRoster);
+      await this.syncGuildMembersTable(guild.id, guildRoster, guild.region as BattleNetRegion); // Pass region
 
       // 5. Sync Ranks Table (Create ranks and update counts)
       await this._syncGuildRanks(guild.id, guildRoster); // Use combined method
@@ -133,7 +133,8 @@ export class BattleNetSyncService { // Added export keyword
   private _compareGuildMembers(
     rosterMembersMap: Map<string, BattleNetGuildMember>,
     existingMembersMap: Map<string, { id: number; character_id: number | null; rank: number }>,
-    existingCharacterMap: Map<string, number>
+    existingCharacterMap: Map<string, number>,
+    region: BattleNetRegion // Added region parameter
   ): {
     membersToAdd: { rosterMember: BattleNetGuildMember; characterId: number }[];
     membersToUpdate: { memberId: number; rank?: number; characterId?: number; memberData?: BattleNetGuildMember }[];
@@ -186,6 +187,7 @@ export class BattleNetSyncService { // Added export keyword
             level: rosterMember.character.level,
             role: 'DPS', // Default role, consider refining later
             is_main: false,
+            region: region, // Add the region here
             // user_id will be null initially
             // profile_json will be added by character sync later
           });
@@ -209,7 +211,7 @@ export class BattleNetSyncService { // Added export keyword
   /**
    * Syncs the dedicated guild_members table based on roster data.
    */
-  async syncGuildMembersTable(guildId: number, roster: BattleNetGuildRoster): Promise<void> {
+  async syncGuildMembersTable(guildId: number, roster: BattleNetGuildRoster, region: BattleNetRegion): Promise<void> { // Added region parameter
     console.log(`[SyncService] Syncing guild_members table for guild ID: ${guildId}. Roster size: ${roster.members.length}`);
     try {
       await withTransaction(async (client) => { // Use transaction helper
@@ -269,7 +271,7 @@ export class BattleNetSyncService { // Added export keyword
           membersToUpdate,
           memberIdsToRemove,
           charactersToCreate
-        } = this._compareGuildMembers(rosterMembersMap, existingMembersMap, existingCharacterMap);
+        } = this._compareGuildMembers(rosterMembersMap, existingMembersMap, existingCharacterMap, region); // Pass region
 
         console.log(`[SyncService] Changes determined: Add ${membersToAdd.length + charactersToCreate.length}, Update ${membersToUpdate.length}, Remove ${memberIdsToRemove.length}`);
 
@@ -530,25 +532,42 @@ export class BattleNetSyncService { // Added export keyword
     this.isSyncing = true;
 
     try {
-      // 1. Sync Guilds (fetch outdated guilds)
-      const outdatedGuilds = await this.guildModel.findOutdatedGuilds(); // Assumes this method exists/works
+      // 1. Sync Guilds in parallel
+      const outdatedGuilds = await this.guildModel.findOutdatedGuilds();
       console.log(`[SyncService] Found ${outdatedGuilds.length} guilds to sync.`);
-      for (const guild of outdatedGuilds) {
-        await this.syncGuild(guild);
-        // Optional: Add delay between guilds to spread load/rate limits
-        // await new Promise(resolve => setTimeout(resolve, 1000));
+      if (outdatedGuilds.length > 0) {
+        const guildSyncPromises = outdatedGuilds.map(guild =>
+          this.syncGuild(guild).catch(error => {
+            // Log individual guild sync errors but don't stop others
+            console.error(`[SyncService] Error syncing guild ${guild.id} (${guild.name}):`, error);
+            // Return an error object to be identifiable in results
+            return { status: 'rejected', reason: error, guildId: guild.id };
+          })
+        );
+        const guildResults = await Promise.allSettled(guildSyncPromises);
+        const guildsFulfilled = guildResults.filter(r => r.status === 'fulfilled').length;
+        const guildsRejected = guildResults.length - guildsFulfilled;
+        console.log(`[SyncService] Guild sync results: ${guildsFulfilled} fulfilled, ${guildsRejected} rejected.`);
       }
 
-      // 2. Sync Characters (fetch outdated characters)
-      const outdatedCharacters = await this.characterModel.findOutdatedCharacters(); // Use the new method
+      // 2. Sync Characters in parallel
+      const outdatedCharacters = await this.characterModel.findOutdatedCharacters();
       console.log(`[SyncService] Found ${outdatedCharacters.length} characters to sync.`);
-      for (const character of outdatedCharacters) {
-         await this.syncCharacter(character);
-         // Optional delay to spread load
-         // await new Promise(resolve => setTimeout(resolve, 500)); // e.g., 500ms delay
+      if (outdatedCharacters.length > 0) {
+        const characterSyncPromises = outdatedCharacters.map(character =>
+          this.syncCharacter(character).catch(error => {
+            // Log individual character sync errors
+            console.error(`[SyncService] Error syncing character ${character.id} (${character.name}):`, error);
+            return { status: 'rejected', reason: error, characterId: character.id };
+          })
+        );
+        const characterResults = await Promise.allSettled(characterSyncPromises);
+        const charsFulfilled = characterResults.filter(r => r.status === 'fulfilled').length;
+        const charsRejected = characterResults.length - charsFulfilled;
+        console.log(`[SyncService] Character sync results: ${charsFulfilled} fulfilled, ${charsRejected} rejected.`);
       }
 
-      console.log('[SyncService] Background sync run finished.');
+      console.log('[SyncService] Background sync run finished processing guilds and characters.');
 
     } catch (error) {
       console.error('[SyncService] Error during sync run:', error);

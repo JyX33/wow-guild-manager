@@ -1,11 +1,10 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals'; // Explicit import (removed advanceTimersByTime)
+import { jest, describe, it, expect, beforeEach } from '@jest/globals'; // Explicit import (removed advanceTimersByTime)
 import { BattleNetApiClient } from './battlenet-api.client';
 import * as battleNetService from './battlenet.service'; // The actual service making HTTP calls
 import { AppError } from '../utils/error-handler';
-import { AppError } from '../utils/error-handler';
 import { BattleNetRegion } from '../../../shared/types/user';
 import { TokenResponse } from '../../../shared/types/auth'; // Added import
-import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile } from '../../../shared/types/guild'; // Added imports
+import { BattleNetGuild, BattleNetGuildRoster } from '../../../shared/types/guild'; // Added imports
 
 // Top-level jest.mock removed. Mocks will be set up in beforeEach.
 
@@ -13,19 +12,17 @@ import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetChar
 
 describe('BattleNetApiClient', () => {
   let apiClient: BattleNetApiClient;
-  let mockBattleNetService: jest.Mocked<typeof battleNetService>;
+  // No need for mockBattleNetService variable, we spy on the imported module directly
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Cast the imported service
-    mockBattleNetService = battleNetService as jest.Mocked<typeof battleNetService>;
 
-    // Set up spies, but don't provide default implementation here
+    // Set up spies on the actual imported service module
     // Specific implementations (mockResolvedValue/mockRejectedValue) are set in tests
-    jest.spyOn(mockBattleNetService, 'getClientCredentialsToken');
-    jest.spyOn(mockBattleNetService, 'getGuildData');
-    jest.spyOn(mockBattleNetService, 'getGuildRoster');
-    jest.spyOn(mockBattleNetService, 'getEnhancedCharacterData');
+    jest.spyOn(battleNetService, 'getClientCredentialsToken');
+    jest.spyOn(battleNetService, 'getGuildData');
+    jest.spyOn(battleNetService, 'getGuildRoster');
+    jest.spyOn(battleNetService, 'getEnhancedCharacterData');
 
     apiClient = new BattleNetApiClient();
     // jest.useFakeTimers(); // Removed fake timer setup
@@ -47,22 +44,22 @@ describe('BattleNetApiClient', () => {
     };
 
     it('should call getClientCredentialsToken if no token exists', async () => {
-      mockBattleNetService.getClientCredentialsToken.mockResolvedValue(mockTokenResponse);
+      jest.spyOn(battleNetService, 'getClientCredentialsToken').mockResolvedValue(mockTokenResponse);
       const token = await apiClient.ensureClientToken();
       expect(token).toBe(mockTokenResponse.access_token);
-      expect(mockBattleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1);
+      expect(battleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1);
     });
 
     it('should return the existing token if it is valid', async () => {
       // First call to get the token
-      mockBattleNetService.getClientCredentialsToken.mockResolvedValue(mockTokenResponse);
+      jest.spyOn(battleNetService, 'getClientCredentialsToken').mockResolvedValue(mockTokenResponse);
       await apiClient.ensureClientToken();
-      expect(mockBattleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1);
+      expect(battleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1);
 
       // Second call should use the cached token
       const token = await apiClient.ensureClientToken();
       expect(token).toBe(mockTokenResponse.access_token);
-      expect(mockBattleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1); // Still 1 call
+      expect(battleNetService.getClientCredentialsToken).toHaveBeenCalledTimes(1); // Still 1 call
     });
 
     // Removed tests relying on fake timers due to environment incompatibility
@@ -71,7 +68,7 @@ describe('BattleNetApiClient', () => {
 
     it('should throw AppError if getClientCredentialsToken fails', async () => {
       const error = new Error('Network Error');
-      mockBattleNetService.getClientCredentialsToken.mockRejectedValue(error);
+      jest.spyOn(battleNetService, 'getClientCredentialsToken').mockRejectedValue(error);
 
       await expect(apiClient.ensureClientToken()).rejects.toThrow(AppError);
       await expect(apiClient.ensureClientToken()).rejects.toMatchObject({
@@ -82,7 +79,7 @@ describe('BattleNetApiClient', () => {
     });
 
      it('should throw AppError if token response is invalid', async () => {
-      mockBattleNetService.getClientCredentialsToken.mockResolvedValue({} as any); // Invalid response
+      jest.spyOn(battleNetService, 'getClientCredentialsToken').mockResolvedValue({} as any); // Invalid response
 
       await expect(apiClient.ensureClientToken()).rejects.toThrow(AppError);
        await expect(apiClient.ensureClientToken()).rejects.toMatchObject({
@@ -117,7 +114,7 @@ describe('BattleNetApiClient', () => {
     beforeEach(() => {
       // Mock ensureClientToken for these tests
       jest.spyOn(apiClient, 'ensureClientToken').mockResolvedValue('fake-token');
-      mockBattleNetService.getGuildData.mockResolvedValue(mockData);
+      jest.spyOn(battleNetService, 'getGuildData').mockResolvedValue(mockData); // Spy on the actual module
     });
 
     it('should call ensureClientToken', async () => {
@@ -127,7 +124,7 @@ describe('BattleNetApiClient', () => {
 
     it('should call battleNetService.getGuildData with correct parameters', async () => {
       await apiClient.getGuildData(realm, guild, region);
-      expect(mockBattleNetService.getGuildData).toHaveBeenCalledWith(realm, guild, 'fake-token', region);
+      expect(battleNetService.getGuildData).toHaveBeenCalledWith(realm, guild, 'fake-token', region); // Check call on the actual module
     });
 
     it('should return the data from battleNetService', async () => {
@@ -137,13 +134,19 @@ describe('BattleNetApiClient', () => {
 
     it('should throw AppError if battleNetService.getGuildData fails', async () => {
       const error = new Error('API Error');
-      mockBattleNetService.getGuildData.mockRejectedValue(error);
+      // Use mockImplementation to explicitly throw the error asynchronously
+      jest.spyOn(battleNetService, 'getGuildData').mockImplementation(async () => {
+        throw error;
+      });
 
+      // Use .rejects matcher and check properties
       await expect(apiClient.getGuildData(realm, guild, region)).rejects.toThrow(AppError);
       await expect(apiClient.getGuildData(realm, guild, region)).rejects.toMatchObject({
-         message: `Failed to fetch guild data: ${error.message}`,
-         code: 'BATTLE_NET_API_ERROR',
-      });
+          message: `Failed to fetch guild data: ${error.message}`,
+          code: 'BATTLE_NET_API_ERROR',
+          status: 500,
+          details: { realmSlug: realm, guildNameSlug: guild, region }
+       });
     });
   });
 
@@ -161,7 +164,7 @@ describe('BattleNetApiClient', () => {
 
       beforeEach(() => {
         jest.spyOn(apiClient, 'ensureClientToken').mockResolvedValue('fake-token');
-        mockBattleNetService.getGuildRoster.mockResolvedValue(mockData);
+        jest.spyOn(battleNetService, 'getGuildRoster').mockResolvedValue(mockData); // Spy on the actual module
       });
 
       it('should call ensureClientToken', async () => {
@@ -171,7 +174,7 @@ describe('BattleNetApiClient', () => {
 
       it('should call battleNetService.getGuildRoster with correct parameters', async () => {
         await apiClient.getGuildRoster(region, realm, guild);
-        expect(mockBattleNetService.getGuildRoster).toHaveBeenCalledWith(region, realm, guild, 'fake-token');
+        expect(battleNetService.getGuildRoster).toHaveBeenCalledWith(region, realm, guild, 'fake-token'); // Check call on the actual module
       });
 
       it('should return the data from battleNetService', async () => {
@@ -181,12 +184,18 @@ describe('BattleNetApiClient', () => {
 
       it('should throw AppError if battleNetService.getGuildRoster fails', async () => {
         const error = new Error('Roster API Error');
-        mockBattleNetService.getGuildRoster.mockRejectedValue(error);
+        // Use mockImplementation to explicitly throw the error asynchronously
+        jest.spyOn(battleNetService, 'getGuildRoster').mockImplementation(async () => {
+          throw error;
+        });
 
+        // Use .rejects matcher and check properties
         await expect(apiClient.getGuildRoster(region, realm, guild)).rejects.toThrow(AppError);
-         await expect(apiClient.getGuildRoster(region, realm, guild)).rejects.toMatchObject({
+        await expect(apiClient.getGuildRoster(region, realm, guild)).rejects.toMatchObject({
             message: `Failed to fetch guild roster: ${error.message}`,
             code: 'BATTLE_NET_API_ERROR',
+            status: 500,
+            details: { realmSlug: realm, guildNameSlug: guild, region }
          });
       });
    });
@@ -231,7 +240,7 @@ describe('BattleNetApiClient', () => {
 
        beforeEach(() => {
         jest.spyOn(apiClient, 'ensureClientToken').mockResolvedValue('fake-token');
-        mockBattleNetService.getEnhancedCharacterData.mockResolvedValue(mockData);
+        jest.spyOn(battleNetService, 'getEnhancedCharacterData').mockResolvedValue(mockData); // Spy on the actual module
       });
 
        it('should call ensureClientToken', async () => {
@@ -241,7 +250,7 @@ describe('BattleNetApiClient', () => {
 
        it('should call battleNetService.getEnhancedCharacterData with correct parameters', async () => {
         await apiClient.getEnhancedCharacterData(realm, charName, region);
-        expect(mockBattleNetService.getEnhancedCharacterData).toHaveBeenCalledWith(realm, charName, 'fake-token', region);
+        expect(battleNetService.getEnhancedCharacterData).toHaveBeenCalledWith(realm, charName, 'fake-token', region); // Check call on the actual module
       });
 
        it('should return the data from battleNetService', async () => {
@@ -250,19 +259,25 @@ describe('BattleNetApiClient', () => {
       });
 
        it('should return null if battleNetService returns null (e.g., 404)', async () => {
-        mockBattleNetService.getEnhancedCharacterData.mockResolvedValue(null);
+        jest.spyOn(battleNetService, 'getEnhancedCharacterData').mockResolvedValue(null); // Spy on the actual module
         const data = await apiClient.getEnhancedCharacterData(realm, charName, region);
         expect(data).toBeNull();
       });
 
        it('should throw AppError if battleNetService throws an error', async () => {
         const error = new Error('Character API Error');
-        mockBattleNetService.getEnhancedCharacterData.mockRejectedValue(error);
+         // Use mockImplementation to explicitly throw the error asynchronously
+        jest.spyOn(battleNetService, 'getEnhancedCharacterData').mockImplementation(async () => {
+          throw error;
+        });
 
+        // Use .rejects matcher and check properties
         await expect(apiClient.getEnhancedCharacterData(realm, charName, region)).rejects.toThrow(AppError);
         await expect(apiClient.getEnhancedCharacterData(realm, charName, region)).rejects.toMatchObject({
             message: `Failed to fetch character data: ${error.message}`,
             code: 'BATTLE_NET_API_ERROR',
+            status: 500,
+            details: { realmSlug: realm, characterNameLower: charName, region }
          });
       });
    });
