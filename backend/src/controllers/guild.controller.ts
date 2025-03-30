@@ -1,24 +1,24 @@
 import { Request, Response } from 'express';
 import {
-  BattleNetGuildMember,
-  BattleNetGuildRoster, // Keep for parsing roster_json
-  Guild, // Import the application-level Guild type
-  GuildMember, // Added for mapping
-  DbCharacter, // Added
-  EnhancedGuildMember, // Added
   BattleNetCharacter, // Added
-  BattleNetCharacterEquipment, // Added
+  BattleNetCharacterEquipment,
+  BattleNetGuildMember,
+  BattleNetGuildRoster, // Added
   BattleNetMythicKeystoneProfile, // Added
   BattleNetProfessions, // Added
-  CharacterRole, // Added
+  CharacterRole, // Added for mapping
+  DbCharacter, // Added
+  EnhancedGuildMember, // Keep for parsing roster_json
+  Guild, // Import the application-level Guild type
+  GuildMember, // Added for mapping
 } from '../../../shared/types/guild';
+import * as characterModel from '../models/character.model'; // Added
 import * as guildModel from '../models/guild.model';
+import * as guildMemberModel from '../models/guild_member.model'; // Added
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model';
-import * as guildMemberModel from '../models/guild_member.model'; // Added
-import * as characterModel from '../models/character.model'; // Added
-import logger from '../utils/logger'; // Import the logger
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
+import logger from '../utils/logger'; // Import the logger
 
 
 export default {
@@ -210,7 +210,7 @@ export default {
     }
 
     // 1. Fetch relevant guild members from DB
-    const allowedRanks = [0, 1, 3, 4, 5]; // Define ranks to fetch
+    const allowedRanks = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; // Define ranks to fetch
     const dbGuildMembers = await guildMemberModel.findByGuildAndRanks(guildIdInt, allowedRanks);
     logger.debug({ guildId: guildIdInt, count: dbGuildMembers.length }, `Found ${dbGuildMembers.length} members with allowed ranks in DB`);
 

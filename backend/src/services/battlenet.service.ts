@@ -373,13 +373,17 @@ class BattleNetService {
         })
       ]);
 
-      // Return combined enhanced data
+      // Return combined enhanced data, prioritizing item levels from equipment
       return {
-        ...profile,
+        ...profile, // Spread profile first
+        // Explicitly add/overwrite item levels from equipment data
+        equipped_item_level: equipment?.equipped_item_level || profile?.equipped_item_level || 0,
+        average_item_level: equipment?.average_item_level || profile?.average_item_level || 0,
+        // Keep the rest
         equipment,
-        itemLevel: profile.equipped_item_level,
+        itemLevel: equipment?.equipped_item_level || profile?.equipped_item_level || 0, // Update this too for consistency
         mythicKeystone,
-        professions: professions.primaries || []
+        professions: professions?.primaries || [] // Added optional chaining for safety
       };
     } catch (error) {
       // Check if it's a 404 error specifically (likely from the main profile call)
