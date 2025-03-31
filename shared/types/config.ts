@@ -36,6 +36,7 @@ export interface BattleNetConfig {
     us: BattleNetRegionConfig;
     kr: BattleNetRegionConfig;
     tw: BattleNetRegionConfig;
+    cn: BattleNetRegionConfig; // Added cn region config
   };
 }
 

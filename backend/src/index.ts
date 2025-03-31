@@ -100,7 +100,13 @@ https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
 });
 
 // Schedule background sync job (e.g., run every hour at the start of the hour)
-const syncJob = schedule.scheduleJob('0 * * * *', async () => {
+// Define the default cron schedule
+const defaultSyncSchedule = '0 * * * *'; // Run every hour at minute 0
+// Read schedule from environment variable or use default
+const syncSchedule = process.env.SYNC_JOB_CRON_SCHEDULE || defaultSyncSchedule;
+logger.info(`[Scheduler] Using sync schedule: "${syncSchedule}" (Default: "${defaultSyncSchedule}")`);
+
+const syncJob = schedule.scheduleJob(syncSchedule, async () => {
   logger.info(`[Scheduler] Running scheduled Battle.net sync job at ${new Date().toISOString()}`);
   try {
     await battleNetSyncService.runSync();

@@ -5,7 +5,7 @@ import * as characterModel from '../models/character.model';
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model'; // Needed? Maybe for leader lookup
 import * as guildMemberModel from '../models/guild_member.model'; // Added guildMemberModel import
-import { DbGuild, BattleNetGuildRoster, DbCharacter, BattleNetGuildMember, DbGuildMember } from '../../../shared/types/guild'; // Added DbGuildMember
+import { DbGuild, BattleNetGuildRoster, DbCharacter, BattleNetGuildMember, DbGuildMember, BattleNetCharacter, BattleNetGuild, EnhancedCharacterData } from '../../../shared/types/guild'; // Added DbGuildMember, BattleNetGuild, EnhancedCharacterData
 import { BattleNetRegion } from '../../../shared/types/user'; // Added import for BattleNetRegion
 import { AppError } from '../utils/error-handler';
 import { withTransaction } from '../utils/transaction'; // Added withTransaction import
@@ -48,7 +48,7 @@ export class BattleNetSyncService { // Added export keyword
    * @param guildRoster The data fetched from the Battle.net guild roster endpoint.
    * @private
    */
-  private async _updateCoreGuildData(guild: DbGuild, guildData: any, guildRoster: BattleNetGuildRoster): Promise<void> {
+  private async _updateCoreGuildData(guild: DbGuild, guildData: BattleNetGuild, guildRoster: BattleNetGuildRoster): Promise<void> {
     // TODO: Add specific types for guildData
     const updatePayload: Partial<DbGuild> = {
       guild_data_json: guildData,
@@ -72,18 +72,19 @@ export class BattleNetSyncService { // Added export keyword
           updatePayload.leader_id = guildMasterUser.id;
           logger.info({ userId: guildMasterUser.id, gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] Found user ${guildMasterUser.id} for GM ${guildMasterMember.character.name}, updating leader_id.`);
         } else {
-          logger.info({ gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] User for GM ${guildMasterMember.character.name} not found in DB.`);
-          // Optionally clear leader_id if GM character no longer linked to a user?
-          // updatePayload.leader_id = null;
+          // User for GM character not found in our DB
+          logger.info({ gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] User for GM ${guildMasterMember.character.name} not found in DB. Clearing leader_id.`);
+          updatePayload.leader_id = null; // Clear leader_id as per plan
         }
       } catch (userLookupError) {
-        logger.error({ err: userLookupError, gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] Error looking up user for GM ${guildMasterMember.character.name}:`);
-        // Decide if we should clear leader_id or leave it as is on error
+        // Error during user lookup
+        logger.error({ err: userLookupError, gmName: guildMasterMember.character.name, guildId: guild.id }, `[SyncService] Error looking up user for GM ${guildMasterMember.character.name}. Clearing leader_id.`);
+        updatePayload.leader_id = null; // Clear leader_id on error as per plan
       }
     } else {
-      logger.info({ guildName: guild.name, guildId: guild.id }, `[SyncService] No Guild Master (rank 0) found in roster for ${guild.name}.`);
-      // Optionally clear leader_id if no GM found?
-      // updatePayload.leader_id = null;
+      // No Guild Master found in roster
+      logger.info({ guildName: guild.name, guildId: guild.id }, `[SyncService] No Guild Master (rank 0) found in roster for ${guild.name}. Clearing leader_id.`);
+      updatePayload.leader_id = null; // Clear leader_id as per plan
     }
 
     await this.guildModel.update(guild.id, updatePayload);
@@ -215,19 +216,35 @@ export class BattleNetSyncService { // Added export keyword
     logger.info({ guildId, rosterSize: roster.members.length }, `[SyncService] Syncing guild_members table for guild ID: ${guildId}. Roster size: ${roster.members.length}`);
     try {
       await withTransaction(async (client) => { // Use transaction helper
-        // 1. Fetch existing members for the guild (including character_id for linking)
+        // 1. Fetch existing members for the guild, joining with characters to get the realm slug
         const existingMembersResult = await client.query(
-          `SELECT id, character_id, character_name, rank FROM guild_members WHERE guild_id = $1`,
+          `SELECT
+             gm.id,
+             gm.character_id,
+             gm.character_name,
+             gm.rank,
+             c.realm -- Fetch realm slug from characters table
+           FROM
+             guild_members gm
+           LEFT JOIN
+             characters c ON gm.character_id = c.id
+           WHERE
+             gm.guild_id = $1`,
           [guildId]
         );
-        // Define type for DB row
+        // Define type for DB row (includes realm slug from characters table)
         type GuildMemberRow = { id: number; character_id: number | null; character_name: string | null; realm: string | null; rank: number };
         const existingMembersMap = new Map<string, { id: number; character_id: number | null; rank: number }>();
         existingMembersResult.rows.forEach((row: GuildMemberRow) => {
-          // Use character_name and realm as a key for matching
-          // Ensure realm is available on guild_members or fetched differently if needed
-          const key = `${row.character_name?.toLowerCase()}-${row.realm?.toLowerCase()}`;
-          existingMembersMap.set(key, { id: row.id, character_id: row.character_id, rank: row.rank });
+          // Use character_name and the fetched realm slug as a key for matching
+          // Ensure both character_name and realm slug are present before creating the key
+          if (row.character_name && row.realm) {
+            const key = `${row.character_name.toLowerCase()}-${row.realm.toLowerCase()}`;
+            existingMembersMap.set(key, { id: row.id, character_id: row.character_id, rank: row.rank });
+          } else {
+            // Log a warning if essential data for key creation is missing
+            logger.warn({ guildId, memberId: row.id, characterId: row.character_id }, `[SyncService] Skipping existing member (ID: ${row.id}) due to missing name or realm slug needed for matching.`);
+          }
         });
         logger.info({ count: existingMembersMap.size, guildId }, `[SyncService] Found ${existingMembersMap.size} existing members in DB for guild ${guildId}.`);
 
@@ -401,13 +418,18 @@ export class BattleNetSyncService { // Added export keyword
         }
       }
 
-      // Optionally: Handle ranks that exist in DB but not in roster (e.g., set count to 0?)
-      // for (const existingRank of existingRanks) {
-      //   if (!rosterRankIds.has(existingRank.rank_id) && existingRank.member_count !== 0) {
-      //     logger.info({ rankId: existingRank.rank_id, guildId }, `[SyncService] Rank ${existingRank.rank_id} no longer in roster, setting count to 0.`);
-      //     await this.rankModel.updateMemberCount(guildId, existingRank.rank_id, 0);
-      //   }
-      // }
+      // Handle ranks that exist in DB but not in roster (set count to 0)
+      for (const existingRank of existingRanks) {
+        if (!rosterRankIds.has(existingRank.rank_id) && existingRank.member_count !== 0) {
+          logger.info({ rankId: existingRank.rank_id, guildId }, `[SyncService] Rank ${existingRank.rank_id} no longer in roster, setting count to 0.`);
+          // Use try-catch for robustness
+          try {
+            await this.rankModel.updateMemberCount(guildId, existingRank.rank_id, 0);
+          } catch (cleanupError) {
+            logger.error({ err: cleanupError, rankId: existingRank.rank_id, guildId }, `[SyncService] Error setting member count to 0 for rank ${existingRank.rank_id}, guild ${guildId}:`);
+          }
+        }
+      }
 
     } catch (error) {
       logger.error({ err: error, guildId }, `[SyncService] Error syncing ranks for guild ${guildId}:`);
@@ -436,18 +458,29 @@ export class BattleNetSyncService { // Added export keyword
         // Find the local guild record using the Battle.net guild ID
         localGuild = await this.guildModel.findOne({ bnet_guild_id: bnet_guild_id });
         if (localGuild) {
+          // Local guild found, use its region
           region = localGuild.region;
         } else {
-          logger.warn({ bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id} (Character: ${character.name})`);
-          region = character.region; // Fallback to existing character region
+          // Local guild NOT found, queue it for sync
+          logger.warn({ bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id}. Queueing guild for sync.`);
+          // Attempt to queue the guild based on data from character profile
+          await this._queueMissingGuildSync(enhancedData.guild, character.region); // Pass character region as fallback
+          // Fallback to existing character region for THIS character update
+          region = character.region;
+          // Do NOT set localGuild here, it remains null for this character update
         }
       } catch (guildError) {
-        logger.error({ err: guildError, bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id} (Character: ${character.name}):`);
-        region = character.region; // Fallback to existing character region on error
+        logger.error({ err: guildError, bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id}. Cannot queue guild.`);
+        // Fallback to existing character region on error
+        region = character.region;
+        // localGuild remains null or its previous value (likely null)
       }
     } else {
-      // If character has no guild in profile, use existing region if available
+      // Character has no guild in their Battle.net profile
+      // Use existing character region if available
       region = character.region;
+      // Ensure localGuild is null if character is guildless on BNet
+      localGuild = null;
     }
 
     // Prepare update payload
@@ -466,6 +499,78 @@ export class BattleNetSyncService { // Added export keyword
 
     return updatePayload;
   }
+
+  /**
+   * Checks if a guild exists based on Battle.net data and creates a minimal record
+   * if it doesn't, marking it for sync.
+   * @param bnetGuildData Guild data snippet from Battle.net (e.g., from character profile).
+   * @param fallbackRegion Region to use if not directly available in bnetGuildData.
+   * @private
+   */
+  private async _queueMissingGuildSync(
+    bnetGuildData: BattleNetCharacter['guild'], // Use type from BattleNetCharacter
+    fallbackRegion?: string | null // Allow null/undefined
+  ): Promise<void> {
+    if (!bnetGuildData) {
+      logger.warn('[SyncService:_queueMissingGuildSync] Received null guild data, cannot queue.');
+      return;
+    }
+
+    const { id: bnet_guild_id, name, realm } = bnetGuildData;
+    const realmSlug = realm?.slug;
+    let region: BattleNetRegion | undefined | null = undefined; // Use BattleNetRegion type
+
+    // Attempt to determine region from realm slug (simple heuristic)
+    if (realmSlug) {
+        // Add more specific rules based on known Battle.net slug conventions if needed
+        if (realmSlug.endsWith('-eu')) { region = 'eu'; }
+        else if (realmSlug.endsWith('-kr')) { region = 'kr'; }
+        else if (realmSlug.endsWith('-tw')) { region = 'tw'; }
+        else if (realmSlug.endsWith('-cn')) { region = 'cn'; } // Assuming -cn for China
+        else if (!realmSlug.includes('-')) { region = 'us'; } // Assume US if no region suffix
+    }
+
+    // If region couldn't be determined from slug, use the fallback
+    if (!region && fallbackRegion) {
+        // Ensure fallbackRegion is a valid BattleNetRegion type if possible
+        // This might require validation depending on the source of fallbackRegion
+        region = fallbackRegion as BattleNetRegion;
+        logger.debug({ fallbackRegionUsed: region }, '[SyncService:_queueMissingGuildSync] Determined region using fallback.');
+    }
+
+
+    if (!name || !realmSlug || !region) {
+      logger.error({ bnetGuildId: bnet_guild_id, name, realmSlug, determinedRegion: region, fallbackRegion }, '[SyncService:_queueMissingGuildSync] Missing essential data (name, realm slug, or region) to queue guild. Cannot proceed.');
+      return;
+    }
+
+    try {
+      // Check if guild already exists (by bnet_id or name/realm/region)
+      let existingGuild = await this.guildModel.findOne({ bnet_guild_id: bnet_guild_id });
+      if (!existingGuild) {
+        existingGuild = await this.guildModel.findByNameRealmRegion(name, realmSlug, region);
+      }
+
+      if (!existingGuild) {
+        // Guild does not exist, create a minimal record to trigger sync
+        logger.info({ name, realmSlug, region, bnetGuildId: bnet_guild_id }, `[SyncService:_queueMissingGuildSync] Guild ${name}-${realmSlug} not found. Creating minimal record to queue for sync.`);
+        await this.guildModel.create({
+          name: name,
+          realm: realmSlug,
+          region: region,
+          bnet_guild_id: bnet_guild_id,
+          last_updated: null, // Ensure it gets picked up by findOutdatedGuilds
+          last_roster_sync: null,
+        });
+      } else {
+        // Guild exists, maybe force a sync if it's very old? Optional.
+        // logger.debug({ name, realmSlug, region, guildId: existingGuild.id }, `[SyncService:_queueMissingGuildSync] Guild ${name}-${realmSlug} already exists (ID: ${existingGuild.id}).`);
+      }
+    } catch (error) {
+      logger.error({ err: error, name, realmSlug, region, bnetGuildId: bnet_guild_id }, `[SyncService:_queueMissingGuildSync] Error checking or creating guild record for ${name}-${realmSlug}:`);
+    }
+  }
+
 
 
   async syncCharacter(character: DbCharacter): Promise<void> {

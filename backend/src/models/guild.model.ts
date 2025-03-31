@@ -16,11 +16,10 @@ class GuildModel extends BaseModel<DbGuild> {
       
       const result = await db.query(
         `SELECT * FROM ${this.tableName}
-         -- WHERE last_updated IS NULL OR last_updated < $1 -- Temporarily commented out
+         WHERE last_updated IS NULL OR last_updated < $1
          ORDER BY last_updated ASC NULLS FIRST
          LIMIT 50`,
-        // [oneDayAgo.toISOString()] -- Temporarily commented out
-        [] // Pass empty array as no parameters are needed now
+        [oneDayAgo.toISOString()]
       );
       
       return result.rows;

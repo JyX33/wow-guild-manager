@@ -9,6 +9,13 @@ import { User, UserRole, UserWithTokens, BattleNetUserProfile, BattleNetRegion }
 import { AppError } from '../utils/error-handler';
 import { asyncHandler } from '../utils/error-handler';
 import logger from '../utils/logger'; // Import the logger
+import { OnboardingService } from '../services/onboarding.service'; // Import OnboardingService
+import { BattleNetApiClient } from '../services/battlenet-api.client'; // Import ApiClient
+
+// Instantiate services (consider dependency injection for better management)
+const apiClient = new BattleNetApiClient();
+const onboardingService = new OnboardingService(apiClient);
+
 
 const generateState = () => {
   return crypto.randomBytes(32).toString('hex');
@@ -167,31 +174,18 @@ export default {
     req.session.userId = user.id;
     logger.info({ userId: user.id }, 'User session established');
 
-    if (req.query.sync === 'true') {
-      logger.info({ userId: user.id }, 'Performing character sync during login');
-      try {
-        // Get WoW profile from Battle.net
-        const wowProfile = await battleNetService.getWowProfile(
-          callbackRegion, // Use validated region from session
-          tokenData.access_token
-        );
+    // Trigger the onboarding process (fetches profile, syncs chars, checks GM status)
+    // This runs asynchronously in the background, not blocking the redirect.
+    onboardingService.processNewUser(user.id, tokenData.access_token, callbackRegion)
+      .then(() => {
+        logger.info({ userId: user.id }, '[AuthCallback] Background onboarding process finished.');
+      })
+      .catch((onboardingError: any) => { // Add type annotation
+        // Log error from the async onboarding process
+        logger.error({ err: onboardingError, userId: user.id }, '[AuthCallback] Error during background onboarding process:');
+      });
 
-        // Sync characters
-        await characterModel.syncCharactersFromBattleNet(
-          user.id,
-          wowProfile.wow_accounts || []
-        );
-
-        // Update sync timestamp
-        await userModel.updateCharacterSyncTimestamp(user.id);
-        logger.info({ userId: user.id }, 'Character sync during login completed');
-      } catch (syncError) {
-        logger.error({ err: syncError, userId: user.id }, 'Error syncing characters during login:');
-        // Don't fail the login if sync fails
-      }
-    }
-
-    // Redirect to frontend
+    // Redirect to frontend immediately
     res.redirect(`${config.server.frontendUrl}/auth/callback`);
   }),
 

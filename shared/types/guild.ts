@@ -510,9 +510,9 @@ export interface DbGuild {
     name: string;
     realm: string;
     region: string;
-    leader_id?: number;
-    last_updated?: string;
-    last_roster_sync?: string; // Added by migration 20240325161500
+    leader_id?: number | null; // Allow null for leader_id
+    last_updated?: string | null; // Allow null
+    last_roster_sync?: string | null; // Allow null - Added by migration 20240325161500
     bnet_guild_id?: number; // Added by new migration
     member_count?: number; // Added for direct access
     guild_data_json?: BattleNetGuild; // Renamed and potentially nullable
@@ -542,7 +542,7 @@ export interface DbCharacter {
     is_main: boolean;
     created_at?: string;
     updated_at?: string;
-    guild_id?: number;
+    guild_id?: number | null; // Allow null
     guild_rank?: number;
     // character_data: BattleNetCharacter; // Removed
     bnet_character_id?: number; // Added by migration
@@ -566,6 +566,14 @@ export interface DbGuildRank {
     updated_at?: string;
 }
 
+// Combined type for data fetched by getEnhancedCharacterData
+export interface EnhancedCharacterData extends BattleNetCharacter {
+  equipment?: BattleNetCharacterEquipment;
+  mythicKeystone?: BattleNetMythicKeystoneProfile | null; // Allow null if profile doesn't exist
+  professions?: BattleNetProfessions; // Include full professions data
+}
+
+
 /**
  * Application Types
  * These types are used in the application logic and frontend
@@ -576,11 +584,11 @@ export interface Guild {
     name: string;
     realm: string;
     region: string;
-    last_updated?: string;
+    last_updated?: string | null; // Allow null
     guild_data_json?: BattleNetGuild; // Renamed property
-    leader_id?: number;
+    leader_id?: number | null; // Allow null
     is_guild_master?: boolean;
-}
+ }
 
 export interface GuildMember {
     id?: number; // Made optional as it's not always available (e.g., from roster_json)
@@ -602,7 +610,7 @@ export interface Character {
     role: CharacterRole;
     is_main: boolean;
     user_id: number;
-    guild_id?: number;
+    guild_id?: number | null; // Allow null
     guild_rank?: number;
     character_data?: BattleNetCharacter; // Keep for now if needed elsewhere, or remove if fully replaced by JSONB fields
     equipment?: BattleNetCharacterEquipment;

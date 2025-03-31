@@ -6,16 +6,36 @@ import db from '../db/db';
 import { AppError } from '../utils/error-handler';
 import { withTransaction } from '../utils/transaction';
 
+// Helper function to parse region from URL (can be moved to a util file later)
+import { BattleNetRegion } from '../../../shared/types/user'; // Need this type
+const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null => {
+  if (!href) return null;
+  try {
+    const url = new URL(href);
+    const hostnameParts = url.hostname.split('.'); // e.g., ['us', 'api', 'blizzard', 'com']
+    const regionCode = hostnameParts[0];
+    if (['us', 'eu', 'kr', 'tw', 'cn'].includes(regionCode)) {
+      return regionCode as BattleNetRegion;
+    }
+  } catch (e) {
+    // Invalid URL
+    console.error(`[parseRegionFromHref] Error parsing URL: ${href}`, e);
+  }
+  return null;
+};
+
+
 class CharacterModel extends BaseModel<DbCharacter> {
   constructor() {
     super('characters');
   }
 
   /**
-   * Find characters by user ID
+   * Find characters by user ID (returns DB representation)
    */
-  async findByUserId(userId: number): Promise<Character[]> {
+  async findByUserId(userId: number): Promise<DbCharacter[]> {
     try {
+      // Use findAll which returns DbCharacter[] based on BaseModel<DbCharacter>
       return await this.findAll({ user_id: userId });
     } catch (error) {
       throw new AppError(`Error finding characters by user ID: ${error instanceof Error ? error.message : String(error)}`, 500);
@@ -222,11 +242,13 @@ class CharacterModel extends BaseModel<DbCharacter> {
   async syncCharactersFromBattleNet(
     userId: number,
     wowAccounts: BattleNetWoWAccount[] // Use the imported type
-  ): Promise<{added: number, updated: number, total: number}> {
+    // Return added/updated counts and the IDs of processed characters
+  ): Promise<{added: number, updated: number, total: number, processedIds: number[]}> {
     try {
       return await withTransaction(async (client) => {
         let added = 0;
         let updated = 0;
+        const processedIds: number[] = []; // Array to store IDs of created/updated characters
 
         // Gather all characters from Battle.net
         const battleNetCharacters: Partial<DbCharacter>[] = []; // Use DbCharacter
@@ -265,31 +287,46 @@ class CharacterModel extends BaseModel<DbCharacter> {
           const charKey = `${character.name?.toLowerCase() || ''}-${character.realm?.toLowerCase() || ''}`;
           const existingId = existingCharsMap.get(charKey);
 
+          // --- Add Region Parsing Logic ---
+          let region: BattleNetRegion = 'eu'; // Default to 'eu'
+          const profileData = character.profile_json as any; // Cast for easier access
+          // Check character.key.href first, then character.realm.key.href as potential sources
+          const hrefToCheck = profileData?.key?.href || profileData?.realm?.key?.href;
+          const parsedRegion = parseRegionFromHref(hrefToCheck);
+          if (parsedRegion) {
+            region = parsedRegion;
+          }
+          // --- End Region Parsing Logic ---
+
           if (existingId) {
-            // Update existing character
+            // Update existing character, including region
             await client.query(
               `UPDATE ${this.tableName}
               SET level = $1,
                   profile_json = $2,
                   class = $3,
                   role = $4,
+                  region = $5, -- Add region update
                   updated_at = NOW()
-              WHERE id = $5`,
+              WHERE id = $6`, // Adjust placeholder index
               [
                 character.level,
                 character.profile_json, // Use profile_json
                 character.class,
                 character.role,
+                region, // Add region value
                 existingId
               ]
             );
+            processedIds.push(existingId); // Add updated ID
             updated++;
           } else {
-            // Insert new character
-            await client.query(
+            // Insert new character, including region
+            const insertResult = await client.query(
               `INSERT INTO ${this.tableName}
-              (user_id, name, realm, class, level, role, is_main, profile_json, created_at, updated_at)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())`,
+              (user_id, name, realm, class, level, role, is_main, profile_json, region, created_at, updated_at) -- Add region column
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) -- Add region placeholder
+              RETURNING id`, // Return the new ID
               [
                 character.user_id,
                 character.name,
@@ -298,14 +335,19 @@ class CharacterModel extends BaseModel<DbCharacter> {
                 character.level,
                 character.role,
                 false, // Not set as main automatically
-                character.profile_json // Use profile_json
+                character.profile_json, // Use profile_json
+                region // Add region value
               ]
             );
+            if (insertResult.rows.length > 0) {
+              processedIds.push(insertResult.rows[0].id); // Add newly inserted ID
+            }
             added++;
           }
         }
 
-        return { added, updated, total: battleNetCharacters.length };
+        // Return counts and the list of processed character IDs
+        return { added, updated, total: battleNetCharacters.length, processedIds };
       });
     } catch (error) {
       throw new AppError(`Error syncing characters: ${error instanceof Error ? error.message : String(error)}`, 500);
@@ -457,8 +499,14 @@ class CharacterModel extends BaseModel<DbCharacter> {
   /**
    * Find characters that haven't been synced recently.
    */
-  async findOutdatedCharacters(limit: number = 50): Promise<DbCharacter[]> {
+  async findOutdatedCharacters(): Promise<DbCharacter[]> {
     try {
+      // Read limit from environment variable, default to 50
+      const syncLimitEnv = process.env.CHARACTER_SYNC_LIMIT;
+      const limit = syncLimitEnv ? parseInt(syncLimitEnv, 10) : 50;
+      // Validate parsed limit, ensure it's a positive number, otherwise default to 50
+      const effectiveLimit = (!isNaN(limit) && limit > 0) ? limit : 50;
+
       const threshold = new Date();
       // Set threshold (e.g., 1 day ago)
       threshold.setDate(threshold.getDate() - 1);
@@ -468,7 +516,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
          WHERE last_synced_at IS NULL OR last_synced_at < $1
          ORDER BY last_synced_at ASC NULLS FIRST
          LIMIT $2`,
-        [threshold.toISOString(), limit]
+        [threshold.toISOString(), effectiveLimit] // Use the determined limit
       );
       return result.rows;
     } catch (error) {

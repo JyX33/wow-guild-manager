@@ -4,7 +4,7 @@ export enum UserRole {
   ADMIN = 'admin'
 }
 
-export type BattleNetRegion = 'eu' | 'us' | 'kr' | 'tw';
+export type BattleNetRegion = 'eu' | 'us' | 'kr' | 'tw' | 'cn'; // Added 'cn'
 
 /**
  * Battle.net API Types
