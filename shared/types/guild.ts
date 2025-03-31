@@ -524,6 +524,7 @@ export interface DbGuildMember {
     guild_id: number;
     character_id: number;
     rank: number;
+    is_main?: boolean | null; // ADDED - Is this the designated main for the user in this guild?
     character_name?: string; // Added by migration
     character_class?: string; // Added by migration
     member_data_json?: BattleNetGuildMember; // Added by migration
@@ -533,20 +534,20 @@ export interface DbGuildMember {
 
 export interface DbCharacter {
     id: number;
-    user_id: number;
+    user_id?: number | null; // Changed to nullable
     name: string;
     realm: string;
     class: string;
     level: number;
-    role: CharacterRole;
-    is_main: boolean;
+    role?: CharacterRole; // Changed to optional
+    // is_main: boolean; // REMOVED - Moved to DbGuildMember
     created_at?: string;
     updated_at?: string;
-    guild_id?: number | null; // Allow null
-    guild_rank?: number;
-    // character_data: BattleNetCharacter; // Removed
+    // guild_id?: number | null; // REMOVED - Relationship via DbGuildMember
+    // guild_rank?: number; // REMOVED - Stored in DbGuildMember
     bnet_character_id?: number; // Added by migration
     region?: string; // Added by migration
+    toy_hash?: string | null; // ADDED - For unknown user grouping
     last_synced_at?: string; // Added by migration
     profile_json?: BattleNetCharacter; // Added by migration
     equipment_json?: BattleNetCharacterEquipment; // Added by migration
@@ -592,11 +593,13 @@ export interface Guild {
 
 export interface GuildMember {
     id?: number; // Made optional as it's not always available (e.g., from roster_json)
-    guild_id: number;
+    guild_id: number; // Changed to guildId for consistency? Check usage. Assuming guildId based on context.
+    character_id?: number; // ADDED - Link back to character table
     character_name: string;
     character_class: string;
-    character_role: CharacterRole;
+    character_role?: CharacterRole; // Changed to optional
     rank: number;
+    isMain?: boolean | null; // ADDED - Is this the designated main for the user in this guild?
     user_id?: number;
     battletag?: string;
 }

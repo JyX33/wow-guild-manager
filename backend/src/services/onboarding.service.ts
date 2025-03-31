@@ -86,7 +86,7 @@ export class OnboardingService {
       class: enhancedData.character_class.name,
       last_synced_at: new Date().toISOString(), // Mark as synced now
       bnet_character_id: bnet_character_id,
-      guild_id: localGuildId, // Assign found local guild ID or null
+      // guild_id is now managed via guild_members table
       region: validRegion, // Update region if determined
     };
 

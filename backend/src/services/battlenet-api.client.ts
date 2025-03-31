@@ -591,6 +591,97 @@ export class BattleNetApiClient {
     }
   }
 
+  /**
+   * Fetches the character collections index from the Battle.net API.
+   * @param realmSlug The slug of the realm.
+   * @param characterNameLower The lowercase name of the character.
+   * @param region The region of the character.
+   * @returns {Promise<any>} The collections index data (structure may vary).
+   */
+  async getCharacterCollectionsIndex(realmSlug: string, characterNameLower: string, region: BattleNetRegion): Promise<any> {
+    const validRegion = this._validateRegion(region);
+    const token = await this.ensureClientToken();
+    const jobId = `char-collections-index-${validRegion}-${realmSlug}-${characterNameLower}`;
+    const regionConfig = config.battlenet.regions[validRegion];
+    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterNameLower)}/collections`;
+
+    const task = () => this._doAxiosGet<any>(url, token, {
+      namespace: `profile-${validRegion}`,
+      locale: 'en_US'
+    });
+
+    try {
+      logger.info({ jobId, url }, `[ApiClient] Scheduling collections index fetch for job ${jobId}.`);
+      return await this.scheduleWithRetry<any>(jobId, task);
+    } catch (error: any) {
+      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+      logger.error({ err: error, jobId, statusCode, realmSlug, characterNameLower, region: validRegion, url }, `[ApiClient] Final error fetching collections index for job ${jobId}.`);
+      // Allow 404s to pass through as null/undefined might be expected? Or throw specific error?
+      // For now, rethrow generic error. Handle 404 specifically in the calling service if needed.
+      throw new AppError(`Failed to fetch character collections index: ${error.message || String(error)}`, statusCode, {
+        code: 'BATTLE_NET_API_ERROR',
+        details: { realmSlug, characterNameLower, region: validRegion, jobId, url }
+      });
+    }
+  }
+
+  /**
+   * Fetches data from an arbitrary Battle.net API URL (e.g., from href links).
+   * Assumes the URL is within the Battle.net API domain and requires the standard token.
+   * @template T The expected type of the response data.
+   * @param url The full URL to fetch.
+   * @param jobId A unique identifier for logging/tracking this specific fetch.
+   * @returns {Promise<T>} The fetched data.
+   */
+  async getGenericBattleNetData<T = any>(url: string, jobId: string): Promise<T> {
+    const token = await this.ensureClientToken(); // Ensure token is valid
+
+    // Basic validation: Ensure it looks like a Battle.net API URL
+    if (!url || !url.includes('api.blizzard.com')) {
+        logger.error({ url, jobId }, `[ApiClient] Invalid URL provided to getGenericBattleNetData.`);
+        throw new AppError('Invalid URL for generic Battle.net data fetch.', 400);
+    }
+
+    // Extract namespace and locale from URL parameters if present, otherwise use defaults
+    let namespace = 'profile-eu'; // Default namespace
+    let locale = 'en_US'; // Default locale
+    try {
+        const urlParams = new URL(url).searchParams;
+        namespace = urlParams.get('namespace') || namespace;
+        locale = urlParams.get('locale') || locale;
+    } catch (e) {
+        logger.warn({ url, jobId }, `[ApiClient] Could not parse URL to extract namespace/locale for generic fetch. Using defaults.`);
+    }
+
+    // Remove namespace/locale from URL before passing to _doAxiosGet if they exist,
+    // as _doAxiosGet adds them back via params.
+    let baseUrl = url;
+    try {
+        const parsedUrl = new URL(url);
+        parsedUrl.searchParams.delete('namespace');
+        parsedUrl.searchParams.delete('locale');
+        baseUrl = parsedUrl.toString();
+    } catch(e) {
+         logger.warn({ url, jobId }, `[ApiClient] Could not parse URL to remove namespace/locale for generic fetch.`);
+    }
+
+
+    const task = () => this._doAxiosGet<T>(baseUrl, token, { namespace, locale });
+
+    try {
+      logger.info({ jobId, url: baseUrl, namespace, locale }, `[ApiClient] Scheduling generic fetch for job ${jobId}.`);
+      return await this.scheduleWithRetry<T>(jobId, task);
+    } catch (error: any) {
+      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+      logger.error({ err: error, jobId, statusCode, url: baseUrl }, `[ApiClient] Final error fetching generic data for job ${jobId}.`);
+      throw new AppError(`Failed to fetch generic Battle.net data: ${error.message || String(error)}`, statusCode, {
+        code: 'BATTLE_NET_API_ERROR',
+        details: { url: baseUrl, jobId }
+      });
+    }
+  }
+
+
   async getWowProfile(region: BattleNetRegion, accessToken: string): Promise<BattleNetWoWProfile> {
     const validRegion = this._validateRegion(region);
     const jobId = `wowprofile-${validRegion}-${accessToken.substring(0, 6)}`; // Use partial token for job ID

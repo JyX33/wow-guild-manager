@@ -10,6 +10,7 @@ import { AppError } from '../utils/error-handler';
 import logger from '../utils/logger'; // Import the logger
 import { createSlug } from '../utils/slugify'; // Import the slugify function
 import { withTransaction } from '../utils/transaction'; // Added withTransaction import
+import * as crypto from 'crypto'; // Added for toy hashing
 
 // TODO: Implement caching mechanism (e.g., Redis, in-memory cache) if desired
 
@@ -190,7 +191,7 @@ export class BattleNetSyncService { // Added export keyword
             class: rosterMember.character.playable_class?.name || 'Unknown',
             level: rosterMember.character.level,
             role: 'DPS', // Default role, consider refining later
-            is_main: false,
+            // is_main: false, // REMOVED - is_main is on guild_members now
             region: region, // Add the region here
             // user_id will be null initially
             // profile_json will be added by character sync later
@@ -454,51 +455,92 @@ export class BattleNetSyncService { // Added export keyword
     const bnet_character_id = enhancedData.id;
     const bnet_guild_id = enhancedData.guild?.id; // This is the Battle.net Guild ID
     let localGuild: DbGuild | null = null;
-    let region: string | undefined = undefined;
+    let region = character.region; // Start with existing region as fallback
 
+    // Determine Region and Local Guild ID
     if (bnet_guild_id) {
       try {
-        // Find the local guild record using the Battle.net guild ID
         localGuild = await this.guildModel.findOne({ bnet_guild_id: bnet_guild_id });
         if (localGuild) {
-          // Local guild found, use its region
-          region = localGuild.region;
+          region = localGuild.region; // Use region from found local guild
         } else {
-          // Local guild NOT found, queue it for sync
-          logger.warn({ bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id}. Queueing guild for sync.`);
-          // Attempt to queue the guild based on data from character profile
-          await this._queueMissingGuildSync(enhancedData.guild, character.region); // Pass character region as fallback
-          // Fallback to existing character region for THIS character update
-          region = character.region;
-          // Do NOT set localGuild here, it remains null for this character update
+          logger.warn({ bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id}. Queueing guild sync.`);
+          await this._queueMissingGuildSync(enhancedData.guild, character.region);
+          // Keep original character region for this update
         }
       } catch (guildError) {
-        logger.error({ err: guildError, bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id}. Cannot queue guild.`);
-        // Fallback to existing character region on error
-        region = character.region;
-        // localGuild remains null or its previous value (likely null)
+        logger.error({ err: guildError, bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Error fetching local guild for BNet Guild ID ${bnet_guild_id}.`);
+        // Keep original character region on error
       }
     } else {
-      // Character has no guild in their Battle.net profile
-      // Use existing character region if available
-      region = character.region;
-      // Ensure localGuild is null if character is guildless on BNet
-      localGuild = null;
+      localGuild = null; // Ensure localGuild is null if character is guildless on BNet
     }
+
+    // --- Calculate Toy Hash for Unknown Users ---
+    let calculatedToyHash: string | null = null;
+    const NO_TOYS_HASH = 'a3741d687719e1c015f4f115371c77064771f699817f81f09016350165a19111'; // sha256("NO_TOYS_FOUND")
+
+    if (character.user_id === null && region) { // Only calculate if user_id is null and region is known
+        const realmSlug = createSlug(character.realm);
+        const characterName = character.name.toLowerCase(); // BNet API uses lowercase names
+        try {
+            logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] Fetching collections index for unknown character.`);
+            // 1. Fetch Collections Index
+            const collectionsIndex = await this.apiClient.getCharacterCollectionsIndex(realmSlug, characterName, region as BattleNetRegion);
+
+            if (collectionsIndex?.toys?.href) {
+                logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] Fetching toys from href: ${collectionsIndex.toys.href}`);
+                // 2. Fetch Toys Data
+                // Assuming a generic fetch method or a specific one exists in apiClient
+                // Use the new generic fetch method, providing a job ID
+                const toyJobId = `char-toys-${region}-${realmSlug}-${characterName}`;
+                const toysData = await this.apiClient.getGenericBattleNetData<{ toys: { toy: { id: number } }[] }>(collectionsIndex.toys.href, toyJobId);
+
+                if (toysData?.toys && toysData.toys.length > 0) {
+                    // Add explicit types for map and sort parameters
+                    const toyIds = toysData.toys.map((t: { toy: { id: number } }) => t.toy.id);
+                    toyIds.sort((a: number, b: number) => a - b); // Sort numerically
+                    const idString = toyIds.join('|');
+                    calculatedToyHash = crypto.createHash('sha256').update(idString).digest('hex');
+                    logger.debug({ charName: character.name, realmSlug, region, hash: calculatedToyHash }, `[SyncService] Calculated toy hash.`);
+                } else {
+                    logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] No toys found in collection, using default hash.`);
+                    calculatedToyHash = NO_TOYS_HASH;
+                }
+            } else {
+                 logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] No toys href found in collections index, using default hash.`);
+                 calculatedToyHash = NO_TOYS_HASH;
+            }
+        } catch (toyError) {
+            logger.error({ err: toyError, charName: character.name, realmSlug, region }, `[SyncService] Error fetching toy collection for unknown character. Using default hash.`);
+            calculatedToyHash = NO_TOYS_HASH; // Use default hash on error
+        }
+    } else if (character.user_id !== null) {
+        // Explicitly set toy_hash to null for known users to clear any old value
+        calculatedToyHash = null;
+    }
+    // --- End Toy Hash Calculation ---
+
 
     // Prepare update payload
     const updatePayload: Partial<DbCharacter> = {
       profile_json: enhancedData,
       equipment_json: enhancedData.equipment,
       mythic_profile_json: enhancedData.mythicKeystone === null ? undefined : enhancedData.mythicKeystone,
-      professions_json: enhancedData.professions,
+      // Ensure professions_json stores only the 'primaries' array if that's the intended structure
+      professions_json: enhancedData.professions?.primaries,
       level: enhancedData.level,
       class: enhancedData.character_class.name,
       last_synced_at: new Date().toISOString(),
       bnet_character_id: bnet_character_id,
-      guild_id: localGuild?.id,
-      region: region,
+      // guild_id: localGuild?.id, // REMOVED - guild_id is not on characters table
+      region: region, // Use determined region
+      toy_hash: calculatedToyHash, // Add the calculated toy hash (can be null)
     };
+
+    // Remove undefined keys to avoid accidentally setting columns to null
+    Object.keys(updatePayload).forEach(key => updatePayload[key as keyof typeof updatePayload] === undefined && delete updatePayload[key as keyof typeof updatePayload]);
+
 
     return updatePayload;
   }

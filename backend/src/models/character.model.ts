@@ -42,70 +42,22 @@ class CharacterModel extends BaseModel<DbCharacter> {
     }
   }
 
-  /**
-   * Get main character for a user
-   */
-  async getMainCharacter(userId: number): Promise<Character | null> {
-    try {
-      return await this.findOne({ user_id: userId, is_main: true });
-    } catch (error) {
-      throw new AppError(`Error finding main character: ${error instanceof Error ? error.message : String(error)}`, 500);
-    }
-  }
+  // REMOVED: getMainCharacter - Main character logic is now guild-specific and handled in guild_member.model
+  // REMOVED: setMainCharacter - Main character logic is now guild-specific and handled in guild_member.model
 
   /**
-   * Set a character as the main character for a user
-   * This will unset any existing main character for the user
+   * Create a character
    */
-  async setMainCharacter(characterId: number, userId: number): Promise<Character> {
+  async createCharacter(characterData: Partial<DbCharacter>): Promise<DbCharacter> { // Use DbCharacter, remove setAsMain
     try {
       return await withTransaction(async (client) => {
-        // First, unset any existing main character for this user
-        await client.query(
-          `UPDATE ${this.tableName} SET is_main = false, updated_at = NOW() WHERE user_id = $1`,
-          [userId]
-        );
-
-        // Then, set the new main character
-        const result = await client.query(
-          `UPDATE ${this.tableName} SET is_main = true, updated_at = NOW() WHERE id = $1 AND user_id = $2 RETURNING *`,
-          [characterId, userId]
-        );
-
-        if (result.rowCount === 0) {
-          throw new AppError(`Character not found or doesn't belong to user`, 404);
-        }
-
-        return result.rows[0];
-      });
-    } catch (error) {
-      if (error instanceof AppError) {
-        throw error;
-      }
-      throw new AppError(`Error setting main character: ${error instanceof Error ? error.message : String(error)}`, 500);
-    }
-  }
-
-  /**
-   * Create a character with the option to set it as main
-   */
-  async createCharacter(characterData: Partial<Character>, setAsMain: boolean = false): Promise<Character> {
-    try {
-      return await withTransaction(async (client) => {
-        // If this is the main character, unset any existing main character
-        if (setAsMain && characterData.user_id) {
-          await client.query(
-            `UPDATE ${this.tableName} SET is_main = false, updated_at = NOW() WHERE user_id = $1`,
-            [characterData.user_id]
-          );
-        }
+        // REMOVED: Logic for setting/unsetting main character during creation
 
         // Use profile_json instead of character_data
-        const { character_data, ...restData } = characterData;
+        // Use profile_json if available in characterData, otherwise expect it in restData
+        // REMOVED: is_main assignment
         const dataToInsert = {
-          ...restData,
-          profile_json: character_data, // Assign to the new JSONB field
-          is_main: setAsMain,
+          ...characterData, // Use characterData directly as it's Partial<DbCharacter>
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -141,7 +93,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
   /**
    * Update character with validation to ensure it belongs to the user
    */
-  async updateCharacter(characterId: number, userId: number, data: Partial<Character>): Promise<Character | null> {
+  async updateCharacter(characterId: number, userId: number, data: Partial<DbCharacter>): Promise<DbCharacter | null> { // Use DbCharacter
     try {
       // Make sure this character belongs to the user
       const character = await this.findOne({ id: characterId, user_id: userId });
@@ -151,10 +103,9 @@ class CharacterModel extends BaseModel<DbCharacter> {
       }
 
       // Use profile_json instead of character_data
-      const { character_data, ...restData } = data;
+      // REMOVED: is_main handling from update
       const updateData = {
-        ...restData,
-        profile_json: character_data, // Assign to the new JSONB field if present
+        ...data, // Use data directly as it's Partial<DbCharacter>
         updated_at: new Date().toISOString()
       };
 
@@ -201,7 +152,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
 
       // If this was the main character and deletion is successful, set another character as main if available
       return await withTransaction(async (client) => {
-        const wasMain = character.is_main;
+        // REMOVED: Logic to handle setting a new main character upon deletion
 
         // Delete the character
         const result = await client.query(
@@ -210,21 +161,6 @@ class CharacterModel extends BaseModel<DbCharacter> {
         );
 
         const success = result.rowCount > 0;
-
-        if (success && wasMain) {
-          // Find another character to set as main
-          const anotherCharacter = await client.query(
-            `SELECT id FROM ${this.tableName} WHERE user_id = $1 LIMIT 1`,
-            [userId]
-          );
-
-          if (anotherCharacter.rowCount > 0) {
-            await client.query(
-              `UPDATE ${this.tableName} SET is_main = true, updated_at = NOW() WHERE id = $1`,
-              [anotherCharacter.rows[0].id]
-            );
-          }
-        }
 
         return success;
       });
@@ -265,7 +201,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
               // Assign the summarized character object from the account profile here.
               // The full profile will be fetched and stored by the sync service later.
               profile_json: character as any, // Cast to any to bypass temporary type mismatch
-              is_main: false
+              // is_main: false // REMOVED - Not stored here anymore
             });
           }
         }
@@ -305,8 +241,8 @@ class CharacterModel extends BaseModel<DbCharacter> {
             // Insert new character, including region
             const insertResult = await client.query(
               `INSERT INTO ${this.tableName}
-              (user_id, name, realm, class, level, role, is_main, profile_json, region, created_at, updated_at) -- Add region column
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) -- Add region placeholder
+              (user_id, name, realm, class, level, role, /*is_main,*/ profile_json, region, created_at, updated_at) -- Removed is_main
+              VALUES ($1, $2, $3, $4, $5, $6, /*$7,*/ $7, $8, NOW(), NOW()) -- Removed is_main placeholder, adjusted indices
               RETURNING id`, // Return the new ID
               [
                 character.user_id,
@@ -315,7 +251,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
                 character.class,
                 character.level,
                 character.role,
-                false, // Not set as main automatically
+                // false, // REMOVED - is_main not stored here
                 character.profile_json, // Use profile_json
                 region // Add region value
               ]
@@ -414,16 +350,7 @@ class CharacterModel extends BaseModel<DbCharacter> {
     }
   }
 
-  /**
-   * Get characters for a specific guild
-   */
-  async findByGuildId(guildId: number): Promise<Character[]> {
-    try {
-      return await this.findAll({ guild_id: guildId });
-    } catch (error) {
-      throw new AppError(`Error finding characters by guild ID: ${error instanceof Error ? error.message : String(error)}`, 500);
-    }
-  }
+  // REMOVED: findByGuildId - Guild relationship is now managed via guild_members table
 
   /**
    * Find multiple characters by their IDs.
@@ -516,8 +443,7 @@ export const findAll = characterModel.findAll.bind(characterModel);
 export const create = characterModel.create.bind(characterModel);
 export const update = characterModel.update.bind(characterModel);
 export const findByUserId = characterModel.findByUserId.bind(characterModel);
-export const getMainCharacter = characterModel.getMainCharacter.bind(characterModel);
-export const setMainCharacter = characterModel.setMainCharacter.bind(characterModel);
+// Removed exports for getMainCharacter and setMainCharacter as they are no longer part of this model
 export const findByMultipleNameRealm = characterModel.findByMultipleNameRealm.bind(characterModel); // Added export
 
 export const createCharacter = characterModel.createCharacter.bind(characterModel);
@@ -526,7 +452,7 @@ export const deleteUserCharacter = characterModel.deleteUserCharacter.bind(chara
 export const syncCharactersFromBattleNet = characterModel.syncCharactersFromBattleNet.bind(characterModel);
 export const getHighestLevelCharacter = characterModel.getHighestLevelCharacter.bind(characterModel);
 export const findByNameRealm = characterModel.findByNameRealm.bind(characterModel);
-export const findByGuildId = characterModel.findByGuildId.bind(characterModel);
+// Removed export for findByGuildId as it's no longer part of this model
 export const findByIds = characterModel.findByIds.bind(characterModel);
 export const findOutdatedCharacters = characterModel.findOutdatedCharacters.bind(characterModel); // Added export
 

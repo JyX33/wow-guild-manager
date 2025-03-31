@@ -60,7 +60,7 @@ const GuildGeneralInfo: React.FC<GuildGeneralInfoProps> = ({ guild }) => {
   const calculateRoleCounts = (memberList: GuildMember[]) => {
     const counts: RoleCounts = { dps: 0, healer: 0, tank: 0, unknown: 0 };
     memberList.forEach(member => {
-      const role = member.character_role.toLowerCase();
+      const role = (member.character_role ?? 'unknown').toLowerCase();
       if (role === 'dps') counts.dps++;
       else if (role === 'healer') counts.healer++;
       else if (role === 'tank') counts.tank++;
