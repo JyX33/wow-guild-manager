@@ -7,6 +7,7 @@ import { Event } from '../../../shared/types/event';
 import { EnhancedGuildMembersList } from '../components/EnhancedGuildMembersList';
 import EventCalendar from '../components/EventCalendar';
 import LoadingSpinner from '../components/LoadingSpinner';
+import GuildGeneralInfo from '../components/GuildGeneralInfo';
 import withAuth from '@/components/withAuth';
 
 interface SlotInfo {
@@ -14,7 +15,7 @@ interface SlotInfo {
   end: Date;
 }
 
-type TabType = 'calendar' | 'members';
+type TabType = 'general' | 'calendar' | 'members';
 
 const GuildPage: React.FC = () => {
   const { guildId } = useParams<{ guildId: string }>();
@@ -23,7 +24,7 @@ const GuildPage: React.FC = () => {
   const [guild, setGuild] = useState<Guild | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuildMaster, setIsGuildMaster] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('calendar');
+  const [activeTab, setActiveTab] = useState<TabType>('general');
   const [error, setError] = useState<string | null>(null);
   // Add a key to force refresh the calendar component when needed
   const [calendarKey, setCalendarKey] = useState(Date.now());
@@ -133,6 +134,12 @@ const GuildPage: React.FC = () => {
       <div className="mb-6">
         <div className="flex border-b">
           <button
+            className={`px-4 py-2 mr-2 ${activeTab === 'general' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
+            onClick={() => setActiveTab('general')}
+          >
+            General Information
+          </button>
+          <button
             className={`px-4 py-2 mr-2 ${activeTab === 'calendar' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
             onClick={() => setActiveTab('calendar')}
           >
@@ -141,6 +148,7 @@ const GuildPage: React.FC = () => {
           <button
             className={`px-4 py-2 ${activeTab === 'members' ? 'border-b-2 border-blue-500 font-medium' : ''}`}
             onClick={() => setActiveTab('members')}
+      
           >
             Guild Members
           </button>
@@ -150,6 +158,13 @@ const GuildPage: React.FC = () => {
       {activeTab === 'calendar' && (
         <div>
           <div className="flex justify-end mb-4">
+
+      {activeTab === 'general' && guild && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <GuildGeneralInfo guild={guild} />
+        </div>
+      )}
+      
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               onClick={handleCreateEvent}

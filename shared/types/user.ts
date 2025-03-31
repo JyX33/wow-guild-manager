@@ -107,6 +107,7 @@ export interface DbUser {
   battletag: string;
   access_token?: string;
   refresh_token?: string;
+  tokens_valid_since?: string; // Added for token revocation
   token_expires_at?: string;
   created_at?: string;
   updated_at?: string;
@@ -132,10 +133,12 @@ export interface User {
   role?: UserRole;
   region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;
+  tokens_valid_since?: string; // Added for token revocation
 }
 
 // For backend use only - not exported directly in index.ts
 export interface UserWithTokens extends User {
   access_token?: string;
   refresh_token?: string;
+  // tokens_valid_since is inherited from User
 }

@@ -99,6 +99,46 @@ class UserModel extends BaseModel<DbUser> {
     }
   }
 
+  /**
+   * Update tokens specifically for the refresh flow, including the refresh token.
+   */
+  async updateTokensForRefresh(
+    id: number,
+    accessToken: string,
+    refreshToken: string, // Refresh token is expected here
+    expiresAt: Date
+  ): Promise<UserWithTokens | null> {
+    try {
+      const updateData: Partial<DbUser> = {
+        access_token: accessToken,
+        refresh_token: refreshToken, // Always update refresh token
+        token_expires_at: expiresAt.toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new AppError(`Error updating tokens during refresh: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
+   * Invalidate all tokens for a user by updating the tokens_valid_since timestamp.
+   */
+  async invalidateUserTokens(id: number): Promise<UserWithTokens | null> {
+    try {
+      const updateData: Partial<DbUser> = {
+        tokens_valid_since: new Date().toISOString(), // Set to current time
+        updated_at: new Date().toISOString()
+      };
+      // Use knex instance directly for db functions like now()
+      // updateData.tokens_valid_since = db.fn.now(); // Alternative if direct DB function needed
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new AppError(`Error invalidating user tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+
   async getUsersWithRole(role: UserRole): Promise<UserWithTokens[]> {
     try {
       return await this.findAll({ role });
@@ -181,5 +221,7 @@ export const updateCharacterSyncTimestamp = userModel.updateCharacterSyncTimesta
 export const getUserCharacters = userModel.getUserCharacters.bind(userModel);
 export const findByCharacterName = userModel.findByCharacterName.bind(userModel);
 export const findGuildMembers = userModel.findGuildMembers.bind(userModel);
+export const updateTokensForRefresh = userModel.updateTokensForRefresh.bind(userModel);
+export const invalidateUserTokens = userModel.invalidateUserTokens.bind(userModel);
 
 export default userModel;

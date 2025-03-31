@@ -34,7 +34,8 @@ export default {
     
     try {
       // Verify token
-      const decoded = jwt.verify(token, config.auth.jwtSecret) as { id: number };
+      // Verify token and expect 'tvs' claim
+      const decoded = jwt.verify(token, config.auth.jwtSecret) as { id: number; tvs: string };
       
       // Get user from database - explicitly as UserWithTokens
       const user = await userModel.getUserWithTokens(decoded.id);
@@ -62,6 +63,20 @@ export default {
           }
         });
       }
+
+      // --- Token Revocation Check ---
+      // Compare token's 'valid since' timestamp with the user's current 'valid since' timestamp
+      if (!user.tokens_valid_since || !decoded.tvs || new Date(decoded.tvs) < new Date(user.tokens_valid_since)) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            message: 'Token has been revoked - please log in again',
+            status: 401,
+            details: { revoked: true, requiresLogin: true }
+          }
+        });
+      }
+      // --- End Token Revocation Check ---
       
       req.user = user;
       next();
@@ -138,37 +153,44 @@ export default {
     
     try {
       // Verify refresh token
-      const decoded = jwt.verify(refreshToken, config.auth.jwtRefreshSecret) as { id: number };
+      // Verify refresh token and expect 'tvs' claim
+      const decoded = jwt.verify(refreshToken, config.auth.jwtRefreshSecret) as { id: number; tvs: string };
       
       // Get user from database with tokens
       const user = await userModel.getUserWithTokens(decoded.id);
       
-      if (!user || user.refresh_token !== refreshToken) {
+      if (!user) {
+        // User not found based on token ID
+        return res.status(401).json({
+          success: false, error: { message: 'User not found - please log in again', status: 401, details: { requiresLogin: true } }
+        });
+      }
+
+      // --- Rotation Check ---
+      // Ensure the presented refresh token matches the one stored in the DB
+      if (user.refresh_token !== refreshToken) {
+        // This indicates the token was likely already used/rotated
+        return res.status(401).json({
+          success: false, error: { message: 'Invalid refresh token (potentially reused) - please log in again', status: 401, details: { requiresLogin: true } }
+        });
+      }
+      // --- End Rotation Check ---
+
+      // --- Token Revocation Check ---
+      // Compare token's 'valid since' timestamp with the user's current 'valid since' timestamp
+      if (!user.tokens_valid_since || !decoded.tvs || new Date(decoded.tvs) < new Date(user.tokens_valid_since)) {
         return res.status(401).json({
           success: false,
           error: {
-            message: 'Invalid refresh token - please log in again',
+            message: 'Token has been revoked - please log in again',
             status: 401,
-            details: { requiresLogin: true }
+            details: { revoked: true, requiresLogin: true }
           }
         });
       }
+      // --- End Token Revocation Check ---
       
-      // Generate new access token
-      // @ts-ignore // TODO: Investigate TS2769 error
-      const token = jwt.sign(
-        { id: user.id, battle_net_id: user.battle_net_id, role: user.role },
-        config.auth.jwtSecret,
-        { expiresIn: config.auth.jwtExpiresIn }
-      );
-      
-      // Set new access token in cookie
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: config.auth.cookieMaxAge
-      });
-      
+      // If all checks pass, attach user and proceed to the controller
       req.user = user;
       next();
     } catch (error) {

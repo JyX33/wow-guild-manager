@@ -27,11 +27,19 @@ const isValidRegion = (region: string): region is BattleNetRegion => {
 };
 
 
-const generateToken = (user: User | UserWithTokens) => {
+const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for tokens_valid_since
+  // Ensure tokens_valid_since exists, default to now if somehow missing (shouldn't happen after migration)
+  const tokenValidSince = user.tokens_valid_since || new Date().toISOString();
+
   // Generate JWT for frontend auth
   // @ts-ignore // TODO: Investigate TS2769 error
   const token = jwt.sign(
-    { id: user.id, battle_net_id: user.battle_net_id, role: user.role },
+    {
+      id: user.id,
+      battle_net_id: user.battle_net_id,
+      role: user.role,
+      tvs: tokenValidSince // Add token valid since timestamp
+    },
     config.auth.jwtSecret,
     { expiresIn: config.auth.jwtExpiresIn }
   );
@@ -39,7 +47,10 @@ const generateToken = (user: User | UserWithTokens) => {
   // Generate refresh token with longer expiry
   // @ts-ignore // TODO: Investigate TS2769 error
   const refreshToken = jwt.sign(
-    { id: user.id },
+    {
+      id: user.id,
+      tvs: tokenValidSince // Add token valid since timestamp
+    },
     config.auth.jwtRefreshSecret,
     { expiresIn: config.auth.jwtRefreshExpiresIn }
   );
@@ -191,8 +202,21 @@ export default {
   }),
 
   logout: asyncHandler(async (req: Request, res: Response) => {
-    logger.info({ method: req.method, path: req.path, userId: req.session?.userId }, 'Handling logout request');
-    const userId = req.session?.userId; // Log user ID before destroying session
+    const userId = req.user?.id; // Get user ID from authenticated user
+    logger.info({ method: req.method, path: req.path, userId }, 'Handling logout request');
+
+    if (userId) {
+      try {
+        // Invalidate tokens before destroying session/clearing cookies
+        await userModel.invalidateUserTokens(userId);
+        logger.info({ userId }, 'User tokens invalidated successfully during logout');
+      } catch (invalidationError) {
+        logger.error({ err: invalidationError, userId }, 'Error invalidating tokens during logout');
+        // Proceed with logout anyway
+      }
+    } else {
+      logger.warn('Logout request received but no authenticated user found (req.user missing).');
+    }
 
     // Destroy the session
     req.session.destroy((err) => {
@@ -239,16 +263,23 @@ export default {
   }),
 
   refreshToken: asyncHandler(async (req: Request, res: Response) => {
-    logger.info({ method: req.method, path: req.path, userId: req.session?.userId }, 'Handling refreshToken request');
+    // req.user is populated by the refreshToken middleware if the incoming refresh token is valid
     if (!req.user) {
-      // This implies the refresh token validation failed in middleware
+      // This should technically not be reached if middleware is correct, but safeguard anyway
       throw new AppError('Authentication failed (invalid refresh token)', 401);
     }
+    const userId = req.user.id;
+    logger.info({ method: req.method, path: req.path, userId }, 'Handling refreshToken request');
 
-    // Generate new tokens
-    const { token, refreshToken } = generateToken(req.user);
+    // 1. Generate NEW access and refresh tokens (containing updated tvs)
+    const { token, refreshToken: newRefreshToken } = generateToken(req.user); // Pass the full user object
 
-    // Set new tokens in cookies
+    // 2. Update the database with the NEW refresh token
+    const expiresAt = new Date(Date.now() + (parseInt(config.auth.jwtExpiresIn, 10) * 1000)); // Ensure jwtExpiresIn is treated as number
+    await userModel.updateTokensForRefresh(userId, token, newRefreshToken, expiresAt);
+    logger.info({ userId }, 'Stored new refresh token in database.');
+
+    // 3. Set new tokens in cookies
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -256,7 +287,7 @@ export default {
       maxAge: config.auth.cookieMaxAge
     });
 
-    res.cookie('refreshToken', refreshToken, {
+    res.cookie('refreshToken', newRefreshToken, { // Use the NEW refresh token
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -264,6 +295,7 @@ export default {
       maxAge: config.auth.refreshCookieMaxAge
     });
 
+    logger.info({ userId }, 'Token refresh successful, new tokens issued.');
     res.json({ success: true, message: 'Token refreshed successfully' });
   }),
 
