@@ -1,13 +1,14 @@
-import logger from '../utils/logger'; // Import the logger
-import { BattleNetApiClient } from '../services/battlenet-api.client'; // Added import
-import * as guildModel from '../models/guild.model';
+import { BattleNetCharacter, BattleNetGuild, BattleNetGuildMember, BattleNetGuildRoster, DbCharacter, DbGuild, DbGuildMember } from '../../../shared/types/guild'; // Added DbGuildMember, BattleNetGuild, EnhancedCharacterData
+import { BattleNetRegion } from '../../../shared/types/user'; // Added import for BattleNetRegion
 import * as characterModel from '../models/character.model';
+import * as guildModel from '../models/guild.model';
+import * as guildMemberModel from '../models/guild_member.model'; // Added guildMemberModel import
 import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model'; // Needed? Maybe for leader lookup
-import * as guildMemberModel from '../models/guild_member.model'; // Added guildMemberModel import
-import { DbGuild, BattleNetGuildRoster, DbCharacter, BattleNetGuildMember, DbGuildMember, BattleNetCharacter, BattleNetGuild, EnhancedCharacterData } from '../../../shared/types/guild'; // Added DbGuildMember, BattleNetGuild, EnhancedCharacterData
-import { BattleNetRegion } from '../../../shared/types/user'; // Added import for BattleNetRegion
+import { BattleNetApiClient } from '../services/battlenet-api.client'; // Added import
 import { AppError } from '../utils/error-handler';
+import logger from '../utils/logger'; // Import the logger
+import { createSlug } from '../utils/slugify'; // Import the slugify function
 import { withTransaction } from '../utils/transaction'; // Added withTransaction import
 
 // TODO: Implement caching mechanism (e.g., Redis, in-memory cache) if desired
@@ -102,10 +103,12 @@ export class BattleNetSyncService { // Added export keyword
       // const token = await this.ensureClientToken(); // Removed
 
       // 1. Fetch Guild Data from Battle.net using injected client
-      const guildData = await this.apiClient.getGuildData(guild.realm, guild.name, guild.region as BattleNetRegion); // Use apiClient, cast region
+      const realmSlug = createSlug(guild.realm);
+      const guildNameSlug = createSlug(guild.name);
+      const guildData = await this.apiClient.getGuildData(realmSlug, guildNameSlug, guild.region as BattleNetRegion); // Use apiClient, cast region, use slugs
 
       // 2. Fetch Guild Roster from Battle.net using injected client
-      const guildRoster = await this.apiClient.getGuildRoster(guild.region as BattleNetRegion, guild.realm, guild.name); // Use apiClient, cast region
+      const guildRoster = await this.apiClient.getGuildRoster(guild.region as BattleNetRegion, realmSlug, guildNameSlug); // Use apiClient, cast region, use slugs
 
       // 3. Update Core Guild Data using the extracted private method
       await this._updateCoreGuildData(guild, guildData, guildRoster);

@@ -172,7 +172,7 @@ export default {
     });
 
     // Store userId in session for backend use
-    req.session.userId = user.id;
+    // Line removed as per docs/auth-simplification-plan.md
     logger.info({ userId: user.id }, 'User session established');
 
     // Trigger the onboarding process (fetches profile, syncs chars, checks GM status)

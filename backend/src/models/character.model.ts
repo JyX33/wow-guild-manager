@@ -299,27 +299,8 @@ class CharacterModel extends BaseModel<DbCharacter> {
           // --- End Region Parsing Logic ---
 
           if (existingId) {
-            // Update existing character, including region
-            await client.query(
-              `UPDATE ${this.tableName}
-              SET level = $1,
-                  profile_json = $2,
-                  class = $3,
-                  role = $4,
-                  region = $5, -- Add region update
-                  updated_at = NOW()
-              WHERE id = $6`, // Adjust placeholder index
-              [
-                character.level,
-                character.profile_json, // Use profile_json
-                character.class,
-                character.role,
-                region, // Add region value
-                existingId
-              ]
-            );
-            processedIds.push(existingId); // Add updated ID
-            updated++;
+            // Existing character found, do nothing during onboarding sync.
+            // Updates for existing characters are handled by the background sync service.
           } else {
             // Insert new character, including region
             const insertResult = await client.query(
@@ -347,7 +328,8 @@ class CharacterModel extends BaseModel<DbCharacter> {
         }
 
         // Return counts and the list of processed character IDs
-        return { added, updated, total: battleNetCharacters.length, processedIds };
+        // Return counts: 'updated' is always 0 here, 'processedIds' only contains new character IDs.
+        return { added, updated: 0, total: battleNetCharacters.length, processedIds };
       });
     } catch (error) {
       throw new AppError(`Error syncing characters: ${error instanceof Error ? error.message : String(error)}`, 500);

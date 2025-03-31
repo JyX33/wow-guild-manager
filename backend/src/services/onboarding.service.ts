@@ -5,7 +5,8 @@ import guildModel from '../models/guild.model';
 import userModel from '../models/user.model';
 import { BattleNetApiClient } from './battlenet-api.client'; // Assuming we need the client for roster fetching
 import { BattleNetRegion, UserRole} from '../../../shared/types/user';
-import { BattleNetGuildRoster, DbCharacter,BattleNetCharacter, EnhancedCharacterData } from '../../../shared/types/guild'; // Import necessary types
+import { BattleNetGuildRoster, DbCharacter, BattleNetCharacter, EnhancedCharacterData } from '../../../shared/types/guild'; // Import necessary types
+import { createSlug } from '../utils/slugify'; // Import the slugify function
 
 // Define a type for the unique guild info extracted from character profiles
 type CharacterGuildInfo = {
@@ -255,7 +256,7 @@ export class OnboardingService {
           const roster: BattleNetGuildRoster = await this.battleNetApiClient.getGuildRoster(
             guildInfo.region,
             guildInfo.realmSlug,
-            guildInfo.name // Assuming name is slugified correctly by API client or service
+            createSlug(guildInfo.name) // Generate slug from the name
           );
 
           // Check if any of the user's characters are rank 0 in this roster
