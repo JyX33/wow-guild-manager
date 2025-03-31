@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { guildService } from '../services/api/guild.service';
 import { Guild } from '../../../shared/types/guild';
@@ -7,7 +7,7 @@ import { Event } from '../../../shared/types/event';
 import { EnhancedGuildMembersList } from '../components/EnhancedGuildMembersList';
 import EventCalendar from '../components/EventCalendar';
 import LoadingSpinner from '../components/LoadingSpinner';
-import GuildGeneralInfo from '../components/GuildGeneralInfo';
+import GuildGeneralInfo from '@/components/GuildGeneralInfo';
 import withAuth from '@/components/withAuth';
 
 interface SlotInfo {
@@ -158,13 +158,6 @@ const GuildPage: React.FC = () => {
       {activeTab === 'calendar' && (
         <div>
           <div className="flex justify-end mb-4">
-
-      {activeTab === 'general' && guild && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <GuildGeneralInfo guild={guild} />
-        </div>
-      )}
-      
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               onClick={handleCreateEvent}
@@ -172,8 +165,7 @@ const GuildPage: React.FC = () => {
               Create Event
             </button>
           </div>
-          
-          <EventCalendar 
+          <EventCalendar
             key={calendarKey}
             guildId={parseInt(guildId || '0')}
             onSelectEvent={handleEventSelect}
@@ -181,6 +173,13 @@ const GuildPage: React.FC = () => {
           />
         </div>
       )}
+
+      {activeTab === 'general' && guild && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <GuildGeneralInfo guild={guild} />
+        </div>
+      )}
+      
       
       {activeTab === 'members' && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
