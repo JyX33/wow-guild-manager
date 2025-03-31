@@ -3,9 +3,13 @@ import { asyncHandler, AppError } from '../utils/error-handler';
 import * as characterModel from '../models/character.model';
 import * as userModel from '../models/user.model';
 import * as guildModel from '../models/guild.model';
-import * as battleNetService from '../services/battlenet.service';
+// Removed battleNetService import
+import { BattleNetApiClient } from '../services/battlenet-api.client'; // Added ApiClient import
 import { Character } from '../../../shared/types/index';
 import logger from '../utils/logger'; // Import the logger
+
+// Instantiate the API client (or inject if using a framework/DI container)
+const apiClient = new BattleNetApiClient();
 
 export default {
   /**
@@ -201,8 +205,8 @@ export default {
     // Get region from session or use default
     const region = req.session.region || 'eu';
 
-    // Get account profile from Battle.net
-    const wowProfile = await battleNetService.getWowProfile(
+    // Get account profile from Battle.net using the ApiClient
+    const wowProfile = await apiClient.getWowProfile(
       region,
       user.access_token
     );

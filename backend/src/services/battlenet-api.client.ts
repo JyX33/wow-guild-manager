@@ -1,9 +1,14 @@
 // backend/src/services/battlenet-api.client.ts
-import * as battleNetService from './battlenet.service';
+// No longer importing battleNetService
 import { AppError } from '../utils/error-handler';
+import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild'; // Added
+import { TokenResponse } from '../../../shared/types/auth'; // Added
+import { BattleNetUserProfile, BattleNetWoWProfile } from '../../../shared/types/user'; // Added
+import config from '../config'; // Added
 import { BattleNetRegion } from '../../../shared/types/user'; // Corrected import path
-import Bottleneck from 'bottleneck'; // Added import
-import logger from '../utils/logger'; // Import the logger
+import Bottleneck from 'bottleneck';
+import logger from '../utils/logger';
+import axios from 'axios'; // Import axios for error checking
 
 /**
  * Interface for the Battle.net client credentials token response.
@@ -78,8 +83,9 @@ export class BattleNetApiClient {
     if (!this.apiClientToken || !this.tokenExpiry || this.tokenExpiry <= new Date(now.getTime() + 60 * 1000)) {
       logger.info('[ApiClient] Obtaining/Refreshing Client Credentials Token...');
       try {
-        // Assuming battleNetService has a method for client_credentials grant
-        const tokenResponse: ClientCredentialsTokenResponse = await battleNetService.getClientCredentialsToken();
+        // Call the internal fetch method directly for token acquisition
+        const validRegion = this._validateRegion('eu'); // Assuming default EU for client creds, adjust if needed
+        const tokenResponse = await this._fetchClientCredentialsToken(validRegion);
 
         if (!tokenResponse || !tokenResponse.access_token || !tokenResponse.expires_in) {
            throw new Error('Invalid token response received from Battle.net service.');
@@ -121,71 +127,375 @@ export class BattleNetApiClient {
    * @throws The error from the task function if it fails after potential retry.
    * @private
    */
-  private async scheduleWithRetry<T>(jobId: string, taskFn: () => Promise<T>): Promise<T> {
-    // Wrap the task function in the limiter's schedule method, providing the ID
-    return this.limiter.schedule({ id: jobId }, async () => {
+  private async scheduleWithRetry<T>(jobId: string, taskFn: () => Promise<T>, maxRetries: number = 3): Promise<T> {
+    let attempts = 0;
+
+    while (attempts <= maxRetries) {
       try {
-        // Execute the provided task function (e.g., the call to battleNetService)
-        return await taskFn();
+        // Wrap the task function in the limiter's schedule method for each attempt
+        const result = await this.limiter.schedule({ id: `${jobId}-attempt-${attempts}` }, taskFn);
+        return result;
       } catch (error: any) {
-        // Check if the error is a 429 Rate Limit error
-        // Adjust the condition based on how battleNetService surfaces HTTP status codes
-        const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : undefined); // Use error.status for AppError
-        const isRateLimitError = statusCode === 429;
+        attempts++;
+        const isAxios429 = axios.isAxiosError(error) && error.response?.status === 429;
 
-        if (isRateLimitError) {
-          logger.warn({ jobId }, `[ApiClient] Rate limit hit (429) for job ${jobId}. Retrying once after delay...`);
-          // Calculate time remaining in the current second + buffer
-          const waitTime = (1000 - (Date.now() % 1000)) + 50; // Wait remainder of second + 50ms buffer
-          await new Promise(resolve => setTimeout(resolve, waitTime));
+        if (isAxios429 && attempts <= maxRetries) {
+          // Default retryAfter to 1 second (1000ms) if header is missing or invalid
+          let retryAfterMs = 1000;
+          const retryAfterHeader = error.response?.headers?.['retry-after'];
 
-          try {
-             // Retry the original task function *once*
-             logger.info({ jobId }, `[ApiClient] Attempting retry for job ${jobId} after rate limit...`);
-             return await taskFn();
-          } catch (retryError: any) {
-             // Log the retry error and throw it
-             const retryStatusCode = retryError?.status || retryError?.response?.status || (retryError instanceof AppError ? retryError.status : undefined); // Use retryError.status for AppError
-             logger.error({ err: retryError, jobId, retryStatusCode }, `[ApiClient] Retry failed for job ${jobId} after rate limit.`);
-             throw retryError; // Throw the error from the retry attempt
+          if (retryAfterHeader) {
+            const retryAfterSeconds = parseInt(retryAfterHeader, 10);
+            if (!isNaN(retryAfterSeconds) && retryAfterSeconds > 0) {
+              retryAfterMs = retryAfterSeconds * 1000;
+            } else {
+              // Handle potential date format in retry-after (less common for Battle.net?)
+              const retryDate = Date.parse(retryAfterHeader);
+              if (!isNaN(retryDate)) {
+                retryAfterMs = Math.max(0, retryDate - Date.now());
+              }
+            }
           }
-        }
 
-        // If it wasn't a rate limit error, or if the retry failed (handled above), throw the original error
-        // Log the non-retryable error before throwing
-        logger.error({ err: error, jobId, statusCode }, `[ApiClient] Non-retryable error during job ${jobId}.`);
-        throw error;
+          // Add a small buffer (e.g., 100ms) to the wait time
+          const waitTime = retryAfterMs + 100;
+
+          logger.warn(
+            { jobId, attempt: attempts, maxRetries, waitTimeMs: waitTime, url: error.config?.url },
+            `[ApiClient] Rate limit hit (429) for job ${jobId}. Attempt ${attempts}/${maxRetries}. Retrying after ${waitTime}ms...`
+          );
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          // Continue to the next iteration of the while loop for retry
+
+        } else {
+          // If it's not a 429 error, or if retries are exhausted, throw the error
+          const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : undefined);
+          logger.error(
+            { err: error, jobId, attempt: attempts, maxRetries, statusCode, isAxios429 },
+            `[ApiClient] Non-retryable error or retries exhausted for job ${jobId} on attempt ${attempts}.`
+          );
+          throw error; // Re-throw the caught error
+        }
       }
+    }
+    // This part should theoretically not be reached due to the throw in the catch block,
+    // but typescript needs a return path or throw here.
+    throw new Error(`[ApiClient] Job ${jobId} failed after ${maxRetries} retries.`);
+  }
+
+  // --- Helper Methods ---
+
+  /**
+   * Validates the provided region string against the configuration.
+   * @param region The region string to validate.
+   * @returns The validated BattleNetRegion or the default 'eu'.
+   * @private
+   */
+  private _validateRegion(region: string): BattleNetRegion {
+    if (region in config.battlenet.regions) {
+      return region as BattleNetRegion;
+    }
+    logger.warn({ providedRegion: region, fallbackRegion: 'eu' }, '[ApiClient] Invalid region provided, falling back to EU.');
+    return 'eu';
+  }
+
+  // --- Private Axios Call Implementations ---
+
+  /**
+   * Performs the actual Axios GET request.
+   * @param url The URL to request.
+   * @param accessToken The bearer token.
+   * @param params Optional query parameters.
+   * @returns Promise<any>
+   * @private
+   */
+  private async _doAxiosGet<T = any>(url: string, accessToken: string, params?: Record<string, any>): Promise<T> {
+    try {
+      const response = await axios.get<T>(url, {
+        params,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Accept-Encoding': 'gzip,deflate,compress', // Request compression
+        },
+        timeout: 15000, // Add a reasonable timeout (15 seconds)
+      });
+      return response.data;
+    } catch (error) {
+      // Throw the original Axios error for the retry logic to inspect
+      if (axios.isAxiosError(error)) {
+        // Log details before throwing
+        logger.error({
+          err: {
+            message: error.message,
+            code: error.code,
+            status: error.response?.status,
+            url: error.config?.url,
+            method: error.config?.method,
+            // data: error.response?.data // Avoid logging potentially large/sensitive response data by default
+          }
+        }, `[ApiClient] Axios GET error`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Performs the actual Axios POST request.
+   * @param url The URL to request.
+   * @param data The POST data.
+   * @param auth Optional basic auth credentials.
+   * @param headers Optional headers.
+   * @returns Promise<any>
+   * @private
+   */
+  // Further adjusted auth type to allow potentially undefined password matching Axios types more closely
+  private async _doAxiosPost<T = any>(url: string, data: any, auth?: { username: string; password?: string | undefined }, headers?: Record<string, any>): Promise<T> {
+    try {
+      // Remove explicit <T> and cast auth
+      const response = await axios.post(url, data, {
+        auth: auth as axios.AxiosBasicCredentials | undefined,
+        headers,
+        timeout: 15000, // Add a reasonable timeout (15 seconds)
+      });
+      return response.data;
+    } catch (error) {
+      // Throw the original Axios error for the retry logic to inspect
+      if (axios.isAxiosError(error)) {
+        // Log details before throwing
+        logger.error({
+          err: {
+            message: error.message,
+            code: error.code,
+            status: error.response?.status,
+            url: error.config?.url,
+            method: error.config?.method,
+            // data: error.response?.data // Avoid logging potentially large/sensitive response data by default
+          }
+        }, `[ApiClient] Axios POST error`);
+      }
+      throw error;
+    }
+  }
+
+  // --- Specific Endpoint Implementations (Private) ---
+
+  private async _fetchGuildData(realmSlug: string, guildNameSlug: string, region: BattleNetRegion, accessToken: string): Promise<BattleNetGuild> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${encodeURIComponent(guildNameSlug)}`;
+    logger.debug({ region, realmSlug, guildNameSlug, url }, '[ApiClient] Fetching guild data.');
+    return this._doAxiosGet<BattleNetGuild>(url, accessToken, {
+      namespace: `profile-${region}`,
+      locale: 'en_US'
     });
   }
 
+  private async _fetchGuildRoster(region: BattleNetRegion, realmSlug: string, guildNameSlug: string, accessToken: string): Promise<BattleNetGuildRoster> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${encodeURIComponent(guildNameSlug)}/roster`;
+    logger.debug({ region, realmSlug, guildNameSlug, url }, '[ApiClient] Fetching guild roster.');
+    return this._doAxiosGet<BattleNetGuildRoster>(url, accessToken, {
+      namespace: `profile-${region}`,
+      locale: 'en_US'
+    });
+  }
+
+  private async _fetchCharacterProfile(region: BattleNetRegion, realmSlug: string, characterNameLower: string, accessToken: string): Promise<BattleNetCharacter> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterNameLower)}`;
+    logger.debug({ url, subCall: 'profile' }, '[ApiClient] Fetching sub-data: profile');
+    return this._doAxiosGet<BattleNetCharacter>(url, accessToken, {
+      namespace: `profile-${region}`,
+      locale: 'en_US'
+    });
+  }
+
+  private async _fetchCharacterEquipment(region: BattleNetRegion, realmSlug: string, characterNameLower: string, accessToken: string): Promise<BattleNetCharacterEquipment> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterNameLower)}/equipment`;
+    logger.debug({ url, subCall: 'equipment' }, '[ApiClient] Fetching sub-data: equipment');
+    return this._doAxiosGet<BattleNetCharacterEquipment>(url, accessToken, {
+      namespace: `profile-${region}`,
+      locale: 'en_US'
+    });
+  }
+
+  private async _fetchCharacterMythicKeystone(region: BattleNetRegion, realmSlug: string, characterNameLower: string, accessToken: string): Promise<BattleNetMythicKeystoneProfile | null> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterNameLower)}/mythic-keystone-profile`;
+    logger.debug({ url, subCall: 'mythicKeystone' }, '[ApiClient] Fetching sub-data: mythicKeystone');
+    try {
+      return await this._doAxiosGet<BattleNetMythicKeystoneProfile>(url, accessToken, {
+        namespace: `profile-${region}`,
+        locale: 'en_US'
+      });
+    } catch (mythicError) {
+      if (axios.isAxiosError(mythicError) && mythicError.response?.status === 404) {
+        // Expected if character has no M+ data
+        logger.debug({ characterNameLower, realmSlug, region }, '[ApiClient] Mythic keystone profile not found (404), returning null.');
+        return null;
+      } else if (axios.isAxiosError(mythicError)) {
+         logger.warn({ err: mythicError, status: mythicError.response?.status, character: characterNameLower, realm: realmSlug }, '[ApiClient] Error fetching mythic keystone profile (non-404), returning null.');
+      } else {
+         logger.warn({ err: mythicError, character: characterNameLower, realm: realmSlug }, '[ApiClient] Non-Axios error fetching mythic keystone profile, returning null.');
+      }
+      return null; // Return null on other errors too for resilience
+    }
+  }
+
+  private async _fetchCharacterProfessions(region: BattleNetRegion, realmSlug: string, characterNameLower: string, accessToken: string): Promise<BattleNetProfessions> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${encodeURIComponent(realmSlug)}/${encodeURIComponent(characterNameLower)}/professions`;
+    logger.debug({ url, subCall: 'professions' }, '[ApiClient] Fetching sub-data: professions');
+    try {
+      return await this._doAxiosGet<BattleNetProfessions>(url, accessToken, {
+        namespace: `profile-${region}`,
+        locale: 'en_US'
+      });
+    } catch (profError) {
+      if (axios.isAxiosError(profError) && profError.response?.status === 404) {
+        // Expected if character has no professions?
+        logger.debug({ characterNameLower, realmSlug, region }, '[ApiClient] Professions not found (404), returning empty structure.');
+        // Return structure matching BattleNetProfessions with empty arrays
+        return {
+          _links: { self: { href: '' } },
+          character: { key: { href: '' }, name: characterNameLower, id: 0, realm: { key: { href: '' }, name: realmSlug, id: 0, slug: realmSlug } }, // Add minimal character info
+          primaries: [],
+          secondaries: []
+        };
+      } else if (axios.isAxiosError(profError)) {
+         logger.warn({ err: profError, status: profError.response?.status, character: characterNameLower, realm: realmSlug }, '[ApiClient] Error fetching professions (non-404), returning empty.');
+      } else {
+         logger.warn({ err: profError, character: characterNameLower, realm: realmSlug }, '[ApiClient] Non-Axios error fetching professions, returning empty structure.');
+      }
+      // Return structure matching BattleNetProfessions with empty arrays
+      return {
+        _links: { self: { href: '' } },
+        character: { key: { href: '' }, name: characterNameLower, id: 0, realm: { key: { href: '' }, name: realmSlug, id: 0, slug: realmSlug } }, // Add minimal character info
+        primaries: [],
+        secondaries: []
+      };
+    }
+  }
+
+  private async _fetchWowProfile(region: BattleNetRegion, accessToken: string): Promise<BattleNetWoWProfile> {
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.apiBaseUrl}/profile/user/wow`;
+    logger.debug({ region, url }, '[ApiClient] Fetching WoW profile.');
+    return this._doAxiosGet<BattleNetWoWProfile>(url, accessToken, {
+      namespace: `profile-${region}`,
+      locale: 'en_US'
+    });
+  }
+
+  private async _fetchClientCredentialsToken(region: BattleNetRegion): Promise<TokenResponse> {
+    const { clientId, clientSecret } = config.battlenet;
+    if (!clientId || !clientSecret) {
+      throw new AppError('Battle.net Client ID or Secret is not configured.', 500, { code: 'CONFIG_ERROR' });
+    }
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.authBaseUrl}/token`;
+    logger.debug({ region }, '[ApiClient] Obtaining client credentials token.');
+    const response = await this._doAxiosPost<TokenResponse>(
+      url,
+      new URLSearchParams({ grant_type: 'client_credentials' }),
+      // Pass validated credentials
+      { username: clientId, password: clientSecret },
+      { 'Content-Type': 'application/x-www-form-urlencoded' }
+    );
+    // Basic validation
+    if (!response || !response.access_token || !response.expires_in) {
+      throw new Error('Invalid token response received from Battle.net POST.');
+    }
+    return response;
+  }
+
+  private async _fetchAccessToken(region: BattleNetRegion, code: string): Promise<TokenResponse> {
+    const { clientId, clientSecret, redirectUri } = config.battlenet;
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new AppError('Battle.net Client ID, Secret, or Redirect URI is not configured.', 500, { code: 'CONFIG_ERROR' });
+    }
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.authBaseUrl}/token`;
+    logger.debug({ region }, '[ApiClient] Exchanging authorization code for access token.');
+    const response = await this._doAxiosPost<TokenResponse>(
+      url,
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri
+      }),
+      // Pass validated credentials
+      { username: clientId, password: clientSecret },
+      { 'Content-Type': 'application/x-www-form-urlencoded' }
+    );
+    if (!response || !response.access_token || !response.expires_in) {
+      throw new Error('Invalid token response received from Battle.net POST.');
+    }
+    return response;
+  }
+
+  private async _fetchRefreshedAccessToken(region: BattleNetRegion, refreshToken: string): Promise<TokenResponse> {
+    const { clientId, clientSecret } = config.battlenet;
+     if (!clientId || !clientSecret) {
+      throw new AppError('Battle.net Client ID or Secret is not configured.', 500, { code: 'CONFIG_ERROR' });
+    }
+    const regionConfig = config.battlenet.regions[region];
+    const url = `${regionConfig.authBaseUrl}/token`;
+    logger.debug({ region }, '[ApiClient] Refreshing access token.');
+    const response = await this._doAxiosPost<TokenResponse>(
+      url,
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      }),
+       // Pass validated credentials
+      { username: clientId, password: clientSecret },
+      { 'Content-Type': 'application/x-www-form-urlencoded' }
+    );
+    if (!response || !response.access_token || !response.expires_in) {
+      throw new Error('Invalid token response received from Battle.net POST.');
+    }
+    return response;
+  }
+
+  private async _fetchUserInfo(accessToken: string): Promise<BattleNetUserProfile> {
+    const url = 'https://oauth.battle.net/userinfo';
+    logger.debug('[ApiClient] Fetching user info.');
+    return this._doAxiosGet<BattleNetUserProfile>(url, accessToken);
+  }
+
+  private async _checkTokenValidation(accessToken: string): Promise<void> {
+    // This endpoint doesn't return data on success, just 200 OK
+    const url = 'https://oauth.battle.net/oauth/check_token';
+    logger.debug('[ApiClient] Validating token.');
+    await this._doAxiosGet<void>(url, accessToken);
+  }
+
+  // --- Public API Methods ---
 
   /**
    * Fetches guild data from the Battle.net API, handling rate limiting and retries.
    * @param realmSlug The slug of the realm.
    * @param guildNameSlug The slugified name of the guild.
    * @param region The region of the guild.
-   * @returns {Promise<any>} The guild data. // TODO: Add specific type
+   * @returns {Promise<BattleNetGuild>} The guild data.
    * @throws {AppError} If the API call fails after potential retries.
    */
-  async getGuildData(realmSlug: string, guildNameSlug: string, region: BattleNetRegion): Promise<any> {
+  async getGuildData(realmSlug: string, guildNameSlug: string, region: BattleNetRegion): Promise<BattleNetGuild> {
+    const validRegion = this._validateRegion(region); // Validate region first
     const token = await this.ensureClientToken();
-    // Define the task function to be scheduled
-    const task = () => battleNetService.getGuildData(realmSlug, guildNameSlug, token, region);
-    // Construct the Job ID
-    const jobId = `guild-${region}-${realmSlug}-${guildNameSlug}`;
+    const jobId = `guild-${validRegion}-${realmSlug}-${guildNameSlug}`;
+    // Define the task using the internal fetch method
+    const task = () => this._fetchGuildData(realmSlug, guildNameSlug, validRegion, token);
 
     try {
-      // Schedule the task using the retry helper, passing the jobId
-      return await this.scheduleWithRetry(jobId, task);
+      return await this.scheduleWithRetry<BattleNetGuild>(jobId, task);
     } catch (error: any) {
-      // Handle final error after scheduling and potential retry
-      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500); // Use error.status for AppError
-      // Log the final error using the logger
-      logger.error({ err: error, jobId, statusCode, realmSlug, guildNameSlug, region }, `[ApiClient] Final error fetching guild data for job ${jobId}.`);
+      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+      logger.error({ err: error, jobId, statusCode, realmSlug, guildNameSlug, region: validRegion }, `[ApiClient] Final error fetching guild data for job ${jobId}.`);
       throw new AppError(`Failed to fetch guild data: ${error.message || String(error)}`, statusCode, {
         code: 'BATTLE_NET_API_ERROR',
-        details: { realmSlug, guildNameSlug, region, jobId } // Include jobId in details
+        details: { realmSlug, guildNameSlug, region: validRegion, jobId }
       });
     }
   }
@@ -195,74 +505,182 @@ export class BattleNetApiClient {
    * @param region The region of the guild.
    * @param realmSlug The slug of the realm.
    * @param guildNameSlug The slugified name of the guild.
-   * @returns {Promise<any>} The guild roster data. // TODO: Add specific type (BattleNetGuildRoster)
+   * @returns {Promise<BattleNetGuildRoster>} The guild roster data.
    * @throws {AppError} If the API call fails after potential retries.
    */
-  async getGuildRoster(region: BattleNetRegion, realmSlug: string, guildNameSlug: string): Promise<any> {
+  async getGuildRoster(region: BattleNetRegion, realmSlug: string, guildNameSlug: string): Promise<BattleNetGuildRoster> {
+    const validRegion = this._validateRegion(region); // Validate region first
     const token = await this.ensureClientToken();
-    // Define the task function
-    const task = () => battleNetService.getGuildRoster(region, realmSlug, guildNameSlug, token);
-    // Construct the Job ID
-    const jobId = `roster-${region}-${realmSlug}-${guildNameSlug}`;
+    const jobId = `roster-${validRegion}-${realmSlug}-${guildNameSlug}`;
+     // Define the task using the internal fetch method
+    const task = () => this._fetchGuildRoster(validRegion, realmSlug, guildNameSlug, token);
 
     try {
-      // Schedule the task, passing the jobId
-      return await this.scheduleWithRetry(jobId, task);
+      return await this.scheduleWithRetry<BattleNetGuildRoster>(jobId, task);
     } catch (error: any) {
-      // Handle final error
-      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500); // Use error.status for AppError
-      // Log the final error using the logger
-      logger.error({ err: error, jobId, statusCode, realmSlug, guildNameSlug, region }, `[ApiClient] Final error fetching guild roster for job ${jobId}.`);
+      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+      logger.error({ err: error, jobId, statusCode, realmSlug, guildNameSlug, region: validRegion }, `[ApiClient] Final error fetching guild roster for job ${jobId}.`);
       throw new AppError(`Failed to fetch guild roster: ${error.message || String(error)}`, statusCode, {
         code: 'BATTLE_NET_API_ERROR',
-        details: { realmSlug, guildNameSlug, region, jobId } // Include jobId in details
+        details: { realmSlug, guildNameSlug, region: validRegion, jobId }
       });
     }
   }
 
    /**
    * Fetches enhanced character data from the Battle.net API, handling rate limiting and retries.
-   * Assumes 404s are handled by battleNetService returning null, not throwing an error that needs retry.
    * @param realmSlug The slug of the realm.
    * @param characterNameLower The lowercase name of the character.
    * @param region The region of the character.
-   * @returns {Promise<any | null>} The enhanced character data, or null if not found (e.g., 404). // TODO: Add specific type
+   * @returns {Promise<(BattleNetCharacter & { equipment: BattleNetCharacterEquipment; itemLevel: number; mythicKeystone: BattleNetMythicKeystoneProfile | null; professions: BattleNetProfessions['primaries']; }) | null>} The enhanced character data, or null if not found (e.g., 404).
    * @throws {AppError} If the API call fails for reasons other than not found, after potential retries.
    */
-  async getEnhancedCharacterData(realmSlug: string, characterNameLower: string, region: BattleNetRegion): Promise<any | null> {
+  // Adjusted return type to include full professions object
+  async getEnhancedCharacterData(realmSlug: string, characterNameLower: string, region: BattleNetRegion): Promise<(BattleNetCharacter & {
+    equipment: BattleNetCharacterEquipment;
+    itemLevel: number; // Add derived itemLevel
+    mythicKeystone: BattleNetMythicKeystoneProfile | null;
+    professions: BattleNetProfessions; // Expect full object now
+  }) | null> {
+    const validRegion = this._validateRegion(region);
     const token = await this.ensureClientToken();
-    // Define the task function
-    const task = () => battleNetService.getEnhancedCharacterData(realmSlug, characterNameLower, token, region);
-    // Construct the Job ID
-    const jobId = `char-${region}-${realmSlug}-${characterNameLower}`;
+    const baseJobId = `char-${validRegion}-${realmSlug}-${characterNameLower}`;
 
     try {
-      // Schedule the task, passing the jobId
-      // Note: If battleNetService throws on 404, the retry logic might need adjustment
-      // to specifically ignore retrying 404s within scheduleWithRetry.
-      // Currently assumes 404 results in `null` return from battleNetService, which won't trigger the catch here.
-      const result = await this.scheduleWithRetry(jobId, task);
-      return result; // Could be data or null (if 404 handled by service)
-    } catch (error: any) {
-      // Handle final error (non-404, or retry failure)
-      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500); // Use error.status for AppError
+      // Fetch components in parallel, wrapped in retry logic
+      const [profile, equipment, mythicKeystone, professions] = await Promise.all([
+        this.scheduleWithRetry(`${baseJobId}-profile`, () => this._fetchCharacterProfile(validRegion, realmSlug, characterNameLower, token)),
+        this.scheduleWithRetry(`${baseJobId}-equipment`, () => this._fetchCharacterEquipment(validRegion, realmSlug, characterNameLower, token)),
+        this.scheduleWithRetry(`${baseJobId}-mythic`, () => this._fetchCharacterMythicKeystone(validRegion, realmSlug, characterNameLower, token)),
+        this.scheduleWithRetry(`${baseJobId}-professions`, () => this._fetchCharacterProfessions(validRegion, realmSlug, characterNameLower, token)),
+      ]);
 
-      // Avoid throwing an error if the service layer correctly identified a 404 and threw it (adjust if needed)
-      // This check might be redundant if battleNetService returns null for 404s as intended.
-      if (statusCode === 404) {
-         // Log the 404 using the logger
-         logger.info({ jobId, statusCode, realmSlug, characterNameLower, region }, `[ApiClient] Character not found (404) for job ${jobId}. Returning null.`);
+      // If profile fetch failed (likely 404), return null early
+      // Note: _fetchCharacterProfile should throw on non-404 errors, handled by scheduleWithRetry/catch block below
+      if (!profile) {
+         logger.warn({ jobId: `${baseJobId}-profile`, realmSlug, characterNameLower, region: validRegion }, `[ApiClient] Base profile fetch failed for character, cannot return enhanced data.`);
          return null;
       }
 
-      // Log the final error using the logger
-      logger.error({ err: error, jobId, statusCode, realmSlug, characterNameLower, region }, `[ApiClient] Final error fetching character data for job ${jobId}.`);
-      throw new AppError(`Failed to fetch character data: ${error.message || String(error)}`, statusCode, {
+      // Combine results
+      return {
+        ...profile,
+        equipment,
+        // Corrected: equipment object doesn't have equipped_item_level directly
+        itemLevel: profile?.equipped_item_level || 0,
+        mythicKeystone, // Already handles null case internally
+        professions: professions, // Return the full professions object
+      };
+
+    } catch (error: any) {
+      // Handle final error from any of the parallel fetches after retries
+      const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+
+      // Check if it's a 404 from the profile fetch (which should be the only critical one)
+      if (axios.isAxiosError(error) && statusCode === 404 && error.config?.url?.includes(`/profile/wow/character/${realmSlug}/${characterNameLower}`)) {
+         logger.info({ jobId: `${baseJobId}-profile`, statusCode, realmSlug, characterNameLower, region: validRegion }, `[ApiClient] Character profile not found (404) for job ${baseJobId}. Returning null.`);
+         return null; // Return null specifically for profile 404
+      }
+
+      // Log other final errors
+      logger.error({ err: error, baseJobId, statusCode, realmSlug, characterNameLower, region: validRegion }, `[ApiClient] Final error fetching enhanced character data for job ${baseJobId}.`);
+      throw new AppError(`Failed to fetch enhanced character data: ${error.message || String(error)}`, statusCode, {
         code: 'BATTLE_NET_API_ERROR',
-        details: { realmSlug, characterNameLower, region, jobId } // Include jobId in details
+        details: { realmSlug, characterNameLower, region: validRegion, baseJobId }
       });
     }
   }
+
+  async getWowProfile(region: BattleNetRegion, accessToken: string): Promise<BattleNetWoWProfile> {
+    const validRegion = this._validateRegion(region);
+    const jobId = `wowprofile-${validRegion}-${accessToken.substring(0, 6)}`; // Use partial token for job ID
+    const task = () => this._fetchWowProfile(validRegion, accessToken);
+    try {
+      return await this.scheduleWithRetry<BattleNetWoWProfile>(jobId, task);
+    } catch (error: any) {
+       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+       logger.error({ err: error, jobId, statusCode, region: validRegion }, `[ApiClient] Final error fetching WoW profile for job ${jobId}.`);
+       throw new AppError(`Failed to fetch WoW profile: ${error.message || String(error)}`, statusCode, { code: 'BATTLE_NET_API_ERROR', details: { region: validRegion, jobId } });
+    }
+  }
+
+  async getAccessToken(region: BattleNetRegion, code: string): Promise<TokenResponse> {
+     const validRegion = this._validateRegion(region);
+     const jobId = `gettoken-${validRegion}-${code.substring(0, 6)}`;
+     // Don't use ensureClientToken here, this uses the authorization code grant
+     const task = () => this._fetchAccessToken(validRegion, code);
+     try {
+       // Typically, token exchange shouldn't need retries on 429, but wrap anyway for consistency? Or call directly?
+       // Calling directly for now, as rate limits on token endpoint are usually different/higher.
+       // return await this.scheduleWithRetry<TokenResponse>(jobId, task);
+       return await task(); // Call directly
+     } catch (error: any) {
+        const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+        logger.error({ err: error, jobId, statusCode, region: validRegion }, `[ApiClient] Final error getting access token for job ${jobId}.`);
+        throw new AppError(`Failed to get access token: ${error.message || String(error)}`, statusCode, { code: 'BATTLE_NET_AUTH_ERROR', details: { region: validRegion, jobId } });
+     }
+  }
+
+  async refreshAccessToken(region: BattleNetRegion, refreshToken: string): Promise<TokenResponse> {
+     const validRegion = this._validateRegion(region);
+     const jobId = `refreshtoken-${validRegion}-${refreshToken.substring(0, 6)}`;
+     const task = () => this._fetchRefreshedAccessToken(validRegion, refreshToken);
+     try {
+       // Call directly, similar reasoning to getAccessToken
+       return await task();
+     } catch (error: any) {
+        const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+        logger.error({ err: error, jobId, statusCode, region: validRegion }, `[ApiClient] Final error refreshing access token for job ${jobId}.`);
+        // If refresh fails (e.g., invalid refresh token), specific error handling might be needed upstream
+        throw new AppError(`Failed to refresh access token: ${error.message || String(error)}`, statusCode, { code: 'BATTLE_NET_AUTH_ERROR', details: { region: validRegion, jobId } });
+     }
+  }
+
+   async getUserInfo(accessToken: string): Promise<BattleNetUserProfile> {
+     // Region is not needed for userinfo endpoint
+     const jobId = `userinfo-${accessToken.substring(0, 6)}`;
+     const task = () => this._fetchUserInfo(accessToken);
+     try {
+       return await this.scheduleWithRetry<BattleNetUserProfile>(jobId, task);
+     } catch (error: any) {
+        const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
+        logger.error({ err: error, jobId, statusCode }, `[ApiClient] Final error fetching user info for job ${jobId}.`);
+        throw new AppError(`Failed to fetch user info: ${error.message || String(error)}`, statusCode, { code: 'BATTLE_NET_API_ERROR', details: { jobId } });
+     }
+   }
+
+   async validateToken(accessToken: string): Promise<boolean> {
+     const jobId = `validatetoken-${accessToken.substring(0, 6)}`;
+     const task = async () => {
+        await this._checkTokenValidation(accessToken);
+        return true; // Return true on success (200 OK)
+     };
+     try {
+       // Wrap validation check with retry logic? Maybe not necessary, depends on API behavior.
+       // Calling directly for now.
+       return await task();
+     } catch (error: any) {
+        // Any error (including 4xx/5xx from _checkTokenValidation) means invalid/expired token
+        logger.warn({ err: error, jobId }, `[ApiClient] Token validation failed for job ${jobId}.`);
+        return false;
+     }
+   }
+
+   /**
+    * Generate Battle.net OAuth authorization URL. No API call needed.
+    */
+   getAuthorizationUrl(region: string, state: string): string {
+     const validRegion = this._validateRegion(region);
+     const regionConfig = config.battlenet.regions[validRegion];
+     logger.debug({ region: validRegion, state }, '[ApiClient] Generating authorization URL.');
+
+     return `${regionConfig.authBaseUrl}/authorize?` +
+       `client_id=${encodeURIComponent(config.battlenet.clientId)}` +
+       `&scope=${encodeURIComponent('offline_access wow.profile')}` +
+       `&state=${encodeURIComponent(state)}` +
+       `&redirect_uri=${encodeURIComponent(config.battlenet.redirectUri)}` +
+       `&response_type=code`;
+   }
 
   /**
    * Disconnects the Bottleneck limiter to clean up resources.
@@ -272,7 +690,7 @@ export class BattleNetApiClient {
     await this.limiter.disconnect();
     logger.info('[ApiClient] Bottleneck limiter disconnected.');
   }
-}
+} // End of BattleNetApiClient class
 
 // Export a singleton instance if desired, or handle instantiation elsewhere
 // export const battleNetApiClient = new BattleNetApiClient();

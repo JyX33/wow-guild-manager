@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../config';
-import battleNetService from '../services/battlenet.service';
+// Removed battleNetService import
 import characterModel from '../models/character.model';
 import userModel from '../models/user.model';
 import { User, UserRole, UserWithTokens, BattleNetUserProfile, BattleNetRegion } from '../../../shared/types/user'; // Import BattleNetRegion
@@ -81,7 +81,8 @@ export default {
     // Set a short expiry on the state
     req.session.stateExpiry = Date.now() + (5 * 60 * 1000); // 5 minutes
 
-    const authUrl = await battleNetService.getAuthorizationUrl(validRegion, state); // Use validated region
+    // Use apiClient instance directly for non-API call method
+    const authUrl = apiClient.getAuthorizationUrl(validRegion, state); // Use validated region
     res.json({ success: true, data: { authUrl } });
   }),
 
@@ -108,10 +109,10 @@ export default {
     const callbackRegion = region || 'eu'; // Default to 'eu' if somehow missing from session
 
     // Exchange code for access token
-    const tokenData = await battleNetService.getAccessToken(callbackRegion, code as string);
+    const tokenData = await apiClient.getAccessToken(callbackRegion, code as string);
 
     // Get user info from Battle.net
-    const userInfo = await battleNetService.getUserInfo(callbackRegion, tokenData.access_token);
+    const userInfo = await apiClient.getUserInfo(tokenData.access_token); // Region not needed for userinfo
 
     // Find or create user in database
     // Use findByBattleNetId which returns UserWithTokens type

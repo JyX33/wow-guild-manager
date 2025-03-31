@@ -1,12 +1,11 @@
 import logger from '../utils/logger';
-import * as battleNetService from './battlenet.service';
+// Removed unused import of battleNetService
 import characterModel from '../models/character.model';
 import guildModel from '../models/guild.model';
 import userModel from '../models/user.model';
 import { BattleNetApiClient } from './battlenet-api.client'; // Assuming we need the client for roster fetching
-import { BattleNetRegion, UserRole, BattleNetWoWAccount } from '../../../shared/types/user';
-import { BattleNetGuildRoster, DbCharacter, BattleNetGuildMember, BattleNetCharacter, EnhancedCharacterData } from '../../../shared/types/guild'; // Import necessary types
-import { AppError } from '../utils/error-handler';
+import { BattleNetRegion, UserRole} from '../../../shared/types/user';
+import { BattleNetGuildRoster, DbCharacter,BattleNetCharacter, EnhancedCharacterData } from '../../../shared/types/guild'; // Import necessary types
 
 // Define a type for the unique guild info extracted from character profiles
 type CharacterGuildInfo = {
@@ -119,7 +118,7 @@ export class OnboardingService {
     try {
       // 1. Fetch WoW Profile
       logger.debug({ userId }, '[OnboardingService] Fetching WoW profile...');
-      const wowProfile = await battleNetService.getWowProfile(region, accessToken);
+      const wowProfile = await this.battleNetApiClient.getWowProfile(region, accessToken);
       const wowAccounts = wowProfile.wow_accounts || [];
       logger.debug({ userId, accountCount: wowAccounts.length }, '[OnboardingService] WoW profile fetched.');
 
