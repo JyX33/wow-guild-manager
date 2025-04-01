@@ -619,43 +619,130 @@ export class BattleNetSyncService { // Added export keyword
 
 
   async syncCharacter(character: DbCharacter): Promise<void> {
+    // Check if character ID exists
+    if (!character || !character.id) {
+      logger.error('[SyncService] Attempted to sync character with missing ID.');
+      return; // Cannot proceed without an ID
+    }
+
     logger.info({ charName: character.name, realm: character.realm, charId: character.id }, `[SyncService] Starting sync for character: ${character.name} (${character.realm}) ID: ${character.id}`);
-     try {
-        // Ensure character region is defined before proceeding
-        if (!character.region) {
-          logger.warn({ charName: character.name, charId: character.id }, `[SyncService] Skipping character sync for ${character.name} (ID: ${character.id}) due to missing region.`);
-          return; // Cannot sync without region
+
+    // --- New Availability Check ---
+    let associatedGuildMembers: DbGuildMember[] = [];
+    try {
+      // Use the injected guildMemberModel instance
+      associatedGuildMembers = await this.guildMemberModel.findByCharacterIds([character.id]);
+    } catch (fetchError) {
+      logger.error({ err: fetchError, charId: character.id }, `[SyncService] Error fetching guild memberships for character ${character.id}. Skipping sync.`);
+      return; // Cannot determine availability, skip sync
+    }
+
+    // If the character isn't in any guild tracked by the system, proceed normally.
+    // If they are in guilds, check if *any* membership allows syncing.
+    if (associatedGuildMembers.length > 0) {
+      const isAnyMembershipAvailable = associatedGuildMembers.some(gm => gm.isAvailable);
+      if (!isAnyMembershipAvailable) {
+        logger.info({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) is marked as unavailable in all associated guilds. Skipping API sync.`);
+        // Optionally update character's last_updated timestamp even if skipped?
+        // await this.characterModel.update(character.id, { last_updated: new Date().toISOString() });
+        return; // Skip the rest of the sync process
+      }
+      // If at least one membership is available, proceed with the API call.
+      // Success/failure logic below will handle updating all memberships.
+      logger.debug({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) is available in at least one guild. Proceeding with API sync.`);
+    } else {
+       logger.debug({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) has no associated guild memberships in DB. Proceeding with API sync.`);
+    }
+    // --- End New Availability Check ---
+
+
+    try {
+       // Ensure character region is defined before proceeding
+       if (!character.region) {
+         logger.warn({ charName: character.name, charId: character.id }, `[SyncService] Skipping character sync for ${character.name} (ID: ${character.id}) due to missing region.`);
+         // Consider this a failure for availability tracking? Yes.
+         throw new AppError(`Character ${character.name} (ID: ${character.id}) is missing region.`, 400);
+       }
+
+       // Token fetching is now handled within the apiClient methods
+
+       // Fetch enhanced data using injected client
+       // Note: getEnhancedCharacterData fetches profile, equipment, mythic keystone, professions
+       const enhancedData = await this.apiClient.getEnhancedCharacterData( // Use apiClient
+           character.realm,
+           character.name.toLowerCase(), // Ensure lowercase name is passed as expected by client
+           character.region as BattleNetRegion // Cast region after check
+       );
+
+       // Check if enhancedData is null (meaning fetch failed, e.g., 404)
+       if (enhancedData === null) {
+         logger.info({ charName: character.name, charId: character.id }, `[SyncService] Character ${character.name} (ID: ${character.id}) fetch failed (likely 404). Treating as sync failure.`);
+         // Consider this a failure for the availability logic
+         throw new AppError(`No profile data returned for ${character.name}-${character.realm}`, 404);
+       }
+
+      // Prepare the update payload using the helper method
+      const updatePayload = await this._prepareCharacterUpdatePayload(character, enhancedData);
+
+      // Update the character record in the database
+      await this.characterModel.update(character.id, updatePayload);
+      logger.info({ charName: character.name, realm: character.realm, charId: character.id }, `[SyncService] Successfully synced character: ${character.name} (${character.realm})`);
+
+      // --- New Success Update for Guild Members ---
+      if (associatedGuildMembers.length > 0) {
+        for (const gm of associatedGuildMembers) {
+          // Only update if necessary to reset failures or mark as available
+          if (gm.consecutiveUpdateFailures !== 0 || !gm.isAvailable) {
+            try {
+              // Use the injected guildMemberModel instance's update method
+              await this.guildMemberModel.update(gm.id, {
+                consecutiveUpdateFailures: 0,
+                isAvailable: true,
+                // updated_at is handled by the model's update method
+              });
+               logger.debug({ charId: character.id, guildMemberId: gm.id }, `[SyncService] Reset failure count and marked available for guild member ${gm.id}.`);
+            } catch (gmUpdateError) {
+              logger.error({ err: gmUpdateError, charId: character.id, guildMemberId: gm.id }, `[SyncService] Error updating guild member ${gm.id} after successful character sync.`);
+            }
+          }
         }
+      }
+      // --- End New Success Update ---
 
-        // Token fetching is now handled within the apiClient methods
-        // const token = await this.ensureClientToken(); // Removed
+    } catch (error) {
+      logger.error({ err: error, charId: character.id, charName: character.name }, `[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`);
 
-        // Fetch enhanced data using injected client
-        // Note: getEnhancedCharacterData fetches profile, equipment, mythic keystone, professions
-        const enhancedData = await this.apiClient.getEnhancedCharacterData( // Use apiClient
-            character.realm,
-            character.name.toLowerCase(), // Ensure lowercase name is passed as expected by client
-            character.region as BattleNetRegion // Cast region after check
-        );
+      // --- New Failure Update for Guild Members ---
+      if (associatedGuildMembers.length > 0) {
+        for (const gm of associatedGuildMembers) {
+          // Fetch the latest state in case of concurrent updates? For now, assume gm object is recent enough.
+          const currentFailures = gm.consecutiveUpdateFailures || 0; // Default to 0 if null/undefined
+          const newFailures = currentFailures + 1;
+          const shouldBeAvailable = newFailures <= 3; // Becomes unavailable *after* 3 failures (i.e., on the 4th)
 
-        // Check if enhancedData is null (meaning fetch failed, e.g., 404)
-        if (enhancedData === null) {
-          logger.info({ charName: character.name, charId: character.id }, `[SyncService] Skipping update for character ${character.name} (ID: ${character.id}) due to fetch failure.`);
-          // Optionally update last_synced_at with an error flag or just skip? Skipping for now.
-          return; // Exit the syncCharacter function for this character
+          // Only update if the state actually changes
+          if (gm.consecutiveUpdateFailures !== newFailures || gm.isAvailable !== shouldBeAvailable) {
+              try {
+                // Use the injected guildMemberModel instance's update method
+                await this.guildMemberModel.update(gm.id, {
+                  consecutiveUpdateFailures: newFailures,
+                  isAvailable: shouldBeAvailable,
+                  // updated_at is handled by the model's update method
+                });
+                 logger.warn({ charId: character.id, guildMemberId: gm.id, failures: newFailures, nowAvailable: shouldBeAvailable }, `[SyncService] Incremented failure count to ${newFailures} for guild member ${gm.id}. Available: ${shouldBeAvailable}`);
+              } catch (gmUpdateError) {
+                logger.error({ err: gmUpdateError, charId: character.id, guildMemberId: gm.id }, `[SyncService] Error updating guild member ${gm.id} after failed character sync.`);
+              }
+          } else {
+               logger.debug({ charId: character.id, guildMemberId: gm.id, failures: newFailures, available: shouldBeAvailable }, `[SyncService] Guild member ${gm.id} failure/availability state unchanged.`);
+          }
         }
+      }
+      // --- End New Failure Update ---
 
-        // Prepare update payload using the helper method
-        const updatePayload = await this._prepareCharacterUpdatePayload(character, enhancedData);
-
-        // Update character record in DB
-        await this.characterModel.update(character.id, updatePayload);
-        logger.info({ charName: character.name, charId: character.id }, `[SyncService] Successfully synced character ${character.name} (ID: ${character.id})`);
-
-     } catch (error) {
-       logger.error({ err: error, charName: character.name, charId: character.id }, `[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`);
-       // Optionally update character record with error state/timestamp
-     }
+      // Optionally update character record with error state/timestamp
+      // await this.characterModel.update(character.id, { last_error: error.message, last_updated: new Date().toISOString() });
+    }
   }
 
   /**

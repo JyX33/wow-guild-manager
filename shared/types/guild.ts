@@ -530,6 +530,8 @@ export interface DbGuildMember {
     member_data_json?: BattleNetGuildMember; // Added by migration
     created_at?: string;
     updated_at?: string;
+    consecutiveUpdateFailures?: number; // Added for tracking update failures
+    isAvailable?: boolean; // Added to mark character availability for updates
 }
 
 export interface DbCharacter {
