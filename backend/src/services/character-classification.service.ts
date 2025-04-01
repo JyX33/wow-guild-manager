@@ -231,14 +231,17 @@ export class CharacterClassificationService {
    * Sorts by character name ASC, then rank ASC.
    */
   private _sortByFallbackLogic(a: { character: DbCharacter; rank: number }, b: { character: DbCharacter; rank: number }): number {
-    const nameCompare = a.character.name.localeCompare(b.character.name);
-    if (nameCompare !== 0) {
-      return nameCompare;
-    }
-    // Ensure ranks are treated as numbers
+    // Ensure ranks are treated as numbers and sort by rank first (lower rank is better)
     const rankA = typeof a.rank === 'number' ? a.rank : Infinity;
     const rankB = typeof b.rank === 'number' ? b.rank : Infinity;
-    return rankA - rankB;
+    
+    const rankCompare = rankA - rankB;
+    if (rankCompare !== 0) {
+      return rankCompare;
+    }
+    
+    // If ranks are equal, fall back to sorting by name
+    return a.character.name.localeCompare(b.character.name);
   }
 
 }
