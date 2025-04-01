@@ -1,29 +1,32 @@
+import * as crypto from 'crypto'; // Added for toy hashing
 import { BattleNetCharacter, BattleNetGuild, BattleNetGuildMember, BattleNetGuildRoster, DbCharacter, DbGuild, DbGuildMember } from '../../../shared/types/guild'; // Added DbGuildMember, BattleNetGuild, EnhancedCharacterData
 import { BattleNetRegion } from '../../../shared/types/user'; // Added import for BattleNetRegion
-import * as characterModel from '../models/character.model';
-import * as guildModel from '../models/guild.model';
-import * as guildMemberModel from '../models/guild_member.model'; // Added guildMemberModel import
-import * as rankModel from '../models/rank.model';
-import * as userModel from '../models/user.model'; // Needed? Maybe for leader lookup
-import { BattleNetApiClient } from '../services/battlenet-api.client'; // Added import
+// Import default model instances
+import characterModel from '../models/character.model';
+import guildModel from '../models/guild.model';
+import guildMemberModel from '../models/guild_member.model';
+import rankModel from '../models/rank.model';
+import userModel from '../models/user.model';
+// Import class for instantiation
+import { BattleNetApiClient } from '../services/battlenet-api.client';
 import { AppError } from '../utils/error-handler';
 import logger from '../utils/logger'; // Import the logger
 import { createSlug } from '../utils/slugify'; // Import the slugify function
 import { withTransaction } from '../utils/transaction'; // Added withTransaction import
-import * as crypto from 'crypto'; // Added for toy hashing
 
 // TODO: Implement caching mechanism (e.g., Redis, in-memory cache) if desired
 
-export class BattleNetSyncService { // Added export keyword
+// Remove export keyword from class definition
+class BattleNetSyncService {
 
   private isSyncing: boolean = false;
   private apiClient: BattleNetApiClient;
-  // Added properties for injected models
+  // Properties now hold the type of the imported instances
   private guildModel: typeof guildModel;
   private characterModel: typeof characterModel;
   private rankModel: typeof rankModel;
   private userModel: typeof userModel;
-  private guildMemberModel: typeof guildMemberModel; // Added property
+  private guildMemberModel: typeof guildMemberModel;
 
 
   // Inject dependencies via constructor
@@ -33,14 +36,14 @@ export class BattleNetSyncService { // Added export keyword
     characterModelInj: typeof characterModel,
     rankModelInj: typeof rankModel,
     userModelInj: typeof userModel,
-    guildMemberModelInj: typeof guildMemberModel // Added parameter
+    guildMemberModelInj: typeof guildMemberModel
   ) {
     this.apiClient = apiClient;
     this.guildModel = guildModelInj;
     this.characterModel = characterModelInj;
     this.rankModel = rankModelInj;
     this.userModel = userModelInj;
-    this.guildMemberModel = guildMemberModelInj; // Added assignment
+    this.guildMemberModel = guildMemberModelInj;
   }
 
   /**
@@ -364,7 +367,7 @@ export class BattleNetSyncService { // Added export keyword
       throw new AppError(`Error syncing guild members table for guild ${guildId}: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
-  
+
   /**
    * Syncs the guild ranks table: ensures ranks exist and updates member counts.
    * Combines logic from syncGuildRanksTable and updateRankMemberCounts.
@@ -443,17 +446,19 @@ export class BattleNetSyncService { // Added export keyword
 
   /**
    * Prepares the update payload for a character based on fetched API data.
+   * Also returns the local guild record if found.
    * @param character The original character record from the DB.
    * @param enhancedData The data fetched from the Battle.net character endpoints.
-   * @returns A promise that resolves to the partial DbCharacter update payload.
+   * @returns A promise that resolves to an object containing the partial DbCharacter update payload and the found local DbGuild (or null).
    * @private
    */
   private async _prepareCharacterUpdatePayload(
     character: DbCharacter,
     enhancedData: any // TODO: Add specific type for enhancedData
-  ): Promise<Partial<DbCharacter>> {
+  ): Promise<{ updatePayload: Partial<DbCharacter>, localGuild: DbGuild | null }> { // Modified return type
     const bnet_character_id = enhancedData.id;
-    const bnet_guild_id = enhancedData.guild?.id; // This is the Battle.net Guild ID
+    const bnet_guild_data = enhancedData.guild; // Use the guild object from enhancedData
+    const bnet_guild_id = bnet_guild_data?.id; // This is the Battle.net Guild ID
     let localGuild: DbGuild | null = null;
     let region = character.region; // Start with existing region as fallback
 
@@ -465,7 +470,8 @@ export class BattleNetSyncService { // Added export keyword
           region = localGuild.region; // Use region from found local guild
         } else {
           logger.warn({ bnetGuildId: bnet_guild_id, charName: character.name, charId: character.id }, `[SyncService] Local guild record not found for BNet Guild ID ${bnet_guild_id}. Queueing guild sync.`);
-          await this._queueMissingGuildSync(enhancedData.guild, character.region);
+          // Pass the correct region type or null
+          await this._queueMissingGuildSync(bnet_guild_data, (character.region as BattleNetRegion | null ?? null));
           // Keep original character region for this update
         }
       } catch (guildError) {
@@ -498,322 +504,288 @@ export class BattleNetSyncService { // Added export keyword
 
                 if (toysData?.toys && toysData.toys.length > 0) {
                     // Add explicit types for map and sort parameters
-                    const toyIds = toysData.toys.map((t: { toy: { id: number } }) => t.toy.id);
-                    toyIds.sort((a: number, b: number) => a - b); // Sort numerically
-                    const idString = toyIds.join('|');
-                    calculatedToyHash = crypto.createHash('sha256').update(idString).digest('hex');
-                    logger.debug({ charName: character.name, realmSlug, region, hash: calculatedToyHash }, `[SyncService] Calculated toy hash.`);
+                    const toyIds = toysData.toys.map((t: { toy: { id: number } }) => t.toy.id).sort((a: number, b: number) => a - b);
+                    const toyString = toyIds.join(',');
+                    calculatedToyHash = crypto.createHash('sha256').update(toyString).digest('hex');
+                    logger.debug({ charName: character.name, toyCount: toyIds.length, hash: calculatedToyHash }, `[SyncService] Calculated toy hash for unknown character.`);
                 } else {
-                    logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] No toys found in collection, using default hash.`);
                     calculatedToyHash = NO_TOYS_HASH;
+                    logger.debug({ charName: character.name }, `[SyncService] No toys found for unknown character, using default hash.`);
                 }
             } else {
-                 logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] No toys href found in collections index, using default hash.`);
-                 calculatedToyHash = NO_TOYS_HASH;
+                calculatedToyHash = NO_TOYS_HASH;
+                logger.warn({ charName: character.name }, `[SyncService] Toys collection href not found for unknown character, using default hash.`);
             }
         } catch (toyError) {
-            logger.error({ err: toyError, charName: character.name, realmSlug, region }, `[SyncService] Error fetching toy collection for unknown character. Using default hash.`);
-            calculatedToyHash = NO_TOYS_HASH; // Use default hash on error
+            logger.error({ err: toyError, charName: character.name }, `[SyncService] Error fetching toys for unknown character ${character.name}:`);
+            // Don't set hash on error, leave it as null or existing value
         }
-    } else if (character.user_id !== null) {
-        // Explicitly set toy_hash to null for known users to clear any old value
-        calculatedToyHash = null;
     }
     // --- End Toy Hash Calculation ---
 
-
-    // Prepare update payload
     const updatePayload: Partial<DbCharacter> = {
-      profile_json: enhancedData,
-      equipment_json: enhancedData.equipment,
-      mythic_profile_json: enhancedData.mythicKeystone === null ? undefined : enhancedData.mythicKeystone,
-      // Ensure professions_json stores only the 'primaries' array if that's the intended structure
-      professions_json: enhancedData.professions?.primaries,
-      level: enhancedData.level,
-      class: enhancedData.character_class.name,
-      last_synced_at: new Date().toISOString(),
       bnet_character_id: bnet_character_id,
-      // guild_id: localGuild?.id, // REMOVED - guild_id is not on characters table
-      region: region, // Use determined region
-      toy_hash: calculatedToyHash, // Add the calculated toy hash (can be null)
+      region: region, // Update region based on local guild if found
+      level: enhancedData.level,
+      class: enhancedData.character_class?.name || character.class, // Fallback to existing class
+      profile_json: enhancedData, // Store the full profile data
+      updated_at: new Date().toISOString(), // Use updated_at
+      last_synced_at: new Date().toISOString(), // Also update last_synced_at
+      // Only update toy_hash if it was calculated (i.e., user_id is null and calculation succeeded)
+      ...(calculatedToyHash !== null && { toy_hash: calculatedToyHash }),
+      // Add other JSON fields from enhancedData if needed
+      equipment_json: enhancedData.equipment,
+      mythic_profile_json: enhancedData.mythicKeystone,
+      professions_json: enhancedData.professions?.primaries,
     };
 
-    // Remove undefined keys to avoid accidentally setting columns to null
-    Object.keys(updatePayload).forEach(key => updatePayload[key as keyof typeof updatePayload] === undefined && delete updatePayload[key as keyof typeof updatePayload]);
-
-
-    return updatePayload;
+    return { updatePayload, localGuild }; // Return both payload and localGuild
   }
 
+
   /**
-   * Checks if a guild exists based on Battle.net data and creates a minimal record
-   * if it doesn't, marking it for sync.
-   * @param bnetGuildData Guild data snippet from Battle.net (e.g., from character profile).
-   * @param fallbackRegion Region to use if not directly available in bnetGuildData.
+   * Queues a sync operation for a guild that was found on a character profile
+   * but doesn't exist in the local database yet.
+   * @param guildData Basic guild data from the character profile.
+   * @param region The region of the character (used if guild data doesn't specify).
    * @private
    */
   private async _queueMissingGuildSync(
-    bnetGuildData: BattleNetCharacter['guild'], // Use type from BattleNetCharacter
-    fallbackRegion?: string | null // Allow null/undefined
+    guildData: { id: number; name: string; realm: { slug: string; name: string } } | undefined,
+    region: BattleNetRegion | null // Accept null
   ): Promise<void> {
-    if (!bnetGuildData) {
-      logger.warn('[SyncService:_queueMissingGuildSync] Received null guild data, cannot queue.');
+    if (!guildData || !region) { // Check if region is null here too
+      logger.error({ guildData, region }, "[SyncService] Cannot queue missing guild sync: insufficient data (guildData or region missing).");
       return;
     }
 
-    const { id: bnet_guild_id, name, realm } = bnetGuildData;
-    const realmSlug = realm?.slug;
-    let region: BattleNetRegion | undefined | null = undefined; // Use BattleNetRegion type
-
-    // Attempt to determine region from realm slug (simple heuristic)
-    if (realmSlug) {
-        // Add more specific rules based on known Battle.net slug conventions if needed
-        if (realmSlug.endsWith('-eu')) { region = 'eu'; }
-        else if (realmSlug.endsWith('-kr')) { region = 'kr'; }
-        else if (realmSlug.endsWith('-tw')) { region = 'tw'; }
-        else if (realmSlug.endsWith('-cn')) { region = 'cn'; } // Assuming -cn for China
-        else if (!realmSlug.includes('-')) { region = 'us'; } // Assume US if no region suffix
-    }
-
-    // If region couldn't be determined from slug, use the fallback
-    if (!region && fallbackRegion) {
-        // Ensure fallbackRegion is a valid BattleNetRegion type if possible
-        // This might require validation depending on the source of fallbackRegion
-        region = fallbackRegion as BattleNetRegion;
-        logger.debug({ fallbackRegionUsed: region }, '[SyncService:_queueMissingGuildSync] Determined region using fallback.');
-    }
-
-
-    if (!name || !realmSlug || !region) {
-      logger.error({ bnetGuildId: bnet_guild_id, name, realmSlug, determinedRegion: region, fallbackRegion }, '[SyncService:_queueMissingGuildSync] Missing essential data (name, realm slug, or region) to queue guild. Cannot proceed.');
-      return;
-    }
+    const { id: bnetGuildId, name: guildName, realm } = guildData;
+    const realmName = realm.name; // Use the full realm name
+    const realmSlug = realm.slug; // Use the realm slug
 
     try {
-      // Check if guild already exists (by bnet_id or name/realm/region)
-      let existingGuild = await this.guildModel.findOne({ bnet_guild_id: bnet_guild_id });
-      if (!existingGuild) {
-        existingGuild = await this.guildModel.findByNameRealmRegion(name, realmSlug, region);
+      // Check if guild already exists by BNet ID to avoid duplicates
+      const existingGuild = await this.guildModel.findOne({ bnet_guild_id: bnetGuildId });
+      if (existingGuild) {
+        logger.info({ bnetGuildId, guildName, realmName }, `[SyncService] Guild ${guildName}-${realmName} (BNet ID: ${bnetGuildId}) already exists locally. Skipping queue.`);
+        return;
       }
 
-      if (!existingGuild) {
-        // Guild does not exist, create a minimal record to trigger sync
-        logger.info({ name, realmSlug, region, bnetGuildId: bnet_guild_id }, `[SyncService:_queueMissingGuildSync] Guild ${name}-${realmSlug} not found. Creating minimal record to queue for sync.`);
-        await this.guildModel.create({
-          name: name,
-          realm: realmSlug,
-          region: region,
-          bnet_guild_id: bnet_guild_id,
-          last_updated: null, // Ensure it gets picked up by findOutdatedGuilds
-          last_roster_sync: null,
-        });
-      } else {
-        // Guild exists, maybe force a sync if it's very old? Optional.
-        // logger.debug({ name, realmSlug, region, guildId: existingGuild.id }, `[SyncService:_queueMissingGuildSync] Guild ${name}-${realmSlug} already exists (ID: ${existingGuild.id}).`);
-      }
+      // Check if guild exists by name/realm/region (in case BNet ID wasn't stored previously)
+      const existingByName = await this.guildModel.findOne({ name: guildName, realm: realmName, region: region });
+       if (existingByName) {
+         logger.info({ guildName, realmName, region }, `[SyncService] Guild ${guildName}-${realmName} (${region}) already exists locally (found by name/realm). Updating BNet ID.`);
+         // Update the existing record with the BNet ID if missing
+         if (!existingByName.bnet_guild_id) {
+           await this.guildModel.update(existingByName.id, { bnet_guild_id: bnetGuildId });
+         }
+         return; // Don't create a new one
+       }
+
+
+      logger.info({ bnetGuildId, guildName, realmName, region }, `[SyncService] Queueing sync for missing guild: ${guildName}-${realmName} (${region})`);
+
+      // Create a basic guild record to track it
+      const newGuildPayload: Partial<DbGuild> = {
+        name: guildName,
+        realm: realmName, // Store full realm name
+        region: region,
+        bnet_guild_id: bnetGuildId,
+        last_updated: null, // Not synced yet
+        last_roster_sync: null,
+        // leader_id will be determined during the actual sync
+      };
+      const createdGuild = await this.guildModel.create(newGuildPayload);
+
+      // TODO: Implement a proper job queue mechanism (e.g., BullMQ, RabbitMQ)
+      // For now, we'll just call syncGuild directly, but this is NOT ideal for production
+      // as it can lead to long-running processes and potential race conditions.
+      logger.warn({ guildId: createdGuild.id }, "[SyncService] Triggering immediate sync for newly added guild (replace with proper queue).");
+      await this.syncGuild(createdGuild); // Direct call (temporary)
+
     } catch (error) {
-      logger.error({ err: error, name, realmSlug, region, bnetGuildId: bnet_guild_id }, `[SyncService:_queueMissingGuildSync] Error checking or creating guild record for ${name}-${realmSlug}:`);
+      logger.error({ err: error, bnetGuildId, guildName, realmName }, `[SyncService] Error queueing sync for missing guild ${guildName}-${realmName}:`);
     }
   }
 
-
-
-  async syncCharacter(character: DbCharacter): Promise<void> {
-    // Check if character ID exists
-    if (!character || !character.id) {
-      logger.error('[SyncService] Attempted to sync character with missing ID.');
-      return; // Cannot proceed without an ID
-    }
-
-    logger.info({ charName: character.name, realm: character.realm, charId: character.id }, `[SyncService] Starting sync for character: ${character.name} (${character.realm}) ID: ${character.id}`);
-
-    // --- New Availability Check ---
-    let associatedGuildMembers: DbGuildMember[] = [];
-    try {
-      // Use the injected guildMemberModel instance
-      associatedGuildMembers = await this.guildMemberModel.findByCharacterIds([character.id]);
-    } catch (fetchError) {
-      logger.error({ err: fetchError, charId: character.id }, `[SyncService] Error fetching guild memberships for character ${character.id}. Skipping sync.`);
-      return; // Cannot determine availability, skip sync
-    }
-
-    // If the character isn't in any guild tracked by the system, proceed normally.
-    // If they are in guilds, check if *any* membership allows syncing.
-    if (associatedGuildMembers.length > 0) {
-      const isAnyMembershipAvailable = associatedGuildMembers.some(gm => gm.isAvailable);
-      if (!isAnyMembershipAvailable) {
-        logger.info({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) is marked as unavailable in all associated guilds. Skipping API sync.`);
-        // Optionally update character's last_updated timestamp even if skipped?
-        // await this.characterModel.update(character.id, { last_updated: new Date().toISOString() });
-        return; // Skip the rest of the sync process
-      }
-      // If at least one membership is available, proceed with the API call.
-      // Success/failure logic below will handle updating all memberships.
-      logger.debug({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) is available in at least one guild. Proceeding with API sync.`);
-    } else {
-       logger.debug({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) has no associated guild memberships in DB. Proceeding with API sync.`);
-    }
-    // --- End New Availability Check ---
-
-
-    try {
-       // Ensure character region is defined before proceeding
-       if (!character.region) {
-         logger.warn({ charName: character.name, charId: character.id }, `[SyncService] Skipping character sync for ${character.name} (ID: ${character.id}) due to missing region.`);
-         // Consider this a failure for availability tracking? Yes.
-         throw new AppError(`Character ${character.name} (ID: ${character.id}) is missing region.`, 400);
-       }
-
-       // Token fetching is now handled within the apiClient methods
-
-       // Fetch enhanced data using injected client
-       // Note: getEnhancedCharacterData fetches profile, equipment, mythic keystone, professions
-       const enhancedData = await this.apiClient.getEnhancedCharacterData( // Use apiClient
-           character.realm,
-           character.name.toLowerCase(), // Ensure lowercase name is passed as expected by client
-           character.region as BattleNetRegion // Cast region after check
-       );
-
-       // Check if enhancedData is null (meaning fetch failed, e.g., 404)
-       if (enhancedData === null) {
-         logger.info({ charName: character.name, charId: character.id }, `[SyncService] Character ${character.name} (ID: ${character.id}) fetch failed (likely 404). Treating as sync failure.`);
-         // Consider this a failure for the availability logic
-         throw new AppError(`No profile data returned for ${character.name}-${character.realm}`, 404);
-       }
-
-      // Prepare the update payload using the helper method
-      const updatePayload = await this._prepareCharacterUpdatePayload(character, enhancedData);
-
-      // Update the character record in the database
-      await this.characterModel.update(character.id, updatePayload);
-      logger.info({ charName: character.name, realm: character.realm, charId: character.id }, `[SyncService] Successfully synced character: ${character.name} (${character.realm})`);
-
-      // --- New Success Update for Guild Members ---
-      if (associatedGuildMembers.length > 0) {
-        for (const gm of associatedGuildMembers) {
-          // Only update if necessary to reset failures or mark as available
-          if (gm.consecutiveUpdateFailures !== 0 || !gm.isAvailable) {
-            try {
-              // Use the injected guildMemberModel instance's update method
-              await this.guildMemberModel.update(gm.id, {
-                consecutiveUpdateFailures: 0,
-                isAvailable: true,
-                // updated_at is handled by the model's update method
-              });
-               logger.debug({ charId: character.id, guildMemberId: gm.id }, `[SyncService] Reset failure count and marked available for guild member ${gm.id}.`);
-            } catch (gmUpdateError) {
-              logger.error({ err: gmUpdateError, charId: character.id, guildMemberId: gm.id }, `[SyncService] Error updating guild member ${gm.id} after successful character sync.`);
-            }
-          }
-        }
-      }
-      // --- End New Success Update ---
-
-    } catch (error) {
-      logger.error({ err: error, charId: character.id, charName: character.name }, `[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`);
-
-      // --- New Failure Update for Guild Members ---
-      if (associatedGuildMembers.length > 0) {
-        for (const gm of associatedGuildMembers) {
-          // Fetch the latest state in case of concurrent updates? For now, assume gm object is recent enough.
-          const currentFailures = gm.consecutiveUpdateFailures || 0; // Default to 0 if null/undefined
-          const newFailures = currentFailures + 1;
-          const shouldBeAvailable = newFailures <= 3; // Becomes unavailable *after* 3 failures (i.e., on the 4th)
-
-          // Only update if the state actually changes
-          if (gm.consecutiveUpdateFailures !== newFailures || gm.isAvailable !== shouldBeAvailable) {
-              try {
-                // Use the injected guildMemberModel instance's update method
-                await this.guildMemberModel.update(gm.id, {
-                  consecutiveUpdateFailures: newFailures,
-                  isAvailable: shouldBeAvailable,
-                  // updated_at is handled by the model's update method
-                });
-                 logger.warn({ charId: character.id, guildMemberId: gm.id, failures: newFailures, nowAvailable: shouldBeAvailable }, `[SyncService] Incremented failure count to ${newFailures} for guild member ${gm.id}. Available: ${shouldBeAvailable}`);
-              } catch (gmUpdateError) {
-                logger.error({ err: gmUpdateError, charId: character.id, guildMemberId: gm.id }, `[SyncService] Error updating guild member ${gm.id} after failed character sync.`);
-              }
-          } else {
-               logger.debug({ charId: character.id, guildMemberId: gm.id, failures: newFailures, available: shouldBeAvailable }, `[SyncService] Guild member ${gm.id} failure/availability state unchanged.`);
-          }
-        }
-      }
-      // --- End New Failure Update ---
-
-      // Optionally update character record with error state/timestamp
-      // await this.characterModel.update(character.id, { last_error: error.message, last_updated: new Date().toISOString() });
-    }
-  }
 
   /**
-   * Main sync function to run periodically.
+   * Syncs detailed data for a single character.
+   */
+  async syncCharacter(character: DbCharacter): Promise<void> {
+    const jobId = `char-sync-${character.region}-${character.realm}-${character.name}`; // Unique ID for logging/tracking
+    logger.info({ charId: character.id, charName: character.name, realm: character.realm, region: character.region, jobId }, `[SyncService] Starting sync for character: ${character.name} (${character.realm}-${character.region})`);
+
+    try {
+      // --- New Availability Check ---
+      // Fetch all guild memberships for this character
+      const associatedGuildMembers = await this.guildMemberModel.findByCharacterIds([character.id]); // Use findByCharacterIds 
+
+      // If the character isn't in any guild tracked by the system, proceed normally.
+      // If they are in guilds, check if *any* membership allows syncing.
+      if (associatedGuildMembers.length > 0) {
+        const isAnyMembershipAvailable = associatedGuildMembers.some((gm: DbGuildMember) => gm.isAvailable === true); // Use correct camelCase name from type        
+
+        if (!isAnyMembershipAvailable) {
+          logger.info({ charId: character.id, charName: character.name}, `[SyncService] Character ${character.name} (ID: ${character.id}) is marked as unavailable (isAvailable=false or non-boolean) in all associated guilds. Skipping API sync.`);
+          // Optionally update character's last_updated timestamp even if skipped?
+          // await this.characterModel.update(character.id, { last_synced_at: new Date().toISOString() }); // Use last_synced_at
+          return; // Skip the rest of the sync process
+        }
+        // If at least one membership is available, proceed with the API call.
+        // Success/failure logic below will handle updating all memberships.
+        logger.debug({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) is available in at least one guild. Proceeding with API sync.`);
+      } else {
+         logger.debug({ charId: character.id, charName: character.name }, `[SyncService] Character ${character.name} (ID: ${character.id}) has no associated guild memberships in DB. Proceeding with API sync.`);
+      }
+      // --- End New Availability Check ---
+
+
+      // Token fetching is now handled within the apiClient methods
+      // const token = await this.ensureClientToken(); // Removed
+
+      // 1. Fetch Enhanced Character Data from Battle.net
+      const realmSlug = createSlug(character.realm);
+      const characterNameLower = character.name.toLowerCase(); // BNet API uses lowercase names
+      // Use getEnhancedCharacterData instead of getCharacterProfileSummary
+      const enhancedDataResult = await this.apiClient.getEnhancedCharacterData(realmSlug, characterNameLower, character.region as BattleNetRegion); // Pass jobId? No, handled internally by apiClient
+
+      // 2. Prepare Update Payload using the private method
+      // Destructure the result from _prepareCharacterUpdatePayload
+      const { updatePayload, localGuild } = await this._prepareCharacterUpdatePayload(character, enhancedDataResult);
+
+      // 3. Update Character in DB
+      await this.characterModel.update(character.id, updatePayload);
+      logger.info({ charId: character.id, charName: character.name, jobId }, `[SyncService] Successfully synced character ${character.name} (ID: ${character.id}).`);
+
+      // 4. Update associated guild_members records with latest character info (if applicable)
+      // This ensures character_name, character_class are up-to-date on the membership record
+      // Only update if the character is actually in a guild according to the latest sync
+      // Use the localGuild variable returned from _prepareCharacterUpdatePayload
+      if (localGuild) {
+          const localGuildId = localGuild.id; // Get ID from the localGuild object
+          const memberUpdatePayload: Partial<DbGuildMember> = {
+              character_name: updatePayload.name || character.name, // Use updated name or fallback
+              character_class: updatePayload.class || character.class, // Use updated class or fallback
+              // We don't update rank here, that's handled by guild sync
+          };
+          // Find the specific membership record for the current guild
+          const currentMembership = await this.guildMemberModel.findOne({
+              character_id: character.id,
+              guild_id: localGuildId // Use localGuildId here
+          });
+          if (currentMembership) {
+              await this.guildMemberModel.update(currentMembership.id, memberUpdatePayload);
+              logger.debug({ charId: character.id, memberId: currentMembership.id, guildId: localGuildId, jobId }, `[SyncService] Updated associated guild member record ${currentMembership.id} for character ${character.name}.`);
+          } else {
+              logger.warn({ charId: character.id, guildId: localGuildId, jobId }, `[SyncService] Could not find guild member record to update for character ${character.name} in guild ${localGuildId}. Guild sync might be pending.`);
+          }
+      } else {
+          // If character is guildless according to BNet, ensure no active memberships exist?
+          // This might be too aggressive, guild sync should handle removals.
+          // logger.debug({ charId: character.id, jobId }, `[SyncService] Character ${character.name} is guildless, skipping member record update.`);
+      }
+
+
+    } catch (error) {
+      // Handle 404 specifically - Character likely doesn't exist on BNet anymore
+      // Use error.status instead of error.statusCode
+      if (error instanceof AppError && error.status === 404) {
+        logger.warn({ charId: character.id, charName: character.name, realm: character.realm, region: character.region, jobId }, `[SyncService] Character ${character.name} not found on Battle.net (404). Marking as unavailable or consider deletion.`);
+        // Option 1: Mark associated guild memberships as unavailable (Safer)
+        try {
+          // Update last_synced_at on the character record
+          await this.characterModel.update(character.id, { last_synced_at: new Date().toISOString() }); // Use last_synced_at
+          // Also mark associated guild memberships as unavailable
+          // Fetch members first
+          const membersToDeactivate = await this.guildMemberModel.findByCharacterIds([character.id]);
+          if (membersToDeactivate.length > 0) {
+              // Prepare payload for bulkUpdate (assuming it handles isAvailable)
+              // Note: bulkUpdate in the model currently doesn't handle 'isAvailable'. Need to adjust if this is the desired behavior.
+              // For now, let's assume we want to update 'isAvailable'
+              const updates: { memberId: number; isAvailable: boolean }[] = membersToDeactivate.map(m => ({ memberId: m.id, isAvailable: false }));
+              // TODO: Ensure guildMemberModel.bulkUpdate supports 'isAvailable' or use individual updates.
+              // Assuming bulkUpdate is modified or we use individual updates:
+              await this.guildMemberModel.bulkUpdate(updates); // Use bulkUpdate
+              logger.info({ charId: character.id, charName: character.name, jobId, count: updates.length }, `[SyncService] Marked ${updates.length} associated memberships as unavailable for character ${character.name} due to 404.`);
+          } else {
+              logger.info({ charId: character.id, charName: character.name, jobId }, `[SyncService] No associated memberships found to mark as unavailable for character ${character.name} after 404.`);
+          }
+        } catch (inactiveError) {
+          logger.error({ err: inactiveError, charId: character.id, charName: character.name, jobId }, `[SyncService] Failed to mark character ${character.name} memberships as unavailable after 404.`);
+        }
+        // Option 2: Delete character (More permanent, potential data loss if temporary BNet issue)
+        // await this.characterModel.delete(character.id);
+        // await this.guildMemberModel.deleteByCharacterId(character.id); // Cascade delete?
+      } else {
+        // Log other errors
+        logger.error({ err: error, charId: character.id, charName: character.name, jobId }, `[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`);
+        // Optionally update character record with error state/timestamp
+      }
+    }
+  }
+
+
+  /**
+   * Runs the full sync process: syncs all active guilds and then all active characters.
    */
   async runSync(): Promise<void> {
     if (this.isSyncing) {
-      logger.info('[SyncService] Sync already in progress. Skipping.');
+      logger.warn('[SyncService] Sync process already running. Skipping new run.');
       return;
     }
 
-    logger.info('[SyncService] Starting background sync run...');
     this.isSyncing = true;
+    logger.info('[SyncService] Starting full sync cycle.');
 
     try {
-      // 1. Sync Guilds in parallel
+      // 1. Sync outdated guilds first
+      logger.info('[SyncService] Starting guild sync phase.');
+      // Use findOutdatedGuilds instead of findActive
       const outdatedGuilds = await this.guildModel.findOutdatedGuilds();
-      logger.info({ count: outdatedGuilds.length }, `[SyncService] Found ${outdatedGuilds.length} guilds to sync.`);
-      if (outdatedGuilds.length > 0) {
-        const guildSyncPromises = outdatedGuilds.map(guild =>
-          this.syncGuild(guild).catch(error => {
-            // Log individual guild sync errors but don't stop others
-            logger.error({ err: error, guildId: guild.id, guildName: guild.name }, `[SyncService] Error syncing guild ${guild.id} (${guild.name}):`);
-            // Return an error object to be identifiable in results
-            return { status: 'rejected', reason: error, guildId: guild.id };
-          })
-        );
-        const guildResults = await Promise.allSettled(guildSyncPromises);
-        const guildsFulfilled = guildResults.filter(r => r.status === 'fulfilled').length;
-        const guildsRejected = guildResults.length - guildsFulfilled;
-        logger.info({ fulfilled: guildsFulfilled, rejected: guildsRejected }, `[SyncService] Guild sync results: ${guildsFulfilled} fulfilled, ${guildsRejected} rejected.`);
+      logger.info(`[SyncService] Found ${outdatedGuilds.length} outdated guilds to sync.`);
+      for (const guild of outdatedGuilds) {
+        await this.syncGuild(guild);
+        // Optional: Add a small delay between guild syncs if needed
+        // await new Promise(resolve => setTimeout(resolve, 500));
       }
+      logger.info('[SyncService] Finished guild sync phase.');
 
-      // 2. Sync Characters in parallel
+      // 2. Sync outdated characters
+      logger.info('[SyncService] Starting character sync phase.');
+      // Use findOutdatedCharacters instead of findActive
       const outdatedCharacters = await this.characterModel.findOutdatedCharacters();
-      logger.info({ count: outdatedCharacters.length }, `[SyncService] Found ${outdatedCharacters.length} characters to sync.`);
-      if (outdatedCharacters.length > 0) {
-        const characterSyncPromises = outdatedCharacters.map(character =>
-          this.syncCharacter(character).catch(error => {
-            // Log individual character sync errors
-            logger.error({ err: error, charId: character.id, charName: character.name }, `[SyncService] Error syncing character ${character.id} (${character.name}):`);
-            return { status: 'rejected', reason: error, characterId: character.id };
-          })
-        );
-        const characterResults = await Promise.allSettled(characterSyncPromises);
-        const charsFulfilled = characterResults.filter(r => r.status === 'fulfilled').length;
-        const charsRejected = characterResults.length - charsFulfilled;
-        logger.info({ fulfilled: charsFulfilled, rejected: charsRejected }, `[SyncService] Character sync results: ${charsFulfilled} fulfilled, ${charsRejected} rejected.`);
+      logger.info(`[SyncService] Found ${outdatedCharacters.length} outdated characters to sync.`);
+      for (const character of outdatedCharacters) {
+        await this.syncCharacter(character);
+        // Optional: Add a small delay between character syncs if needed
+        // await new Promise(resolve => setTimeout(resolve, 100));
       }
+      logger.info('[SyncService] Finished character sync phase.');
 
-      logger.info('[SyncService] Background sync run finished processing guilds and characters.');
+      logger.info('[SyncService] Full sync cycle completed successfully.');
 
     } catch (error) {
-      logger.error({ err: error }, '[SyncService] Error during sync run:');
+      logger.error({ err: error }, '[SyncService] Full sync cycle failed:');
     } finally {
       this.isSyncing = false;
+      logger.info('[SyncService] Sync lock released.');
     }
   }
 }
 
-// Create an instance of the API client
-// TODO: Consider if this client should be a singleton itself and imported from its own file
-const apiClient = new BattleNetApiClient();
+// Instantiate the dependencies
+const apiClientInstance = new BattleNetApiClient();
 
-// Export a singleton instance, injecting the client and models
-const battleNetSyncService = new BattleNetSyncService(
-  apiClient,
+// Instantiate the service with dependencies
+const battleNetSyncServiceInstance = new BattleNetSyncService(
+  apiClientInstance,
   guildModel,
   characterModel,
   rankModel,
   userModel,
-  guildMemberModel // Added guildMemberModel
+  guildMemberModel
 );
-export default battleNetSyncService;
+
+// Export the instance as default
+export default battleNetSyncServiceInstance;

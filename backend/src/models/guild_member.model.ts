@@ -38,7 +38,8 @@ class GuildMemberModel extends BaseModel<DbGuildMember> {
       return []; // Return empty array if no IDs are provided
     }
     try {
-      const query = `SELECT * FROM ${this.tableName} WHERE character_id = ANY($1::int[])`;
+      // Explicitly select columns, using alias for is_available to match camelCase type
+      const query = `SELECT id, guild_id, character_id, rank, is_main, character_name, character_class, member_data_json, created_at, updated_at, is_available AS "isAvailable" FROM ${this.tableName} WHERE character_id = ANY($1::int[])`; // Use alias is_available AS "isAvailable"
       const params = [characterIds];
       const result = await db.query(query, params);
       return result.rows;
@@ -107,7 +108,7 @@ class GuildMemberModel extends BaseModel<DbGuildMember> {
    * @param membersData Array of objects containing memberId and update payload.
    * @param client Optional transaction client.
    */
-  async bulkUpdate(membersData: { memberId: number; rank?: number; characterId?: number; memberData?: any; is_main?: boolean }[], client?: any): Promise<void> { // Added is_main to input type
+  async bulkUpdate(membersData: { memberId: number; rank?: number; characterId?: number; memberData?: any; is_main?: boolean; isAvailable?: boolean }[], client?: any): Promise<void> { // Added isAvailable to input type
     if (!membersData || membersData.length === 0) {
       return;
     }
@@ -134,6 +135,11 @@ class GuildMemberModel extends BaseModel<DbGuildMember> {
         if (memberToUpdate.is_main !== undefined) {
           updates.push(`is_main = $${valueIndex++}`);
           values.push(memberToUpdate.is_main);
+        }
+        // Add isAvailable handling
+        if (memberToUpdate.isAvailable !== undefined) {
+          updates.push(`is_available = $${valueIndex++}`); // Use correct snake_case column name
+          values.push(memberToUpdate.isAvailable);
         }
         updates.push(`updated_at = NOW()`);
 

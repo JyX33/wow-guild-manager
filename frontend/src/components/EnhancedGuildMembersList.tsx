@@ -200,7 +200,7 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                   <div className="whitespace-nowrap">
                     {member.character?.profile_json?.active_spec ? (
                       <>
-                        <span>{member.character_class}</span>
+                        <span>{member.character?.profile_json.character_class.name}</span>
                         <span className="ml-1 text-xs text-gray-500">
                           ({member.character.profile_json.active_spec.name})
                         </span>
