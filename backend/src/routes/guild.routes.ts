@@ -13,6 +13,9 @@ router.get('/user', authMiddleware.authenticate, guildController.getUserGuilds);
 router.get('/id/:guildId', authMiddleware.authenticate, guildController.getGuildById);
 
 // Get guild members (enhanced) - MORE SPECIFIC ROUTE FIRST
+
+// GET /api/guilds/:guildId/classified-roster - Get guild members with main/alt classification
+router.get('/:guildId/classified-roster', authMiddleware.authenticate, guildController.getClassifiedGuildRoster);
 router.get('/:guildId/members/enhanced', authMiddleware.authenticate, guildController.getEnhancedGuildMembers);
 
 // Get guild members (basic)

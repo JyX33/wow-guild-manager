@@ -19,6 +19,14 @@ import * as rankModel from '../models/rank.model';
 import * as userModel from '../models/user.model';
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
 import logger from '../utils/logger'; // Import the logger
+import { CharacterClassificationService, ClassifiedMember } from '../services/character-classification.service'; // Added for classified roster
+// Import the modules themselves, not just the default instance
+import * as characterModelModule from '../models/character.model';
+import * as guildMemberModelModule from '../models/guild_member.model';
+
+// Instantiate the service (or use DI)
+const characterClassificationService = new CharacterClassificationService(characterModelModule, guildMemberModelModule);
+
 
 
 export default {
@@ -141,41 +149,48 @@ export default {
   // --- REFACTORED getUserGuilds ---
   // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
   getUserGuilds: asyncHandler(async (req: Request, res: Response) => {
-    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getUserGuilds request');
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.user?.id }, 'Handling getUserGuilds request'); // Use req.user?.id for logging
     if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id; // Get user ID from authenticated request
 
     // 1. Get user's characters from the database
-    // Assuming getUserCharacters returns characters with guild_id populated
     const userCharacters = await userModel.getUserCharacters(userId);
     logger.debug({ userId, characterCount: userCharacters.length }, `Found ${userCharacters.length} characters for user ${userId}`);
 
-    // 2. Extract unique guild IDs from characters that have one
+    if (userCharacters.length === 0) {
+      logger.debug({ userId }, `User ${userId} has no characters.`);
+      return res.json({ success: true, data: [] });
+    }
+
+    // 2. Extract character IDs
+    const characterIds = userCharacters.map(char => char.id);
+
+    // 3. Find guild memberships for these characters
+    const guildMemberships = await guildMemberModel.findByCharacterIds(characterIds); // Assumes this function exists
+    logger.debug({ userId, membershipCount: guildMemberships.length }, `Found ${guildMemberships.length} guild memberships for user's characters.`);
+
+    // 4. Extract unique guild IDs from memberships
     const guildIds = [
       ...new Set(
-        userCharacters
-          .map(char => char.guild_id)
+        guildMemberships
+          .map(member => member.guild_id)
           .filter((id): id is number => id !== null && id !== undefined) // Filter out null/undefined IDs
       )
     ];
 
     if (guildIds.length === 0) {
-      // User has no characters in any guilds known to the system
-      logger.debug({ userId }, `User ${userId} has no characters in known guilds.`);
+      // User's characters are not members of any guilds known to the system via guild_members
+      logger.debug({ userId }, `User ${userId}'s characters have no associated guilds in guild_members.`);
       return res.json({ success: true, data: [] });
     }
 
-    // 3. Fetch the corresponding guild records from the database
+    // 5. Fetch the corresponding guild records from the database
     const dbGuilds = await guildModel.findByIds(guildIds);
 
-    // 4. Map DB guilds to the response format, checking leadership
+    // 6. Map DB guilds to the response format, checking leadership
     const responseGuilds: Guild[] = dbGuilds.map(dbGuild => {
-      // Determine if the current user is the leader of this guild
       const isGuildMaster = dbGuild.leader_id === userId;
-
-      // Construct the response object using the Guild type
-      // Use the guild_data_json field from DbGuild for the guild_data property
-      const guildData = (dbGuild as any).guild_data_json || {}; // Use the correct JSONB field
+      const guildData = (dbGuild as any).guild_data_json || {};
 
       return {
         id: dbGuild.id,
@@ -184,7 +199,7 @@ export default {
         region: dbGuild.region,
         last_updated: dbGuild.last_updated,
         leader_id: dbGuild.leader_id,
-        guild_data_json: guildData, // Assign the JSON data - MATCHES UPDATED Guild TYPE
+        guild_data_json: guildData,
         is_guild_master: isGuildMaster,
       };
     });
@@ -271,13 +286,15 @@ export default {
           rank: member.rank,
           character: { // Construct this from DB character record + parsed JSONB
             id: character.id,
-            user_id: character.user_id,
+            // Provide a default value (e.g., 0 or -1) if user_id is null, or adjust Character type if null is allowed
+            user_id: character.user_id ?? 0, // Using 0 as default for missing user_id
             name: character.name,
             realm: character.realm,
             class: character.class,
             level: character.level,
             role: role, // Use determined role
-            is_main: character.is_main,
+            // is_main should come from the DbGuildMember record (`member`), not DbCharacter
+            is_main: member.is_main ?? false, // Default to false if null/undefined
             // Parse specific fields from JSONB data
             achievement_points: profileData?.achievement_points || 0,
             equipped_item_level: profileData?.equipped_item_level || 0,
@@ -478,6 +495,26 @@ export default {
     res.json({
       success: true,
       data: enhancedRanks
+    });
+  })
+,
+
+  // --- NEW: Get Classified Guild Roster ---
+  getClassifiedGuildRoster: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getClassifiedGuildRoster request');
+    const { guildId } = req.params;
+    const guildIdInt = parseInt(guildId);
+
+    if (isNaN(guildIdInt)) {
+      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+    }
+
+    // Use the classification service
+    const classifiedMembers: ClassifiedMember[] = await characterClassificationService.getClassifiedGuildMembers(guildIdInt);
+
+    res.json({
+      success: true,
+      data: classifiedMembers
     });
   })
   // --- END REFACTORED getGuildRankStructure ---

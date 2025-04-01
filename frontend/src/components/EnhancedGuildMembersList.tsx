@@ -1,24 +1,30 @@
 import React, { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { guildService } from '../services/api/guild.service';
-import { EnhancedGuildMember, GuildRank } from '../../../shared/types/guild';
+// Import ClassifiedMember and remove EnhancedGuildMember if no longer needed directly
+import { ClassifiedMember, GuildRank } from '../../../shared/types/guild';
 import LoadingSpinner from './LoadingSpinner';
 import { ErrorBoundary } from './ErrorBoundary';
 
-type SortField = 'name' | 'level' | 'itemLevel' | 'rank';
+// Add 'classification' as a sortable field
+// Add 'classification' and adjust sorting logic if needed
+type SortField = 'name' | 'level' | 'itemLevel' | 'rank' | 'classification';
 type SortDirection = 'asc' | 'desc';
 
 interface Props {
   guildId: number;
 }
 
-const getItemLevel = (member: EnhancedGuildMember): number => {
-  return member.character?.equipped_item_level ||
-         member.character?.average_item_level ||
+// Update function parameter type to ClassifiedMember
+const getItemLevel = (member: ClassifiedMember): number => {
+  // Access character data correctly
+  return member.character?.profile_json?.equipped_item_level ||
+         member.character?.profile_json?.average_item_level ||
          0;
 };
 
-const getCharacterLevel = (member: EnhancedGuildMember): number => {
+// Update function parameter type to ClassifiedMember
+const getCharacterLevel = (member: ClassifiedMember): number => {
   return member.character?.level || 0;
 };
 
@@ -26,9 +32,9 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
   const [sortField, setSortField] = useState<SortField>('rank');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
-  // Get enhanced guild members
-  const { data: members, loading, error } = useApi<EnhancedGuildMember[], [number]>({
-    apiFn: guildService.getEnhancedGuildMembers,
+  // Fetch classified guild members using the new service method
+  const { data: members, loading, error } = useApi<ClassifiedMember[], [number]>({
+    apiFn: guildService.getClassifiedGuildRoster, // Use the new service function
     args: [guildId],
     deps: [guildId]
   });
@@ -67,7 +73,13 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
       case 'rank':
         result = a.rank - b.rank;
         break;
-      default:
+      case 'classification':
+        // Sort Mains before Alts
+        if (a.classification === 'Main' && b.classification === 'Alt') result = -1;
+        else if (a.classification === 'Alt' && b.classification === 'Main') result = 1;
+        else result = 0; // Keep original order if both are Main or both are Alt
+        break;
+      default: // Default sort by name if field is unknown
         result = a.character.name.toLowerCase().localeCompare(b.character.name.toLowerCase());
     }
     
@@ -143,13 +155,31 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                   <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
                 )}
               </th>
+              {/* Add Classification Header */}
+              <th
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('classification')}
+              >
+                Status
+                {sortField === 'classification' && (
+                  <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {sortedMembers.map((member) => (
-              <tr key={member.character.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {member.character?.name}
+              <tr key={member.character.id} className={`hover:bg-gray-50 ${member.classification === 'Alt' ? 'bg-gray-50' : ''}`}>
+                <td className={`px-6 py-4 whitespace-nowrap ${member.classification === 'Alt' ? 'pl-10' : ''}`}>
+                  <div className="flex items-center">
+                    <span>{member.character?.name}</span>
+                    {member.classification === 'Alt' && member.mainCharacterId && (
+                      <span className="ml-2 text-xs text-blue-600 group relative cursor-help" title={`Alt of ${sortedMembers.find(m => m.character_id === member.mainCharacterId)?.character?.name || 'Unknown'}`}>
+                        (Alt)
+                        {/* Tooltip could be enhanced */}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getCharacterLevel(member)}
@@ -157,22 +187,22 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
                     {getItemLevel(member)}
-                    {member.character?.average_item_level !== 
-                     member.character?.equipped_item_level && 
-                     member.character?.average_item_level && (
+                    {member.character?.profile_json?.average_item_level !==
+                     member.character?.profile_json?.equipped_item_level &&
+                     member.character?.profile_json?.average_item_level && (
                       <span className="ml-1 text-xs text-gray-500">
-                        (Bags: {member.character.average_item_level})
+                        (Bags: {member.character.profile_json.average_item_level})
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
-                    {member.character?.activeSpec ? (
+                    {member.character?.profile_json?.active_spec ? (
                       <>
                         <span>{member.character_class}</span>
                         <span className="ml-1 text-xs text-gray-500">
-                          ({member.character?.activeSpec?.name})
+                          ({member.character.profile_json.active_spec.name})
                         </span>
                       </>
                     ) : (
@@ -182,16 +212,18 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="whitespace-nowrap">
-                    Runs this week: {member.character?.mythicKeystone?.current_period?.best_runs?.length || 0}
+                    {/* Mythic data is now directly on character object from backend, not nested in profile_json */}
+                    Runs this week: {member.character?.mythic_profile_json?.current_period?.best_runs?.length || 0}
                   </div>
-                  {member.character?.mythicKeystone?.current_period?.best_runs && member.character?.mythicKeystone?.current_period?.best_runs.length > 0 && (
+                  {member.character?.mythic_profile_json?.current_period?.best_runs && member.character.mythic_profile_json.current_period.best_runs.length > 0 && (
                     <div className="text-xs text-gray-500 mt-1">
-                      rating : {Math.round(member.character?.mythicKeystone?.current_mythic_rating?.rating || 0)}
+                      rating : {Math.round(member.character.mythic_profile_json.current_mythic_rating?.rating || 0)}
                     </div>
                   )}
                 </td>
                 <td className="px-6 py-4">
-                  {member.character?.professions?.map(prof => (
+                  {/* Professions data is now directly on character object */}
+                  {member.character?.professions_json?.map(prof => (
                     <div key={prof.profession.id} className="text-sm">
                       {prof.profession.name}
                       {prof.skill_points && (
@@ -204,6 +236,10 @@ export const EnhancedGuildMembersList: React.FC<Props> = ({ guildId }) => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getRankName(member.rank)}
+                </td>
+                {/* Add Classification Data Cell */}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {member.classification}
                 </td>
               </tr>
             ))}

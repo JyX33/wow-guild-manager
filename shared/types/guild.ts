@@ -780,3 +780,41 @@ export interface GuildRank {
     created_at?: string;
     updated_at?: string;
 }
+
+
+/**
+ * Represents a guild member with classification details for frontend use.
+ */
+export interface ClassifiedMember {
+  // Fields from DbGuildMember needed by frontend
+  id: number;
+  guild_id: number;
+  character_id: number;
+  rank: number;
+  is_main?: boolean | null; // Explicit main flag
+  character_name?: string;
+  character_class?: string;
+  member_data_json?: BattleNetGuildMember; // Maybe useful for some display? Optional.
+
+  // Fields from DbCharacter needed by frontend
+  character: {
+    id: number;
+    user_id?: number | null;
+    name: string;
+    realm: string;
+    class: string;
+    level: number;
+    role?: CharacterRole;
+    region?: string;
+    // Include relevant profile/equipment details if needed for display
+    profile_json?: BattleNetCharacter; // Optional, might be large
+    equipment_json?: BattleNetCharacterEquipment; // Optional
+    mythic_profile_json?: BattleNetMythicKeystoneProfile | null; // Added
+    professions_json?: BattleNetProfessions['primaries']; // Added
+  };
+
+  // Classification details
+  classification: 'Main' | 'Alt';
+  groupKey: string | number | null; // user_id or toy_hash or null
+  mainCharacterId: number | null; // Link to main character if this is an alt
+}

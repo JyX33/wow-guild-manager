@@ -12,6 +12,7 @@ export interface ClassifiedMember extends DbGuildMember {
   character: DbCharacter; // Include the full character details
   classification: 'Main' | 'Alt';
   groupKey: string | number | null; // user_id for known, toy_hash for unknown-hashable, null for unknown-unhashable
+  mainCharacterId: number | null; // ID of the 'Main' character in the same group, null if this member is 'Main'
 }
 
 export class CharacterClassificationService {
@@ -143,10 +144,13 @@ export class CharacterClassificationService {
     let explicitMainFound = false;
 
     // First pass: Check for an explicitly set main character
+    let mainCharId: number | null = null;
     for (const member of members) {
       if (member.is_main === true) {
-        classifiedMembers.push({ ...member, classification: 'Main', groupKey: userId });
+        mainCharId = member.character_id; // Found the explicit main
+        classifiedMembers.push({ ...member, classification: 'Main', groupKey: userId, mainCharacterId: null });
         explicitMainFound = true;
+        break; // Found the main, no need to check further in this loop
       }
     }
 
@@ -154,7 +158,8 @@ export class CharacterClassificationService {
     if (explicitMainFound) {
       for (const member of members) {
         if (member.is_main !== true) { // Include null/false
-          classifiedMembers.push({ ...member, classification: 'Alt', groupKey: userId });
+          // If mainCharId is null here, something went wrong, but proceed defensively
+          classifiedMembers.push({ ...member, classification: 'Alt', groupKey: userId, mainCharacterId: mainCharId });
         }
       }
       return classifiedMembers;
@@ -163,12 +168,17 @@ export class CharacterClassificationService {
     // If no explicit main, apply fallback logic
     members.sort(this._sortByFallbackLogic); // Sort using the fallback helper
 
+    // Determine the main character's ID after sorting
+    const fallbackMainCharId = members.length > 0 ? members[0].character_id : null;
+
     for (let i = 0; i < members.length; i++) {
       const member = members[i];
+      const isMain = i === 0;
       classifiedMembers.push({
         ...member,
-        classification: i === 0 ? 'Main' : 'Alt', // First is Main, others are Alt
-        groupKey: userId
+        classification: isMain ? 'Main' : 'Alt',
+        groupKey: userId,
+        mainCharacterId: isMain ? null : fallbackMainCharId // Link alts to the fallback main
       });
     }
 
@@ -190,12 +200,17 @@ export class CharacterClassificationService {
     members.sort(this._sortByFallbackLogic); // Always use fallback for unknown groups
 
     const classifiedMembers: ClassifiedMember[] = [];
+    // Determine the main character's ID after sorting
+    const mainCharId = members.length > 0 ? members[0].character_id : null;
+
     for (let i = 0; i < members.length; i++) {
       const member = members[i];
+      const isMain = i === 0;
       classifiedMembers.push({
         ...member,
-        classification: i === 0 ? 'Main' : 'Alt', // First is Main, others are Alt
-        groupKey: groupKey // Use the toy_hash as the group key
+        classification: isMain ? 'Main' : 'Alt',
+        groupKey: groupKey, // Use the toy_hash as the group key
+        mainCharacterId: isMain ? null : mainCharId // Link alts to the main
       });
     }
     return classifiedMembers;
@@ -206,7 +221,8 @@ export class CharacterClassificationService {
     return {
         ...member,
         classification: 'Main',
-        groupKey: null // No specific group key for these individuals
+        groupKey: null, // No specific group key for these individuals
+        mainCharacterId: null // They are their own main
     };
   }
 

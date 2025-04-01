@@ -31,6 +31,24 @@ class GuildMemberModel extends BaseModel<DbGuildMember> {
 
 
   /**
+   * Find guild members by character IDs.
+   */
+  async findByCharacterIds(characterIds: number[]): Promise<DbGuildMember[]> {
+    if (!characterIds || characterIds.length === 0) {
+      return []; // Return empty array if no IDs are provided
+    }
+    try {
+      const query = `SELECT * FROM ${this.tableName} WHERE character_id = ANY($1::int[])`;
+      const params = [characterIds];
+      const result = await db.query(query, params);
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error finding guild members by character IDs: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+
+  /**
    * Bulk creates multiple guild members within a transaction.
    * @param membersData Array of partial DbGuildMember objects to insert.
    * @param client Optional transaction client.
@@ -235,3 +253,5 @@ export default guildMemberModel;
 export const bulkCreate = guildMemberModel.bulkCreate.bind(guildMemberModel);
 export const bulkUpdate = guildMemberModel.bulkUpdate.bind(guildMemberModel);
 export const bulkDelete = guildMemberModel.bulkDelete.bind(guildMemberModel);
+
+export const findByCharacterIds = guildMemberModel.findByCharacterIds.bind(guildMemberModel);

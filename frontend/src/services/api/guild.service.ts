@@ -3,9 +3,9 @@ import {
   Guild, 
   GuildMember, 
   EnhancedGuildMember, 
-  GuildRank 
+  GuildRank,
+  ClassifiedMember // Added for classified roster
 } from '../../../../shared/types/guild';
-
 export const guildService = {
   /**
    * Get guild by ID
@@ -78,5 +78,14 @@ export const guildService = {
     apiRequest<GuildRank[]>({
       method: 'GET', 
       url: `/guilds/${guildId}/rank-structure`
+    }),
+
+  /**
+   * Get classified guild roster with main/alt status
+   */
+  getClassifiedGuildRoster: (guildId: number) =>
+    apiRequest<ClassifiedMember[]>({
+      method: 'GET',
+      url: `/guilds/${guildId}/classified-roster`
     }),
 };
