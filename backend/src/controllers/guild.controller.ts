@@ -8,6 +8,7 @@ import {
   BattleNetProfessions, // Added
   CharacterRole, // Added for mapping
   DbCharacter, // Added
+  DbGuildMember, // Added for DB fetch
   EnhancedGuildMember, // Keep for parsing roster_json
   Guild, // Import the application-level Guild type
   GuildMember, // Added for mapping
@@ -27,6 +28,29 @@ import * as guildMemberModelModule from '../models/guild_member.model';
 // Instantiate the service (or use DI)
 const characterClassificationService = new CharacterClassificationService(characterModelModule, guildMemberModelModule);
 
+
+/**
+ * Determines the character role based on the active specialization name.
+ * @param specName The name of the active specialization (e.g., "Protection", "Holy").
+ * @returns The determined CharacterRole ('Tank', 'Healer', 'DPS'). Defaults to 'DPS'.
+ */
+const determineRoleFromSpec = (specName: string | undefined): CharacterRole => {
+  if (!specName) {
+    return 'DPS'; // Default if spec name is missing
+  }
+  const lowerSpecName = specName.toLowerCase();
+
+  // Tank Specs
+  if (lowerSpecName.includes('protection') || lowerSpecName.includes('guardian') || lowerSpecName.includes('blood') || lowerSpecName.includes('brewmaster') || lowerSpecName.includes('vengeance')) {
+    return 'Tank';
+  }
+  // Healer Specs
+  if (lowerSpecName.includes('holy') || lowerSpecName.includes('discipline') || lowerSpecName.includes('restoration') || lowerSpecName.includes('preservation') || lowerSpecName.includes('mistweaver')) {
+    return 'Healer';
+  }
+  // Default to DPS
+  return 'DPS';
+};
 
 
 export default {
@@ -83,64 +107,80 @@ export default {
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
-     if (isNaN(guildIdInt)) {
+    if (isNaN(guildIdInt)) {
       throw new AppError('Invalid guild ID', 400, {
         code: ERROR_CODES.VALIDATION_ERROR,
         request: req
       });
     }
 
-    // Fetch guild data including the roster_json column
-    const guild = await guildModel.findById(guildIdInt);
+    // 1. Fetch Guild Members from DB
+    const dbGuildMembers: DbGuildMember[] = await guildMemberModel.findByGuildAndRanks(guildIdInt);
+    logger.debug({ guildId: guildIdInt, count: dbGuildMembers.length }, `Found ${dbGuildMembers.length} members in DB for guild ${guildIdInt}`);
 
-    if (!guild) {
-      throw new AppError('Guild not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
-      });
+    // 2. Handle Empty Roster
+    if (dbGuildMembers.length === 0) {
+      return res.json({ success: true, data: [] });
     }
 
-    // Parse members from the roster_json column
-    const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
-    const bnetMembers: BattleNetGuildMember[] = rosterData?.members || [];
+    // 3. Extract Character IDs
+    const characterIds = dbGuildMembers.map(member => member.character_id);
 
-    // Map BattleNetGuildMember[] to GuildMember[]
-    const guildMembers: GuildMember[] = bnetMembers.map(bnetMember => {
-      // Basic role determination (can be enhanced if spec info is available)
-      const className = bnetMember.character.playable_class.name;
-      let role: CharacterRole = 'DPS'; // Default to DPS
-      if (['Warrior', 'Paladin', 'Death Knight', 'Monk', 'Demon Hunter', 'Druid'].includes(className)) {
-         // Classes that *can* be tanks - refine if spec available
-         // For simplicity, we might not have spec here. Defaulting based on class is rough.
-         // Let's stick to DPS as default unless class is clearly healer-only like Priest.
-      }
-      if (['Priest', 'Paladin', 'Shaman', 'Monk', 'Druid', 'Evoker'].includes(className)) {
-         // Classes that *can* be healers. Priest is often healer.
-         if (className === 'Priest') role = 'Healer';
-         // Again, rough without spec.
-      }
-      // A more robust approach would fetch character spec if needed, but keep it simple for basic list.
+    // 4. Fetch Character Details
+    const dbCharacters = await characterModel.findByIds(characterIds);
+    logger.debug({ guildId: guildIdInt, count: dbCharacters.length }, `Fetched ${dbCharacters.length} character details from DB`);
 
-      // Note: The GuildMember type has an 'id' field, likely referring to the
-      // guild_members table PK. We don't have that easily here.
-      // We also don't have user_id or battletag without more joins.
-      // We return what's available from the roster data.
+    // 5. Create Character Map
+    const characterMap = new Map<number, DbCharacter>();
+    dbCharacters.forEach(char => characterMap.set(char.id, char));
+
+    // 7. Map Members to Response
+    const guildMembers: GuildMember[] = dbGuildMembers.map(dbMember => {
+      const character = characterMap.get(dbMember.character_id);
+      const memberName = dbMember.character_name || 'Unknown'; // Use name from guild_members table
+
+      let characterClass = 'Unknown';
+      let role: CharacterRole = 'DPS'; // Default role
+      let userId: number | undefined = undefined;
+
+      if (character) {
+        characterClass = character.class || 'Unknown';
+        userId = character.user_id ?? undefined; // Assign user_id if available
+
+        try {
+          // Attempt to parse profile_json and determine role from spec
+          const profileData = character.profile_json as BattleNetCharacter | null; // No need for (character as any)
+          const specName = profileData?.active_spec?.name;
+          role = determineRoleFromSpec(specName); // Use helper function
+        } catch (parseError) {
+          // Log error if JSON parsing fails, but continue with default role
+          logger.warn({ err: parseError, charName: character.name, charId: character.id, guildId: guildIdInt }, `Could not parse profile_json for character ${character.name}`);
+        }
+      } else {
+        // Fallback if character data is missing in DB (less likely now but good practice)
+        characterClass = dbMember.character_class || 'Unknown';
+        logger.warn({ guildMemberId: dbMember.id, characterId: dbMember.character_id, guildId: guildIdInt }, `Character data not found in DB for guild member ID ${dbMember.id}, character ID ${dbMember.character_id}. Using default role.`);
+      }
+
+      // Construct the GuildMember object for the API response
       return {
-        // id: ???, // Not available directly from roster_json
+        id: dbMember.id, // Use the guild_members table PK
         guild_id: guildIdInt,
-        character_name: bnetMember.character.name,
-        character_class: className,
-        character_role: role, // Basic role guess
-        rank: bnetMember.rank,
-        // user_id: ???, // Optional, not available
-        // battletag: ???, // Optional, not available
+        character_id: dbMember.character_id,
+        character_name: memberName,
+        character_class: characterClass,
+        character_role: role, // Use determined or default role
+        rank: dbMember.rank,
+        isMain: dbMember.is_main ?? false, // Use is_main from guild_members
+        user_id: userId, // Include user_id if found
+        // battletag: ??? // Still not available without joining users table
       };
     });
 
-    // Return the mapped members array
+    // 8. Return Result
     res.json({
       success: true,
-      data: guildMembers // Return the mapped GuildMember array
+      data: guildMembers
     });
   }),
   // --- END REFACTORED getGuildMembers ---
