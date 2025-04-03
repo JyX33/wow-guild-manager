@@ -1,6 +1,7 @@
 # Use the official Bun image as a base
 # Choose a specific version if needed, otherwise 'latest' might suffice
 # Using 'distroless' for the final stage reduces image size and attack surface
+ARG NODE_ENV=${NODE_ENV}
 FROM oven/bun:1 as builder
 
 # Set the working directory inside the container
@@ -34,7 +35,6 @@ RUN bun run build
 FROM gcr.io/distroless/nodejs20-debian11
 
 WORKDIR /app
-ENV NODE_ENV production
 
 # Copy the built application from the builder stage
 COPY --from=builder /app/backend/dist ./backend/dist
