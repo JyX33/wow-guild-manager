@@ -34,6 +34,7 @@ RUN bun run build
 FROM gcr.io/distroless/nodejs20-debian11
 
 WORKDIR /app
+ENV NODE_ENV production
 
 # Copy the built application from the builder stage
 COPY --from=builder /app/backend/dist ./backend/dist

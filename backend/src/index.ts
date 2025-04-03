@@ -84,9 +84,10 @@ app.use(errorHandlerMiddleware);
 
 // Start server based on environment
 const PORT = config.server.port;
-const NODE_ENV = config.server.nodeEnv;
+const NODE_ENV = config.server.nodeEnv; // Keep this for logging if needed elsewhere
 
-if (NODE_ENV === 'production') {
+// Check process.env directly for server start logic
+if (process.env.NODE_ENV === 'production') {
   // In production (behind Coolify's proxy), run HTTP server
   http.createServer(app).listen(PORT, '0.0.0.0', () => {
     logger.info(`HTTP Server running on port ${PORT} (${NODE_ENV} mode, behind reverse proxy)`);
