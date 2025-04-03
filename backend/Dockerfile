@@ -28,6 +28,7 @@ COPY backend/ ./backend/
 # Build the application from the backend directory
 WORKDIR /app/backend
 RUN bun run build
+RUN echo ${NODE_ENV}
 
 # --- Final Stage ---
 # Use a minimal base image like distroless node or even just scratch if possible
