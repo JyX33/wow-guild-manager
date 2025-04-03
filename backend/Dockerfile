@@ -1,6 +1,7 @@
 # Use the official Bun image as a base
 # Choose a specific version if needed, otherwise 'latest' might suffice
 # Using 'distroless' for the final stage reduces image size and attack surface
+ARG NODE_ENV
 FROM oven/bun:1 as builder
 
 # Set the working directory inside the container
