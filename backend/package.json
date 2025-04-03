@@ -1,6 +1,7 @@
 {
   "name": "wow-guild-manager-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend for WoW Guild Manager application",
   "main": "src/index.ts",
   "scripts": {
