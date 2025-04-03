@@ -6,17 +6,18 @@ import pg from 'pg'; // Import pg
 import connectPgSimple from 'connect-pg-simple'; // Import connect-pg-simple
 import fs from 'fs';
 import https from 'https';
+import http from 'http'; // Import http module
 import path from 'path';
 import schedule from 'node-schedule';
-import battleNetSyncService from './jobs/battlenet-sync.service';
-import config from './config';
-import logger from './utils/logger'; // Import the logger
+import battleNetSyncService from './jobs/battlenet-sync.service.js';
+import config from './config/index.js';
+import logger from './utils/logger.js'; // Import the logger
 
-import authRoutes from './routes/auth.routes';
-import eventRoutes from './routes/event.routes';
-import guildRoutes from './routes/guild.routes';
-import characterRoutes from './routes/character.routes';
-import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler';
+import authRoutes from './routes/auth.routes.js';
+import eventRoutes from './routes/event.routes.js';
+import guildRoutes from './routes/guild.routes.js';
+import characterRoutes from './routes/character.routes.js';
+import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler.js';
 
 const app = express();
 
@@ -81,23 +82,41 @@ app.use('/api/characters', characterRoutes);
 app.use(notFoundHandler);
 app.use(errorHandlerMiddleware);
 
-// Start HTTPS server
+// Start server based on environment
 const PORT = config.server.port;
+const NODE_ENV = config.server.nodeEnv;
 
-// SSL certificate paths - using absolute paths for certainty
-const certPath = path.resolve(__dirname, '../../certs/cert.pem');
-const keyPath = path.resolve(__dirname, '../../certs/key.pem');
+if (NODE_ENV === 'production') {
+  // In production (behind Coolify's proxy), run HTTP server
+  http.createServer(app).listen(PORT, '0.0.0.0', () => {
+    logger.info(`HTTP Server running on port ${PORT} (${NODE_ENV} mode, behind reverse proxy)`);
+    logger.info(`Frontend URL: ${config.server.frontendUrl}`);
+  });
+} else {
+  // In development or other environments, run HTTPS server with self-signed certs
+  try {
+    const certPath = path.resolve(__dirname, '../../certs/cert.pem');
+    const keyPath = path.resolve(__dirname, '../../certs/key.pem');
 
-// Create HTTPS server
-const httpsOptions = {
-  key: fs.readFileSync(keyPath),
-  cert: fs.readFileSync(certPath)
-};
+    if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+      logger.error(`Certificate files not found at ${certPath} or ${keyPath}. Cannot start HTTPS server.`);
+      process.exit(1); // Exit if certs are missing in non-production
+    }
 
-https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
-  logger.info(`HTTPS Server running on port ${PORT} (${config.server.nodeEnv} mode, accessible from all interfaces)`);
-  logger.info(`Frontend URL: ${config.server.frontendUrl}`);
-});
+    const httpsOptions = {
+      key: fs.readFileSync(keyPath),
+      cert: fs.readFileSync(certPath)
+    };
+
+    https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
+      logger.info(`HTTPS Server running on port ${PORT} (${NODE_ENV} mode, accessible from all interfaces)`);
+      logger.info(`Frontend URL: ${config.server.frontendUrl}`);
+    });
+  } catch (error) {
+    logger.error({ err: error }, `Failed to start HTTPS server in ${NODE_ENV} mode.`);
+    process.exit(1);
+  }
+}
 
 // Schedule background sync job (e.g., run every hour at the start of the hour)
 // Define the default cron schedule
@@ -119,7 +138,7 @@ logger.info(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()
 // Optional: Run sync once on startup after a short delay
 setTimeout(() => {
   logger.info('[Startup] Triggering initial Battle.net sync...');
-  battleNetSyncService.runSync().catch(error => {
+  battleNetSyncService.runSync().catch((error: any) => {
     logger.error({ err: error }, '[Startup] Error during initial sync:');
   });
 }, 10000); // Delay 10 seconds
