@@ -33,8 +33,7 @@ RUN bun run build
 # Using distroless node provides Node.js runtime needed by the built output
 FROM gcr.io/distroless/nodejs20-debian11
 ARG NODE_ENV
-ENV NODE_ENV=${NODE_ENV}
-RUN echo "NODE_ENV is set to $NODE_ENV"
+RUN export NODE_ENV=$NODE_ENV
 
 WORKDIR /app
 
