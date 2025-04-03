@@ -34,7 +34,7 @@ RUN bun run build
 FROM gcr.io/distroless/nodejs20-debian11
 ARG NODE_ENV
 ENV NODE_ENV=${NODE_ENV}
-RUN echo "NODE_ENV is set to :" ${NODE_ENV}
+RUN echo "NODE_ENV is set to $NODE_ENV"
 
 WORKDIR /app
 
