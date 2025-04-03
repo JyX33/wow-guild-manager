@@ -87,9 +87,6 @@ const PORT = config.server.port;
 const NODE_ENV = config.server.nodeEnv; // Keep this for logging if needed elsewhere
 
 // Check process.env directly for server start logic
-logger.info(`[Debug] Value of process.env.NODE_ENV: '${process.env.NODE_ENV}'`);
-logger.info(`[Debug] Type of process.env.NODE_ENV: ${typeof process.env.NODE_ENV}`);
-logger.info(`[Debug] Comparison result (process.env.NODE_ENV === 'production'): ${process.env.NODE_ENV === 'production'}`);
 if (process.env.NODE_ENV === 'production') {
   // In production (behind Coolify's proxy), run HTTP server
   http.createServer(app).listen(PORT, '0.0.0.0', () => {
