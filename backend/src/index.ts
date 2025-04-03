@@ -88,6 +88,7 @@ const NODE_ENV = config.server.nodeEnv; // Keep this for logging if needed elsew
 
 // Check process.env directly for server start logic
 if (process.env.NODE_ENV === 'production') {
+    logger.info('[Debug] Running in PRODUCTION mode (HTTP Server)');
   // In production (behind Coolify's proxy), run HTTP server
   http.createServer(app).listen(PORT, '0.0.0.0', () => {
     logger.info(`HTTP Server running on port ${PORT} (${NODE_ENV} mode, behind reverse proxy)`);
@@ -97,6 +98,7 @@ if (process.env.NODE_ENV === 'production') {
   // In development or other environments, run HTTPS server with self-signed certs
   try {
     const certPath = path.resolve(__dirname, '../../certs/cert.pem');
+    logger.info('[Debug] Running in NON-PRODUCTION mode (HTTPS Server)');
     const keyPath = path.resolve(__dirname, '../../certs/key.pem');
 
     if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
