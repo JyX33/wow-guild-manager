@@ -6,18 +6,26 @@ FROM oven/bun:1 as builder
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package.json and bun.lockb (if it exists)
-COPY backend/package.json backend/bun.lockb* ./
+# Copy package.json files and lockfiles first for better caching
+COPY backend/package.json backend/bun.lockb* ./backend/
+# If shared has its own package.json and needs installing:
+# COPY shared/package.json shared/bun.lockb* ./shared/
+# RUN cd shared && bun install --frozen-lockfile
 
-# Install dependencies using bun install --frozen-lockfile for reproducible builds
-# If bun.lockb doesn't exist, it will create one.
+# Copy the shared directory content
+COPY shared/ ./shared/
+
+# Install backend dependencies
+WORKDIR /app/backend
 RUN bun install --frozen-lockfile
 
 # Copy the rest of the backend source code
-COPY backend/ ./
+# Note: We copy backend source code AFTER installing dependencies to leverage Docker cache
+WORKDIR /app
+COPY backend/ ./backend/
 
-# Build the application
-# This runs the 'build' script from your package.json
+# Build the application from the backend directory
+WORKDIR /app/backend
 RUN bun run build
 
 # --- Final Stage ---
@@ -28,13 +36,13 @@ FROM gcr.io/distroless/nodejs20-debian11
 WORKDIR /app
 
 # Copy the built application from the builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/backend/dist ./backend/dist
 
-# Copy node_modules (needed for runtime dependencies)
-COPY --from=builder /app/node_modules ./node_modules
+# Copy backend node_modules (needed for runtime dependencies)
+COPY --from=builder /app/backend/node_modules ./backend/node_modules
 
-# Copy package.json (sometimes needed for runtime config or metadata)
-COPY --from=builder /app/package.json ./
+# Copy backend package.json (sometimes needed for runtime config or metadata)
+COPY --from=builder /app/backend/package.json ./backend/package.json
 
 # Expose the port the application will run on
 # Make sure this matches the port your Express app listens on (e.g., 3000)
@@ -43,5 +51,5 @@ COPY --from=builder /app/package.json ./
 EXPOSE 3000
 
 # Define the command to run the application
-# Use the $PORT variable provided by Coolify if available, otherwise default
-CMD ["dist/index.js"]
+# Adjust the path to the entrypoint relative to the WORKDIR /app
+CMD ["backend/dist/index.js"]
