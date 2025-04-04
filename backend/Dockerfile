@@ -31,7 +31,7 @@ RUN bun run build
 # --- Final Stage ---
 # Use a minimal base image like distroless node or even just scratch if possible
 # Using distroless node provides Node.js runtime needed by the built output
-FROM gcr.io/distroless/nodejs20-debian12:debug
+FROM gcr.io/distroless/nodejs20-debian12
 
 WORKDIR /app
 

@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
 import { AppConfig } from '../../../shared/types/index.js';
 
+// log all environment variables
+const allEnvVars = Object.entries(process.env).map(([key, value]) => `${key}: ${value}`).join('\n');
+console.log('Environment Variables:\n', allEnvVars);
+
 // Get and trim NODE_ENV early to handle potential whitespace
 const trimmedNodeEnv = process.env.NODE_ENV?.trim();
 console.log(`NODE_ENV: ${trimmedNodeEnv}`);
@@ -37,17 +41,13 @@ if (missingVars.length > 0) {
   // throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
 }
 
-// log all environment variables
-const allEnvVars = Object.entries(process.env).map(([key, value]) => `${key}: ${value}`).join('\n');
-console.log('Environment Variables:\n', allEnvVars);
-
 // Construct the config object, reading process.env directly
 // This ensures we get the runtime values provided by Coolify in production
 const config: AppConfig = {
   server: {
     port: parseInt(process.env.PORT || '5000'),
     // Use the trimmed NODE_ENV value, providing a default if necessary    
-    nodeEnv: trimmedNodeEnv || 'development',
+    nodeEnv: process.env.NODE_ENV || 'development',
     frontendUrl: process.env.FRONTEND_URL || 'https://localhost:5173'
   },
   database: {
