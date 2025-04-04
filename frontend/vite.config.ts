@@ -17,10 +17,10 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',  // Make server accessible from outside
     port: 5173,
-    https: {
-      key: fs.readFileSync(path.resolve(__dirname, '../certs/key.pem')),
-      cert: fs.readFileSync(path.resolve(__dirname, '../certs/cert.pem')),
-    },
+    // https: {
+    //   key: fs.readFileSync(path.resolve(__dirname, '../certs/key.pem')),
+    //   cert: fs.readFileSync(path.resolve(__dirname, '../certs/cert.pem')),
+    // },
     proxy: {
       '/api': {
         target: 'https://is80s4w8kkccgko8808ookww.82.29.170.182.sslip.io',
