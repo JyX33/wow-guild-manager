@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { characterService } from '../services/api';
-import { Character } from '../../../shared/types';
+import { Character } from '@shared/types';
 import  LoadingSpinner  from './LoadingSpinner';
 import  ConfirmationDialog  from './ConfirmationDialog';
 
