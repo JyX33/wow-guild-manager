@@ -32,8 +32,6 @@ RUN bun run build
 # Use a minimal base image like distroless node or even just scratch if possible
 # Using distroless node provides Node.js runtime needed by the built output
 FROM gcr.io/distroless/nodejs20-debian11
-ARG NODE_ENV
-RUN export NODE_ENV=$NODE_ENV
 
 WORKDIR /app
 
