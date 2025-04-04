@@ -3,6 +3,7 @@ import { AppConfig } from '../../../shared/types/index.js';
 
 // Get and trim NODE_ENV early to handle potential whitespace
 const trimmedNodeEnv = process.env.NODE_ENV?.trim();
+console.log(`NODE_ENV: ${trimmedNodeEnv}`);
 
 // Load environment variables from .env file ONLY if not in production
 // This ensures production relies solely on environment variables provided by the host (Coolify)
@@ -36,12 +37,16 @@ if (missingVars.length > 0) {
   // throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
 }
 
+// log all environment variables
+const allEnvVars = Object.entries(process.env).map(([key, value]) => `${key}: ${value}`).join('\n');
+console.log('Environment Variables:\n', allEnvVars);
+
 // Construct the config object, reading process.env directly
 // This ensures we get the runtime values provided by Coolify in production
 const config: AppConfig = {
   server: {
     port: parseInt(process.env.PORT || '5000'),
-    // Use the trimmed NODE_ENV value, providing a default if necessary
+    // Use the trimmed NODE_ENV value, providing a default if necessary    
     nodeEnv: trimmedNodeEnv || 'development',
     frontendUrl: process.env.FRONTEND_URL || 'https://localhost:5173'
   },
@@ -88,5 +93,31 @@ const config: AppConfig = {
     }
   }
 };
+
+// Log the config object for debugging purposes
+console.log('Config:', {
+  server: config.server,
+  database: config.database,
+  auth: {
+    jwtSecret: config.auth.jwtSecret,
+    jwtRefreshSecret: config.auth.jwtRefreshSecret,
+    jwtExpiresIn: config.auth.jwtExpiresIn,
+    jwtRefreshExpiresIn: config.auth.jwtRefreshExpiresIn,
+    cookieMaxAge: config.auth.cookieMaxAge,
+    refreshCookieMaxAge: config.auth.refreshCookieMaxAge
+  },
+  battlenet: {
+    clientId: config.battlenet.clientId,
+    clientSecret: config.battlenet.clientSecret,
+    redirectUri: config.battlenet.redirectUri,
+    regions: {
+      eu: config.battlenet.regions.eu,
+      us: config.battlenet.regions.us,
+      kr: config.battlenet.regions.kr,
+      tw: config.battlenet.regions.tw,
+      cn: config.battlenet.regions.cn
+    }
+  }
+});
 
 export default config;
