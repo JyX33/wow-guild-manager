@@ -84,13 +84,14 @@ app.use(errorHandlerMiddleware);
 
 // Start server based on environment
 const PORT = config.server.port;
-const NODE_ENV = config.server.nodeEnv; // Keep this for logging if needed elsewhere
+const NODE_ENV = config.server.nodeEnv; // Use the corrected value from config
 
 // Check process.env directly for server start logic
-if (process.env.NODE_ENV === 'production') {
+// Check the corrected config value for server start logic
+if (NODE_ENV === 'production') {
   // In production (behind Coolify's proxy), run HTTP server
   http.createServer(app).listen(PORT, '0.0.0.0', () => {
-    logger.info(`HTTP Server running on port ${PORT} (${NODE_ENV} mode, behind reverse proxy)`);
+    logger.info(`HTTP Server running on port ${PORT} (${NODE_ENV} mode, behind reverse proxy)`); // Log the corrected NODE_ENV
     logger.info(`Frontend URL: ${config.server.frontendUrl}`);
   });
 } else {
@@ -110,11 +111,11 @@ if (process.env.NODE_ENV === 'production') {
     };
 
     https.createServer(httpsOptions, app).listen(PORT, '0.0.0.0', () => {
-      logger.info(`HTTPS Server running on port ${PORT} (${NODE_ENV} mode, accessible from all interfaces)`);
+      logger.info(`HTTPS Server running on port ${PORT} (${NODE_ENV} mode, accessible from all interfaces)`); // Log the corrected NODE_ENV
       logger.info(`Frontend URL: ${config.server.frontendUrl}`);
     });
   } catch (error) {
-    logger.error({ err: error }, `Failed to start HTTPS server in ${NODE_ENV} mode.`);
+    logger.error({ err: error }, `Failed to start HTTPS server in ${NODE_ENV} mode.`); // Log the corrected NODE_ENV
     process.exit(1);
   }
 }
