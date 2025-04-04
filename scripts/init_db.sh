@@ -16,11 +16,11 @@ if [ -f backend/.env ]; then
 fi
 
 # Set defaults if variables are not set
-export DB_HOST="${DB_HOST:-localhost}"
-export DB_PORT="${DB_PORT:-5433}"
+export DB_HOST="${DB_HOST:-10.0.1.9}"
+export DB_PORT="${DB_PORT:-5432}"
 export DB_NAME="${DB_NAME:-wow_guild_manager}"
 export DB_USER="${DB_USER:-postgres}"
-export DB_PASSWORD="${DB_PASSWORD:-your_password_here}"
+export DB_PASSWORD="${DB_PASSWORD:-KaAfXwHMpZ0psze3obKsukTVOSLKKLRNGV23x90luh8Uq8tslIvi67xj6q1urwOD}"
 
 echo "Database connection details:"
 echo "Host: $DB_HOST"
@@ -28,10 +28,10 @@ echo "Port: $DB_PORT"
 echo "Name: $DB_NAME"
 echo "User: $DB_USER"
 
-echo "Running custom raw SQL migrations via npm run migrate..."
-npm --prefix backend run migrate
+echo "Running custom raw SQL migrations via Bun..."
+bun run migrate --cwd backend
 
-echo "Running Knex migrations..."
-npx knex migrate:latest --knexfile backend/knexfile.js --env development
+echo "Running Knex migrations via Bunx..."
+bunx knex migrate:latest --knexfile backend/knexfile.js --env development
 
 echo "Database initialization complete."
