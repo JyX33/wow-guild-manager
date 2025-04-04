@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
-import { AppConfig } from '../../../shared/types/index';
+import { AppConfig } from '../../../shared/types/index.js';
 
-// Load environment variables from .env file
-dotenv.config();
+// Load environment variables from .env file ONLY if not in production
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 // Define required environment variables
 const requiredEnvVars = [
@@ -63,6 +65,10 @@ const config: AppConfig = {
       tw: {
         authBaseUrl: 'https://tw.battle.net/oauth',
         apiBaseUrl: 'https://tw.api.blizzard.com'
+      },
+      cn: {
+        authBaseUrl: 'https://www.battlenet.com.cn/oauth',
+        apiBaseUrl: 'https://gateway.battlenet.com.cn'
       }
     }
   }
