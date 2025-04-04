@@ -5,7 +5,7 @@ import { AppConfig } from '../../../shared/types/index.js';
 let trimmedNodeEnv: string | undefined;
 Object.entries(process.env)
   .filter(([key]) => key === 'NODE_ENV')
-  .forEach(([key, value]) => {
+  .forEach(([value]) => {
     trimmedNodeEnv = value?.trim();
   });
 
