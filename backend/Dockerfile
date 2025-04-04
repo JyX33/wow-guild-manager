@@ -50,6 +50,9 @@ COPY --from=builder /app/backend/package.json ./backend/package.json
 # Defaulting to 3000 if $PORT is not set in the app is a good practice.
 EXPOSE 3000
 
+# Explicitly set production environment for runtime
+ENV NODE_ENV=production
+
 # Define the command to run the application
 # Adjust the path to the entrypoint relative to the WORKDIR /app
 CMD ["backend/dist/index.js"]
