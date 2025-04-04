@@ -1,6 +1,5 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from '@vitejs/plugin-react';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url'; // Added import
 import { defineConfig } from 'vite';
@@ -29,7 +28,7 @@ export default defineConfig({
     // },
     proxy: {
       '/api': {
-        target: 'https://is80s4w8kkccgko8808ookww.82.29.170.182.sslip.io',
+        target: 'https://po88swg040gc80k8kccwwko4.82.29.170.182.sslip.io',
         changeOrigin: true,
         secure: false,  // Allow self-signed certificates
         rewrite: (path) => path
