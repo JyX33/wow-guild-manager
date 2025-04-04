@@ -23,11 +23,14 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'https://localhost:5000',
+        target: 'https://is80s4w8kkccgko8808ookww.82.29.170.182.sslip.io',
         changeOrigin: true,
         secure: false,  // Allow self-signed certificates
         rewrite: (path) => path
       }
-    }
+    },
+    fs: {
+      allow: ['..', '../shared'], // <-- Add this line
+    },
   }
 });
