@@ -77,4 +77,30 @@ const config: AppConfig = {
   }
 };
 
+// Log the config object for debugging purposes
+console.log('Config:', {
+  server: config.server,
+  database: config.database,
+  auth: {
+    jwtSecret: config.auth.jwtSecret,
+    jwtRefreshSecret: config.auth.jwtRefreshSecret,
+    jwtExpiresIn: config.auth.jwtExpiresIn,
+    jwtRefreshExpiresIn: config.auth.jwtRefreshExpiresIn,
+    cookieMaxAge: config.auth.cookieMaxAge,
+    refreshCookieMaxAge: config.auth.refreshCookieMaxAge
+  },
+  battlenet: {
+    clientId: config.battlenet.clientId,
+    clientSecret: config.battlenet.clientSecret,
+    redirectUri: config.battlenet.redirectUri,
+    regions: {
+      eu: config.battlenet.regions.eu,
+      us: config.battlenet.regions.us,
+      kr: config.battlenet.regions.kr,
+      tw: config.battlenet.regions.tw,
+      cn: config.battlenet.regions.cn
+    }
+  }
+});
+
 export default config;
