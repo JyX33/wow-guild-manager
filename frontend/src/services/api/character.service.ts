@@ -1,4 +1,4 @@
-import { Character } from '../../../../shared/types/index';
+import { Character } from '@shared/types';
 import { apiRequest } from './core';
 
 export const characterService = {
