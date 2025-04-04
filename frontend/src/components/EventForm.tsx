@@ -1,13 +1,13 @@
+import { Event, EventFormValues, EventType } from '@shared/types';
+import { Form, Formik } from 'formik';
 import React, { useState } from 'react';
-import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { Event, EventType, EventFormValues } from '../../../shared/types/event';
-import { EventBasicFields } from './forms/EventBasicFields';
-import { EventTimeFields } from './forms/EventTimeFields';
-import { EventParticipantsField } from './forms/EventParticipantsField';
-import FormStatus from './FormStatus';
 import { useApi } from '../hooks/useApi';
 import { eventService } from '../services/api';
+import { EventBasicFields } from './forms/EventBasicFields';
+import { EventParticipantsField } from './forms/EventParticipantsField';
+import { EventTimeFields } from './forms/EventTimeFields';
+import FormStatus from './FormStatus';
 import LoadingSpinner from './LoadingSpinner';
 
 interface EventFormProps {
