@@ -1,13 +1,13 @@
 import dotenv from 'dotenv';
 import { AppConfig } from '../../../shared/types/index.js';
 
-// log all environment variables
-const allEnvVars = Object.entries(process.env).map(([key, value]) => `${key}: ${value}`).join('\n');
-console.log('Environment Variables:\n', allEnvVars);
-
-// Get and trim NODE_ENV early to handle potential whitespace
-const trimmedNodeEnv = process.env.NODE_ENV?.trim();
-console.log(`NODE_ENV: ${trimmedNodeEnv}`);
+// extract key NODE_ENV
+let trimmedNodeEnv: string | undefined;
+Object.entries(process.env)
+  .filter(([key]) => key === 'NODE_ENV')
+  .forEach(([key, value]) => {
+    trimmedNodeEnv = value?.trim();
+  });
 
 // Load environment variables from .env file ONLY if not in production
 // This ensures production relies solely on environment variables provided by the host (Coolify)
@@ -47,7 +47,7 @@ const config: AppConfig = {
   server: {
     port: parseInt(process.env.PORT || '5000'),
     // Use the trimmed NODE_ENV value, providing a default if necessary    
-    nodeEnv: process.env.NODE_ENV || 'development',
+    nodeEnv: trimmedNodeEnv || 'development',
     frontendUrl: process.env.FRONTEND_URL || 'https://localhost:5173'
   },
   database: {
