@@ -23,6 +23,9 @@ const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 if (missingVars.length > 0) {
   throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
 }
+// log all environment variables
+const allEnvVars = Object.entries(process.env).map(([key, value]) => `${key}: ${value}`).join('\n');
+console.log('Environment Variables:\n', allEnvVars);
 
 const config: AppConfig = {
   server: {
