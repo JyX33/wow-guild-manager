@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Event, Guild } from '../../../shared/types';
+import { Event, Guild } from '@shared/types/index';
 import EventForm from '../components/EventForm';
 import withAuth from '../components/withAuth';
 import { useApi } from '../hooks/useApi';
