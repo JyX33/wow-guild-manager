@@ -7,7 +7,7 @@ console.log(`NODE_ENV: ${trimmedNodeEnv}`);
 
 // Load environment variables from .env file ONLY if not in production
 // This ensures production relies solely on environment variables provided by the host (Coolify)
-if (trimmedNodeEnv !== 'production') {
+if (!trimmedNodeEnv || trimmedNodeEnv !== 'production') {
   dotenv.config();
 }
 
