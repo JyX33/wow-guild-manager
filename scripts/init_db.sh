@@ -28,10 +28,16 @@ echo "Port: $DB_PORT"
 echo "Name: $DB_NAME"
 echo "User: $DB_USER"
 
+echo "Changing directory to backend/"
+pushd backend > /dev/null
+
 echo "Running custom raw SQL migrations via Bun..."
-bun run migrate --cwd backend
+bun run migrate
 
 echo "Running Knex migrations via Bunx..."
-bunx knex migrate:latest --knexfile backend/knexfile.js --env development
+bunx knex migrate:latest --knexfile knexfile.js --env development
+
+popd > /dev/null
+echo "Returned to original directory."
 
 echo "Database initialization complete."
