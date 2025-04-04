@@ -1,4 +1,4 @@
-import { Event, EventFormValues, EventType } from '@shared/types';
+import { Event, EventFormValues, EventType } from '../../../shared/types';
 import { Form, Formik } from 'formik';
 import React, { useState } from 'react';
 import * as Yup from 'yup';

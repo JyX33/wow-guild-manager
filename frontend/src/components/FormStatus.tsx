@@ -1,5 +1,5 @@
 import React from 'react';
-import { ApiError } from '@shared/types';
+import { ApiError } from '../../../shared/types';
 
 interface FormStatusProps {
   loading: boolean;
