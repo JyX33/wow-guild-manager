@@ -21,6 +21,7 @@ import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler.j
 
 const app = express();
 
+app.set('trust proxy', 1); // Trust the first hop (Coolify proxy)
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
@@ -53,7 +54,8 @@ app.use(session({
   cookie: {
     secure: true, // Always true since we use HTTPS
     httpOnly: true,
-    maxAge: config.auth.cookieMaxAge
+    maxAge: config.auth.cookieMaxAge, // Add comma here
+    sameSite: 'lax', // Explicitly set SameSite (lowercase)
   }
 }) as any); // Cast to any to bypass complex type error for now
 
