@@ -1,16 +1,16 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import config from '../config';
+import config from '../config/index.js'; // Assuming index.js is the entry point
 // Removed battleNetService import
-import characterModel from '../models/character.model';
-import userModel from '../models/user.model';
-import { User, UserRole, UserWithTokens, BattleNetUserProfile, BattleNetRegion } from '../../../shared/types/user'; // Import BattleNetRegion
-import { AppError } from '../utils/error-handler';
-import { asyncHandler } from '../utils/error-handler';
-import logger from '../utils/logger'; // Import the logger
-import { OnboardingService } from '../services/onboarding.service'; // Import OnboardingService
-import { BattleNetApiClient } from '../services/battlenet-api.client'; // Import ApiClient
+import characterModel from '../models/character.model.js';
+import userModel from '../models/user.model.js';
+import { User, UserRole, UserWithTokens, BattleNetUserProfile, BattleNetRegion } from '../../../shared/types/user.js'; // Import BattleNetRegion
+import { AppError } from '../utils/error-handler.js';
+import { asyncHandler } from '../utils/error-handler.js';
+import logger from '../utils/logger.js'; // Import the logger
+import { OnboardingService } from '../services/onboarding.service.js'; // Import OnboardingService
+import { BattleNetApiClient } from '../services/battlenet-api.client.js'; // Import ApiClient
 
 // Instantiate services (consider dependency injection for better management)
 const apiClient = new BattleNetApiClient();
@@ -36,7 +36,7 @@ const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for t
   const token = jwt.sign(
     {
       id: user.id,
-      battle_net_id: user.battle_net_id,
+      battle_net_id: user.bnet_id, // Use correct property 'bnet_id'
       role: user.role,
       tvs: tokenValidSince // Add token valid since timestamp
     },
@@ -136,7 +136,7 @@ export default {
       logger.info({ battletag: userInfo.battletag, bnetId: userInfo.id }, 'Creating new user');
       // Pass undefined for refresh token if it's not provided by tokenData
       user = await userModel.createUser({
-        battle_net_id: userInfo.id,
+        bnet_id: userInfo.id, // Use correct key 'bnet_id'
         battletag: userInfo.battletag,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token, // Pass string | undefined
