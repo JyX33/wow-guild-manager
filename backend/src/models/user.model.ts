@@ -1,8 +1,8 @@
-import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/user';
-import BaseModel from '../db/BaseModel';
-import { AppError } from '../utils/error-handler';
-import db from '../db/db';
-import { Character } from '../../../shared/types/guild'; // Removed unused DbCharacter
+import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/user.js';
+import BaseModel from '../db/BaseModel.js';
+import { AppError } from '../utils/error-handler.js';
+import db from '../db/db.js';
+import { Character } from '../../../shared/types/guild.js'; // Removed unused DbCharacter
 
 class UserModel extends BaseModel<DbUser> {
   constructor() {
@@ -11,7 +11,7 @@ class UserModel extends BaseModel<DbUser> {
 
   async findByBattleNetId(battleNetId: string): Promise<UserWithTokens | null> {
     try {
-      return await this.findOne({ battle_net_id: battleNetId });
+      return await this.findOne({ bnet_id: battleNetId }); // Use correct column name 'bnet_id'
     } catch (error) {
       throw new AppError(`Error finding user by Battle.net ID: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
