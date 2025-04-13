@@ -103,7 +103,7 @@ export interface BattleNetWoWProfile {
 
 export interface DbUser {
   id: number;
-  bnet_id: string; // Match database schema
+  battle_net_id: string;
   battletag: string;
   access_token?: string;
   refresh_token?: string;
@@ -124,7 +124,7 @@ export interface DbUser {
 
 export interface User {
   id: number;
-  bnet_id: string; // Match database schema
+  battle_net_id: string;
   battletag: string;
   token_expires_at?: string;
   created_at?: string;

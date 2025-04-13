@@ -36,7 +36,7 @@ const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for t
   const token = jwt.sign(
     {
       id: user.id,
-      battle_net_id: user.bnet_id, // Use correct property 'bnet_id'
+      battle_net_id: user.battle_net_id,
       role: user.role,
       tvs: tokenValidSince // Add token valid since timestamp
     },
@@ -136,7 +136,7 @@ export default {
       logger.info({ battletag: userInfo.battletag, bnetId: userInfo.id }, 'Creating new user');
       // Pass undefined for refresh token if it's not provided by tokenData
       user = await userModel.createUser({
-        bnet_id: userInfo.id, // Use correct key 'bnet_id'
+        battle_net_id: userInfo.id,
         battletag: userInfo.battletag,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token, // Pass string | undefined

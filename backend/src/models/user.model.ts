@@ -11,7 +11,7 @@ class UserModel extends BaseModel<DbUser> {
 
   async findByBattleNetId(battleNetId: string): Promise<UserWithTokens | null> {
     try {
-      return await this.findOne({ bnet_id: battleNetId }); // Use correct column name 'bnet_id'
+      return await this.findOne({ battle_net_id: battleNetId });
     } catch (error) {
       throw new AppError(`Error finding user by Battle.net ID: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
