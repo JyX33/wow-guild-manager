@@ -142,7 +142,8 @@ export default {
         refresh_token: tokenData.refresh_token, // Pass string | undefined
         token_expires_at: tokenExpiryDate.toISOString(),
         user_data: userInfo as BattleNetUserProfile,
-        role: UserRole.USER
+        role: UserRole.USER,
+        region: callbackRegion,
       });
     } else {
       // Update existing user with new tokens
