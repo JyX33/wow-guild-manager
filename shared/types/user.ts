@@ -111,7 +111,6 @@ export interface DbUser {
   token_expires_at?: string;
   created_at?: string;
   updated_at?: string;
-  last_synced_at?: string;
   role?: UserRole;
   region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;
@@ -129,7 +128,6 @@ export interface User {
   token_expires_at?: string;
   created_at?: string;
   updated_at?: string;
-  last_synced_at?: string;
   role?: UserRole;
   region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;

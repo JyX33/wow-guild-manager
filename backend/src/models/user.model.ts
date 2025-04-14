@@ -147,19 +147,6 @@ class UserModel extends BaseModel<DbUser> {
     }
   }
 
-  /**
-   * Update character sync timestamp
-   */
-  async updateCharacterSyncTimestamp(id: number): Promise<UserWithTokens | null> {
-    try {
-      return await this.update(id, { 
-        last_synced_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    } catch (error) {
-      throw new AppError(`Error updating sync timestamp: ${error instanceof Error ? error.message : String(error)}`, 500);
-    }
-  }
 
   async getUserCharacters(userId: number): Promise<Character[]> {
     try {
@@ -217,7 +204,6 @@ export const updateTokens = userModel.updateTokens.bind(userModel);
 export const validateUserToken = userModel.validateUserToken.bind(userModel);
 export const updateRole = userModel.updateRole.bind(userModel);
 export const getUsersWithRole = userModel.getUsersWithRole.bind(userModel);
-export const updateCharacterSyncTimestamp = userModel.updateCharacterSyncTimestamp.bind(userModel);
 export const getUserCharacters = userModel.getUserCharacters.bind(userModel);
 export const findByCharacterName = userModel.findByCharacterName.bind(userModel);
 export const findGuildMembers = userModel.findGuildMembers.bind(userModel);
