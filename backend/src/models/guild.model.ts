@@ -1,10 +1,10 @@
-import { Guild } from '../../../shared/types/index'; // Removed unused GuildMember
-import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember } from '../../../shared/types/guild'; // Import DbGuild, BattleNetGuildRoster, BattleNetGuildMember from guild.ts
-import BaseModel from '../db/BaseModel';
-import { AppError } from '../utils/error-handler';
-import db from '../db/db';
+import { Guild } from '../../../shared/types/index.js'; // Removed unused GuildMember
+import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember } from '../../../shared/types/guild.js'; // Import DbGuild, BattleNetGuildRoster, BattleNetGuildMember from guild.ts
+import BaseModel from '../db/BaseModel.js';
+import { AppError } from '../utils/error-handler.js';
+import db from '../db/db.js';
 
-class GuildModel extends BaseModel<DbGuild> {
+export class GuildModel extends BaseModel<DbGuild> {
   constructor() {
     super('guilds');
   }

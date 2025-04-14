@@ -1,8 +1,8 @@
-import BaseModel from '../db/BaseModel';
-import { AppError } from '../utils/error-handler';
-import { DbGuildRank, GuildRank } from '../../../shared/types/guild';
+import BaseModel from '../db/BaseModel.js';
+import { AppError } from '../utils/error-handler.js';
+import { DbGuildRank, GuildRank } from '../../../shared/types/guild.js';
 
-class RankModel extends BaseModel<DbGuildRank> {
+export class RankModel extends BaseModel<DbGuildRank> {
   constructor() {
     super('guild_ranks');
   }

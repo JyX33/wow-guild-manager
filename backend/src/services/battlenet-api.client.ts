@@ -1,24 +1,14 @@
 // backend/src/services/battlenet-api.client.ts
-// No longer importing battleNetService
-import { AppError } from '../utils/error-handler';
-import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild'; // Added
-import { TokenResponse } from '../../../shared/types/auth'; // Added
-import { BattleNetUserProfile, BattleNetWoWProfile } from '../../../shared/types/user'; // Added
-import config from '../config'; // Added
-import { BattleNetRegion } from '../../../shared/types/user'; // Corrected import path
+import { AppError } from '../utils/error-handler.js';
+import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild.js'; // Added
+import { TokenResponse } from '../../../shared/types/auth.js'; // Added
+import { BattleNetUserProfile, BattleNetWoWProfile } from '../../../shared/types/user.js'; // Added
+import config from '../config/index.js'; // Added
+import { BattleNetRegion } from '../../../shared/types/user.js'; // Corrected import path
 import Bottleneck from 'bottleneck';
-import logger from '../utils/logger';
+import logger from '../utils/logger.js';
 import axios from 'axios'; // Import axios for error checking
 
-/**
- * Interface for the Battle.net client credentials token response.
- */
-interface ClientCredentialsTokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  sub?: string; // Optional, depending on Battle.net response
-}
 
 // --- Rate Limiter Configuration ---
 // Read settings from environment variables with defaults

@@ -1,13 +1,13 @@
-import { CharacterRole } from '../../../shared/types'; // Removed BattleNetCharacter
-import { BattleNetWoWAccount } from '../../../shared/types/user'; // Import the correct account type
-import { Character, DbCharacter } from '../../../shared/types/guild';
-import BaseModel from '../db/BaseModel';
-import db from '../db/db';
-import { AppError } from '../utils/error-handler';
-import { withTransaction } from '../utils/transaction';
+import { CharacterRole } from '../../../shared/types/index.js'; // Removed BattleNetCharacter
+import { BattleNetWoWAccount } from '../../../shared/types/user.js'; // Import the correct account type
+import { Character, DbCharacter } from '../../../shared/types/guild.js';
+import BaseModel from '../db/BaseModel.js';
+import db from '../db/db.js';
+import { AppError } from '../utils/error-handler.js';
+import { withTransaction } from '../utils/transaction.js';
 
 // Helper function to parse region from URL (can be moved to a util file later)
-import { BattleNetRegion } from '../../../shared/types/user'; // Need this type
+import { BattleNetRegion } from '../../../shared/types/user.js'; // Need this type
 const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null => {
   if (!href) return null;
   try {
@@ -25,7 +25,7 @@ const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null =
 };
 
 
-class CharacterModel extends BaseModel<DbCharacter> {
+export class CharacterModel extends BaseModel<DbCharacter> {
   constructor() {
     super('characters');
   }
@@ -422,7 +422,8 @@ class CharacterModel extends BaseModel<DbCharacter> {
 
       const result = await db.query(
         `SELECT * FROM ${this.tableName}
-         WHERE last_synced_at IS NULL OR last_synced_at < $1
+         WHERE (last_synced_at IS NULL OR last_synced_at < $1)
+           AND (is_available IS NULL OR is_available = TRUE) -- Added: Only sync available characters
          ORDER BY last_synced_at ASC NULLS FIRST
          LIMIT $2`,
         [threshold.toISOString(), effectiveLimit] // Use the determined limit

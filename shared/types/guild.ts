@@ -530,8 +530,7 @@ export interface DbGuildMember {
     member_data_json?: BattleNetGuildMember; // Added by migration
     created_at?: string;
     updated_at?: string;
-    consecutiveUpdateFailures?: number; // Added for tracking update failures
-    isAvailable?: boolean; // Added to mark character availability for updates
+    consecutive_update_failures?: number; // Added for tracking update failures
 }
 
 export interface DbCharacter {
@@ -554,6 +553,7 @@ export interface DbCharacter {
     profile_json?: BattleNetCharacter; // Added by migration
     equipment_json?: BattleNetCharacterEquipment; // Added by migration
     mythic_profile_json?: BattleNetMythicKeystoneProfile; // Added by migration
+    is_available?: boolean; // Added: Flag indicating if the character profile is accessible via Battle.net API (set to false on 404)
     // Store only the primaries array for simplicity
     professions_json?: BattleNetProfessions['primaries']; // Changed type
 }

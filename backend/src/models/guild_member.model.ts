@@ -1,10 +1,10 @@
-import { DbGuildMember } from '../../../shared/types/guild';
-import BaseModel from '../db/BaseModel';
-import { AppError } from '../utils/error-handler';
-import db from '../db/db';
-import { withTransaction } from '../utils/transaction';
+import { DbGuildMember } from '../../../shared/types/guild.js';
+import BaseModel from '../db/BaseModel.js';
+import { AppError } from '../utils/error-handler.js';
+import db from '../db/db.js';
+import { withTransaction } from '../utils/transaction.js';
 
-class GuildMemberModel extends BaseModel<DbGuildMember> {
+export class GuildMemberModel extends BaseModel<DbGuildMember> {
   constructor() {
     super('guild_members');
   }

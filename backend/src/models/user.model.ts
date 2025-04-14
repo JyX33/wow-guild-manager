@@ -4,7 +4,7 @@ import { AppError } from '../utils/error-handler.js';
 import db from '../db/db.js';
 import { Character } from '../../../shared/types/guild.js'; // Removed unused DbCharacter
 
-class UserModel extends BaseModel<DbUser> {
+export class UserModel extends BaseModel<DbUser> {
   constructor() {
     super('users');
   }
