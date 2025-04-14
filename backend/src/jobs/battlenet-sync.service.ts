@@ -112,8 +112,8 @@ class BattleNetSyncService {
       // const token = await this.ensureClientToken(); // Removed
 
       // 1. Fetch Guild Data from Battle.net using injected client
-      const realmSlug = guild.realm.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
-      const guildNameSlug = guild.name.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
+      const realmSlug = guild.realm.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
+      const guildNameSlug = guild.name.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
       const guildData = await this.apiClient.getGuildData(realmSlug, guildNameSlug, guild.region as BattleNetRegion); // Use apiClient, cast region, use slugs
 
       // 2. Fetch Guild Roster from Battle.net using injected client
@@ -493,7 +493,7 @@ class BattleNetSyncService {
     const NO_TOYS_HASH = 'a3741d687719e1c015f4f115371c77064771f699817f81f09016350165a19111'; // sha256("NO_TOYS_FOUND")
 
     if (character.user_id === null && region) { // Only calculate if user_id is null and region is known
-        const realmSlug = character.realm.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
+        const realmSlug = character.realm.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
         const characterName = character.name.toLowerCase(); // BNet API uses lowercase names
         try {
             logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] Fetching collections index for unknown character.`);
