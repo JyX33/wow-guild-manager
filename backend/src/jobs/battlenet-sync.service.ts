@@ -11,7 +11,7 @@ import userModelInstance, { UserModel } from '../models/user.model.js';
 import { BattleNetApiClient } from '../services/battlenet-api.client.js';
 import { AppError } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
-import { createSlug } from '../utils/slugify.js'; // Import the slugify function
+// import { createSlug } from '../utils/slugify.js'; // Removed - Use direct lowercasing/hyphenation for BNet slugs
 import { withTransaction } from '../utils/transaction.js'; // Added withTransaction import
 
 // Type definition for rows fetched from guild_members joined with characters
@@ -112,8 +112,8 @@ class BattleNetSyncService {
       // const token = await this.ensureClientToken(); // Removed
 
       // 1. Fetch Guild Data from Battle.net using injected client
-      const realmSlug = createSlug(guild.realm);
-      const guildNameSlug = createSlug(guild.name);
+      const realmSlug = guild.realm.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
+      const guildNameSlug = guild.name.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
       const guildData = await this.apiClient.getGuildData(realmSlug, guildNameSlug, guild.region as BattleNetRegion); // Use apiClient, cast region, use slugs
 
       // 2. Fetch Guild Roster from Battle.net using injected client
@@ -493,7 +493,7 @@ class BattleNetSyncService {
     const NO_TOYS_HASH = 'a3741d687719e1c015f4f115371c77064771f699817f81f09016350165a19111'; // sha256("NO_TOYS_FOUND")
 
     if (character.user_id === null && region) { // Only calculate if user_id is null and region is known
-        const realmSlug = createSlug(character.realm);
+        const realmSlug = character.realm.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
         const characterName = character.name.toLowerCase(); // BNet API uses lowercase names
         try {
             logger.debug({ charName: character.name, realmSlug, region }, `[SyncService] Fetching collections index for unknown character.`);
@@ -631,7 +631,7 @@ class BattleNetSyncService {
       // const token = await this.ensureClientToken(); // Removed
 
       // 1. Fetch Enhanced Character Data from Battle.net
-      const realmSlug = createSlug(character.realm);
+      const realmSlug = character.realm.toLowerCase().replace(/\s+/g, '-'); // Preserve special chars for BNet API
       const characterNameLower = character.name.toLowerCase(); // BNet API uses lowercase names
       // Use getEnhancedCharacterData instead of getCharacterProfileSummary
       const enhancedDataResult = await this.apiClient.getEnhancedCharacterData(realmSlug, characterNameLower, character.region as BattleNetRegion); // Pass jobId? No, handled internally by apiClient
