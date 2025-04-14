@@ -636,6 +636,23 @@ class BattleNetSyncService {
       // Use getEnhancedCharacterData instead of getCharacterProfileSummary
       const enhancedDataResult = await this.apiClient.getEnhancedCharacterData(realmSlug, characterNameLower, character.region as BattleNetRegion); // Pass jobId? No, handled internally by apiClient
 
+      // --- Handle 404 (Character Not Found) --- 
+      if (enhancedDataResult === null) {
+        logger.warn({ charId: character.id, charName: character.name, realm: character.realm, region: character.region, jobId }, `[SyncService] Character ${character.name} not found on Battle.net (404). Marking character as unavailable.`);
+        try {
+          await this.characterModel.update(character.id, {
+            is_available: false,
+            last_synced_at: new Date().toISOString() // Also update sync time
+          });
+          logger.info({ charId: character.id, charName: character.name, jobId }, `[SyncService] Marked character ${character.name} (ID: ${character.id}) as unavailable due to 404.`);
+        } catch (updateError) {
+          logger.error({ err: updateError, charId: character.id, charName: character.name, jobId }, `[SyncService] Failed to mark character ${character.name} as unavailable after 404.`);
+        }
+        return; // Stop processing this character
+      }
+      // --- End Handle 404 ---
+
+
       // 2. Prepare Update Payload using the private method
       // Destructure the result from _prepareCharacterUpdatePayload
       const { updatePayload: baseUpdatePayload, localGuild } = await this._prepareCharacterUpdatePayload(character, enhancedDataResult);
@@ -679,22 +696,12 @@ class BattleNetSyncService {
       // Check error status correctly
       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
 
+      // 404 errors are handled earlier by checking for null result from getEnhancedCharacterData
+      // If the error reaches here, it's not a 404 we need to handle by marking unavailable.
       if (statusCode === 404) {
-        logger.warn({ charId: character.id, charName: character.name, realm: character.realm, region: character.region, jobId }, `[SyncService] Character ${character.name} not found on Battle.net (404). Marking character as unavailable.`);
-        try {
-          // Update the character record itself to mark as unavailable
-          await this.characterModel.update(character.id, {
-            is_available: false,
-            last_synced_at: new Date().toISOString() // Also update sync time
-          });
-          logger.info({ charId: character.id, charName: character.name, jobId }, `[SyncService] Marked character ${character.name} (ID: ${character.id}) as unavailable due to 404.`);
-        } catch (updateError) {
-          logger.error({ err: updateError, charId: character.id, charName: character.name, jobId }, `[SyncService] Failed to mark character ${character.name} as unavailable after 404.`);
-        }
-        // Removed logic that tried to update guild_members.is_available
-        // Option 2: Delete character (More permanent, potential data loss if temporary BNet issue)
-        // await this.characterModel.delete(character.id);
-        // await this.guildMemberModel.deleteByCharacterId(character.id); // Cascade delete?
+         // This block should ideally not be reached for profile 404s anymore.
+         // Log if it happens unexpectedly.
+         logger.error({ err: error, charId: character.id, charName: character.name, jobId }, `[SyncService] Unexpected 404 error reached catch block for character ${character.name}. Should have been handled by null check.`);
       } else {
         // Log other errors
         logger.error({ err: error, charId: character.id, charName: character.name, jobId }, `[SyncService] Error syncing character ${character.name} (ID: ${character.id}):`);
