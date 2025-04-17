@@ -57,14 +57,25 @@ export async function updateCoreGuildData(
   }
 }
 
+/**
+ * Fetches core guild and roster data from Battle.net, updates core guild data, and returns the results.
+ * No longer performs member or rank sync; those are handled by the orchestrator.
+ *
+ * @param apiClient - API client for Battle.net
+ * @param guildModel - Guild model for DB operations
+ * @param userModel - User model for DB operations
+ * @param guild - The guild to sync
+ * @returns An object indicating success and containing fetched data, or failure and error info
+ */
 export async function syncGuild(
   apiClient: any,
   guildModel: GuildModel,
   userModel: UserModel,
-  guildMemberModel: any,
-  rankModel: any,
   guild: DbGuild
-): Promise<void> {
+): Promise<
+  | { success: true; bnetGuildData: BattleNetGuild; bnetGuildRoster: BattleNetGuildRoster }
+  | { success: false; error: string }
+> {
   const guildIdentifier = `${guild.name} (${guild.realm} - ${guild.region})`;
   const logContext = { guildId: guild.id, guildName: guild.name, realm: guild.realm, region: guild.region };
   logger.info(logContext, `[SyncService] Starting sync for guild: ${guildIdentifier}`);
@@ -83,10 +94,10 @@ export async function syncGuild(
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         logger.warn(logContext, `[SyncService] Guild ${guildIdentifier} not found on Battle.net (404). Marking to exclude from future sync.`);
         await guildModel.update(guild.id, { exclude_from_sync: true, last_updated: new Date().toISOString() });
-        return;
+        return { success: false, error: 'Guild not found on Battle.net (404)' };
       }
       logger.error({ err: error, ...logContext }, `[SyncService] Failed to fetch core guild data for ${guildIdentifier}.`);
-      throw error;
+      return { success: false, error: 'Failed to fetch core guild data' };
     }
 
     let bnetGuildRoster: BattleNetGuildRoster;
@@ -98,18 +109,16 @@ export async function syncGuild(
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         logger.warn(logContext, `[SyncService] Guild roster for ${guildIdentifier} not found on Battle.net (404). Marking to exclude from future sync.`);
         await guildModel.update(guild.id, { exclude_from_sync: true, last_updated: new Date().toISOString() });
-        return;
+        return { success: false, error: 'Guild roster not found on Battle.net (404)' };
       }
       logger.error({ err: error, ...logContext }, `[SyncService] Failed to fetch guild roster data for ${guildIdentifier}.`);
-      throw error;
+      return { success: false, error: 'Failed to fetch guild roster data' };
     }
 
     await updateCoreGuildData(guildModel, userModel, guild, bnetGuildData, bnetGuildRoster);
 
-    // The following calls are delegated to other modules in the orchestrator
-    // syncGuildMembersTable and _syncGuildRanks will be called from the orchestrator
-
     logger.info(logContext, `[SyncService] Successfully completed sync cycle for guild ${guildIdentifier}.`);
+    return { success: true, bnetGuildData, bnetGuildRoster };
   } catch (error: unknown) {
     logger.error({ err: error, ...logContext }, `[SyncService] Unhandled error during sync for guild ${guildIdentifier}. Sync cycle for this guild aborted.`);
     try {
@@ -117,5 +126,6 @@ export async function syncGuild(
     } catch (updateError) {
       logger.error({ err: updateError, ...logContext }, `[SyncService] Failed to update guild timestamp after unhandled sync error.`);
     }
+    return { success: false, error: 'Unhandled error during sync' };
   }
 }

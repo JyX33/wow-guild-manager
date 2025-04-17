@@ -250,24 +250,7 @@ class BattleNetSyncService {
       }
     }
   }
-
-  /**
-   * Compares the fetched Battle.net roster data with existing local guild members and characters
-   * to determine the necessary database operations (add, update, remove members; create characters).
-   *
-   * @param {Map<string, BattleNetGuildMember>} rosterMembersMap - Map of members from the fetched Battle.net roster, keyed by 'name-realm'.
-   * @param {Map<string, { id: number; character_id: number | null; rank: number }>} existingMembersMap - Map of existing members in the local `guild_members` table for this guild, keyed by 'name-realm'.
-   * @param {Map<string, number>} existingCharacterMap - Map of existing characters in the local `characters` table relevant to this roster, keyed by 'name-realm', mapping to character ID.
-   * @param {BattleNetRegion} region - The region of the guild being synced, used when creating new character records.
-   * @param {number} guildId - The ID of the guild being processed (for logging).
-   * @returns {{
-   *   membersToAdd: { rosterMember: BattleNetGuildMember; characterId: number }[]; // Members to add (character exists)
-   *   membersToUpdate: { memberId: number; rank?: number; characterId?: number; memberData?: BattleNetGuildMember }[]; // Members to update (rank, character link, or data refresh)
-   *   memberIdsToMarkUnavailable: number[]; // IDs of members no longer in roster (to mark as unavailable)
-   *   charactersToCreate: Partial<DbCharacter>[]; // Characters to create (member is new, character doesn't exist)
-   * }} An object detailing the changes needed.
-   * @private
-   */
+  
   /**
    * Compares the fetched Battle.net roster data with existing local guild members and characters
    * to determine the necessary database operations (add, update, deactivate members; create characters).
