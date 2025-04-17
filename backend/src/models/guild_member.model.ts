@@ -1,8 +1,8 @@
 import { DbGuildMember } from '../../../shared/types/guild.js';
 import BaseModel from '../db/BaseModel.js';
+import db from '../db/db.js';
 import { AppError } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
-import db from '../db/db.js';
 import { withTransaction } from '../utils/transaction.js';
 
 export class GuildMemberModel extends BaseModel<DbGuildMember> {
@@ -148,7 +148,7 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
           values.push(memberToUpdate.memberId); // Add the ID for the WHERE clause
           const query = `UPDATE ${this.tableName} SET ${updates.join(', ')} WHERE id = $${valueIndex}`;
           // Log the specific query and values before executing
-          logger.debug({ query, values, memberId: memberToUpdate.memberId }, '[GuildMemberModel] Executing bulkUpdate query');
+          logger.info({ query, values, memberId: memberToUpdate.memberId }, '[GuildMemberModel] Executing bulkUpdate query');
           await dbClient.query(query, values);
         }
       }
