@@ -9,7 +9,7 @@ import https from 'https';
 import http from 'http'; // Import http module
 import path from 'path';
 import schedule from 'node-schedule';
-import battleNetSyncService from './jobs/battlenet-sync.service.js';
+import { runSync } from './jobs/battlenet-sync/index.js';
 import config from './config/index.js';
 import logger from './utils/logger.js'; // Import the logger
 
@@ -132,7 +132,7 @@ logger.info(`[Scheduler] Using sync schedule: "${syncSchedule}" (Default: "${def
 const syncJob = schedule.scheduleJob(syncSchedule, async () => {
   logger.info(`[Scheduler] Running scheduled Battle.net sync job at ${new Date().toISOString()}`);
   try {
-    await battleNetSyncService.runSync();
+    await runSync();
   } catch (error) {
     logger.error({ err: error }, '[Scheduler] Error during scheduled sync job:');
   }
@@ -142,7 +142,7 @@ logger.info(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()
 // Optional: Run sync once on startup after a short delay
 setTimeout(() => {
   logger.info('[Startup] Triggering initial Battle.net sync...');
-  battleNetSyncService.runSync().catch((error: any) => {
+  runSync().catch((error: any) => {
     logger.error({ err: error }, '[Startup] Error during initial sync:');
   });
 }, 10000); // Delay 10 seconds

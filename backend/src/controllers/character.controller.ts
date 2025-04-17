@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { asyncHandler, AppError } from '../utils/error-handler';
-import * as characterModel from '../models/character.model';
-import * as userModel from '../models/user.model';
-import * as guildModel from '../models/guild.model';
+import { asyncHandler, AppError } from '../utils/error-handler.js';
+import * as characterModel from '../models/character.model.js';
+import * as userModel from '../models/user.model.js';
+import * as guildModel from '../models/guild.model.js';
 // Removed battleNetService import
-import { BattleNetApiClient } from '../services/battlenet-api.client'; // Added ApiClient import
-import { Character } from '../../../shared/types/index';
-import logger from '../utils/logger'; // Import the logger
+import { BattleNetApiClient } from '../services/battlenet-api.client.js'; // Added ApiClient import
+import { Character } from '../../../shared/types/index.js';
+import logger from '../utils/logger.js'; // Import the logger
 
 // Instantiate the API client (or inject if using a framework/DI container)
 const apiClient = new BattleNetApiClient();

@@ -2,8 +2,6 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import config from '../config/index.js'; // Assuming index.js is the entry point
-// Removed battleNetService import
-import characterModel from '../models/character.model.js';
 import userModel from '../models/user.model.js';
 import { User, UserRole, UserWithTokens, BattleNetUserProfile, BattleNetRegion } from '../../../shared/types/user.js'; // Import BattleNetRegion
 import { AppError } from '../utils/error-handler.js';
