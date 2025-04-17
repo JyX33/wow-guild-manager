@@ -13,7 +13,7 @@ import { AppError } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
 import axios from 'axios'; // For HTTP error detection
 
-// import { createSlug } from '../utils/slugify.js'; // Removed - Use direct lowercasing/hyphenation for BNet slugs
+import { createSlug } from '../utils/slugify.js'; // Import slugify utility for hyphenated slugs
 import { withTransaction } from '../utils/transaction.js'; // Added withTransaction import
 
 // Type definition for rows fetched from guild_members joined with characters
@@ -114,8 +114,8 @@ class BattleNetSyncService {
       // const token = await this.ensureClientToken(); // Removed
 
       // 1. Fetch Guild Data and handle 404 exclusion
-      const realmSlug = guild.realm.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
-      const guildNameSlug = guild.name.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
+      const realmSlug = createSlug(guild.realm); // Generate hyphenated slug for realm
+      const guildNameSlug = createSlug(guild.name); // Generate hyphenated slug for guild name
       let guildData: BattleNetGuild;
       try {
         guildData = await this.apiClient.getGuildData(realmSlug, guildNameSlug, guild.region as BattleNetRegion);

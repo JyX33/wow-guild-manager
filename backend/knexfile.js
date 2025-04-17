@@ -1,8 +1,15 @@
-// Knex configuration file
-require('dotenv').config();
-const path = require('path');
+// Knex configuration file - Using ES Module syntax
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-module.exports = {
+// Replicate __dirname behavior in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config(); // Load environment variables
+
+const config = {
   development: {
     client: 'postgresql',
     connection: {
@@ -46,3 +53,5 @@ module.exports = {
     }
   }
 };
+
+export default config; // Use default export for ES modules
