@@ -323,6 +323,7 @@ class BattleNetSyncService {
 
         // 3. Create new character records if any
         const createdCharacterMap = new Map<string, number>();
+        logger.debug({ guildId, charactersToCreate: JSON.stringify(charactersToCreate, null, 2) }, '[SyncService] Data for charactersToCreate');
         for (const charData of charactersToCreate) {
             try {
                 const newChar = await this.characterModel.create(charData); // Use model's create
@@ -371,12 +372,14 @@ class BattleNetSyncService {
 
         // Perform bulk insert using the model method
         if (newMembersData.length > 0) {
+          logger.debug({ guildId, newMembersData: JSON.stringify(newMembersData, null, 2) }, '[SyncService] Data for bulkCreate');
           await this.guildMemberModel.bulkCreate(newMembersData, client);
           logger.info({ count: newMembersData.length, guildId }, `[SyncService] Attempted to bulk insert ${newMembersData.length} new members.`);
         }
 
         // 5. Update existing members using the model method
         if (membersToUpdate.length > 0) {
+          logger.debug({ guildId, membersToUpdate: JSON.stringify(membersToUpdate, null, 2) }, '[SyncService] Data for bulkUpdate');
           await this.guildMemberModel.bulkUpdate(membersToUpdate, client);
           logger.info({ count: membersToUpdate.length, guildId }, `[SyncService] Attempted to bulk update ${membersToUpdate.length} existing members.`);
         }
