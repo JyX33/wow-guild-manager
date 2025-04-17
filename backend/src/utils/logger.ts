@@ -6,7 +6,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // Configure Pino options
 const pinoOptions: pino.LoggerOptions = {
-  level: process.env.LOG_LEVEL || 'info', // Default to 'info', can be overridden by env var
+  level: process.env.LOG_LEVEL || 'debug', // Default to 'info', can be overridden by env var
   timestamp: pino.stdTimeFunctions.isoTime, // Use ISO 8601 format timestamps
 };
 
