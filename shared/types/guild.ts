@@ -517,6 +517,8 @@ export interface DbGuild {
     member_count?: number; // Added for direct access
     guild_data_json?: BattleNetGuild; // Renamed and potentially nullable
     roster_json?: BattleNetGuildRoster; // Added by new migration
+    exclude_from_sync?: boolean; // Permanently exclude guilds from sync
+
 }
 
 export interface DbGuildMember {

@@ -11,6 +11,8 @@ import userModelInstance, { UserModel } from '../models/user.model.js';
 import { BattleNetApiClient } from '../services/battlenet-api.client.js';
 import { AppError } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
+import axios from 'axios'; // For HTTP error detection
+
 // import { createSlug } from '../utils/slugify.js'; // Removed - Use direct lowercasing/hyphenation for BNet slugs
 import { withTransaction } from '../utils/transaction.js'; // Added withTransaction import
 
@@ -111,13 +113,33 @@ class BattleNetSyncService {
       // Token fetching is now handled within the apiClient methods
       // const token = await this.ensureClientToken(); // Removed
 
-      // 1. Fetch Guild Data from Battle.net using injected client
+      // 1. Fetch Guild Data and handle 404 exclusion
       const realmSlug = guild.realm.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
       const guildNameSlug = guild.name.toLowerCase().replace(/\s+/g, ''); // Remove spaces for BNet API slug
-      const guildData = await this.apiClient.getGuildData(realmSlug, guildNameSlug, guild.region as BattleNetRegion); // Use apiClient, cast region, use slugs
+      let guildData: BattleNetGuild;
+      try {
+        guildData = await this.apiClient.getGuildData(realmSlug, guildNameSlug, guild.region as BattleNetRegion);
+      } catch (err: any) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          await this.guildModel.update(guild.id, { exclude_from_sync: true });
+          logger.info({ guildId: guild.id, guildName: guild.name }, `[SyncService] Guild not found (404). Excluding from future sync.`);
+          return;
+        }
+        throw err;
+      }
 
-      // 2. Fetch Guild Roster from Battle.net using injected client
-      const guildRoster = await this.apiClient.getGuildRoster(guild.region as BattleNetRegion, realmSlug, guildNameSlug); // Use apiClient, cast region, use slugs
+      // 2. Fetch Guild Roster and handle 404 exclusion
+      let guildRoster: BattleNetGuildRoster;
+      try {
+        guildRoster = await this.apiClient.getGuildRoster(guild.region as BattleNetRegion, realmSlug, guildNameSlug);
+      } catch (err: any) {
+        if (axios.isAxiosError(err) && err.response?.status === 404) {
+          await this.guildModel.update(guild.id, { exclude_from_sync: true });
+          logger.info({ guildId: guild.id, guildName: guild.name }, `[SyncService] Guild roster not found (404). Excluding from future sync.`);
+          return;
+        }
+        throw err;
+      }
 
       // 3. Update Core Guild Data using the extracted private method
       await this._updateCoreGuildData(guild, guildData, guildRoster);
