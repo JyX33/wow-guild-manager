@@ -379,7 +379,8 @@ class BattleNetSyncService {
 
         // 5. Update existing members using the model method
         if (membersToUpdate.length > 0) {
-          logger.debug({ guildId, membersToUpdate: JSON.stringify(membersToUpdate, null, 2) }, '[SyncService] Data for bulkUpdate');
+          // Log the data being sent to bulkUpdate for detailed debugging
+          logger.debug({ guildId, membersToUpdate: JSON.stringify(membersToUpdate, null, 2) }, '[SyncService] Data being sent to guildMemberModel.bulkUpdate');
           await this.guildMemberModel.bulkUpdate(membersToUpdate, client);
           logger.info({ count: membersToUpdate.length, guildId }, `[SyncService] Attempted to bulk update ${membersToUpdate.length} existing members.`);
         }
