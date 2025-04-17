@@ -257,7 +257,7 @@ class BattleNetSyncService {
              gm.id,
              gm.character_id,
              gm.character_name,
-+            gm.is_available, -- Added
+             gm.is_available, -- Added
              gm.rank,
              c.realm -- Fetch realm slug from characters table
            FROM
