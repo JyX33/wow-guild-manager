@@ -250,6 +250,7 @@ class BattleNetSyncService {
     logger.info({ guildId, rosterSize: roster.members.length }, `[SyncService] Syncing guild_members table for guild ID: ${guildId}. Roster size: ${roster.members.length}`);
     try {
       await withTransaction(async (client) => { // Use transaction helper
+        logger.debug({ guildId, roster: JSON.stringify(roster, null, 2) }, '[SyncService] Roster data for syncGuildMembersTable:');
         // 1. Fetch existing members for the guild, joining with characters to get the realm slug
         const existingMembersResult = await client.query(
           `SELECT
