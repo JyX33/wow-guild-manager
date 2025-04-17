@@ -18,7 +18,7 @@ export function createSlug(input: string): string {
   return input
     .toLowerCase() // Convert to lowercase
     .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/[^a-z0-9àáâäãåąćčçďèéêëęěìíîïłńňòóôöõøřśšťùúûüůýÿźžñç\-_]/g, '') // Keep accented chars
+    .replace(/[^a-z0-9àáâäãåæąćčçďèéêëęěìíîïłńňòóôöõøřśšťùúûüůýÿźžñç\-_]/g, '') // Keep accented chars (added æ)
     .replace(/--+/g, '-') // Replace multiple hyphens with a single hyphen
     .replace(/^-+/, '') // Trim hyphens from start
     .replace(/-+$/, ''); // Trim hyphens from end
