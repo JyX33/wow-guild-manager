@@ -1,12 +1,12 @@
-import logger from '../utils/logger';
+import logger from '../utils/logger.js';
 // Removed unused import of battleNetService
-import characterModel from '../models/character.model';
-import guildModel from '../models/guild.model';
-import userModel from '../models/user.model';
-import { BattleNetApiClient } from './battlenet-api.client'; // Assuming we need the client for roster fetching
-import { BattleNetRegion, UserRole} from '../../../shared/types/user';
-import { BattleNetGuildRoster, DbCharacter, BattleNetCharacter, EnhancedCharacterData, DbGuild } from '../../../shared/types/guild'; // Import necessary types & DbGuild
-import { createSlug } from '../utils/slugify'; // Import the slugify function
+import characterModel from '../models/character.model.js';
+import guildModel from '../models/guild.model.js';
+import userModel from '../models/user.model.js';
+import { BattleNetApiClient } from './battlenet-api.client.js'; // Assuming we need the client for roster fetching
+import { BattleNetRegion } from '../../../shared/types/user.js';
+import { BattleNetGuildRoster, DbCharacter, BattleNetCharacter, EnhancedCharacterData, DbGuild } from '../../../shared/types/guild.js'; // Import necessary types & DbGuild
+import { createSlug } from '../utils/slugify.js'; // Import the slugify function
 
 // Define a type for the unique guild info extracted from character profiles
 type CharacterGuildInfo = {

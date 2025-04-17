@@ -3,7 +3,7 @@ import { AppError } from '../utils/error-handler.js';
 import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild.js';
 import { TokenResponse } from '../../../shared/types/auth.js';
 import config from '../config/index.js';
-import { BattleNetRegion, BattleNetUserProfile } from '../../../shared/types/user.js';
+import { BattleNetRegion, BattleNetUserProfile, BattleNetWoWProfile } from '../../../shared/types/user.js';
 import Bottleneck from 'bottleneck';
 import logger from '../utils/logger.js';
 import axios, { AxiosBasicCredentials } from 'axios';
@@ -479,8 +479,32 @@ export class BattleNetApiClient {
       logger.error({ err: error, region }, `[ApiClient] Failed to get user info: ${errorMessage}`);
       throw new AppError(`Failed to get user info: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_API_ERROR' });
     }
+
+  }
+
+  /**
+   * Retrieves the Battle.net WoW profile information for a user.
+   */
+  public async getWowProfile(region: BattleNetRegion, accessToken: string): Promise<BattleNetWoWProfile> {
+    const validRegion = this._validateRegion(region);
+    const regionConfig = config.battlenet.regions[validRegion];
+
+    if (!regionConfig || !regionConfig.apiBaseUrl) {
+      throw new AppError(`Configuration for region ${region} is incomplete or missing apiBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
+    }
+
+    const url = `${regionConfig.apiBaseUrl}/profile/user/wow`;
+    const params = { namespace: `profile-${validRegion}`, locale: 'en_US' };
+
+    try {
+      return await this._doAxiosGet<BattleNetWoWProfile>(url, accessToken, params);
+    } catch (error: any) {
+      const statusCode = error?.response?.status || 500;
+      const errorMessage = error?.response?.data?.error_description || error.message || String(error);
+      logger.error({ err: error, region }, `[ApiClient] Failed to fetch WoW profile: ${errorMessage}`);
+      throw new AppError(`Failed to fetch WoW profile: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_API_ERROR', details: { region: validRegion } });
+    }
   }
 
 }
-
 

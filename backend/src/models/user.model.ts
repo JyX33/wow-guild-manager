@@ -188,6 +188,25 @@ export class UserModel extends BaseModel<DbUser> {
       throw new AppError(`Error finding guild members: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
+  /**
+   * Updates the character sync timestamp for a user.
+   * Assumes a 'last_character_sync_at' field exists in the users table.
+   * @param userId The ID of the user.
+   */
+  async updateCharacterSyncTimestamp(userId: number): Promise<void> {
+    try {
+      // Assume 'last_character_sync_at' exists based on instructions.
+      // If this update fails due to column not found, schema/migrations need verification.
+      await this.update(userId, { last_character_sync_at: new Date().toISOString() } as Partial<DbUser>);
+
+      // Optional: Add logging for successful update or no-op if user not found
+
+    } catch (error) {
+      console.error(`Error updating character sync timestamp for user ${userId}:`, error);
+      throw new AppError(`Failed to update character sync timestamp for user ${userId}: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
 }
 
 const userModel = new UserModel();
