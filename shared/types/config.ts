@@ -25,12 +25,14 @@ export interface AuthConfig {
 export interface BattleNetRegionConfig {
   authBaseUrl: string;
   apiBaseUrl: string;
+  userInfoUrl: string;
 }
 
 export interface BattleNetConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
+  scopes: string[];
   regions: {
     eu: BattleNetRegionConfig;
     us: BattleNetRegionConfig;

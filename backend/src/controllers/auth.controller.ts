@@ -90,8 +90,7 @@ export default {
     // Set a short expiry on the state
     req.session.stateExpiry = Date.now() + (5 * 60 * 1000); // 5 minutes
 
-    // Use apiClient instance directly for non-API call method
-    const authUrl = apiClient.getAuthorizationUrl(validRegion, state); // Use validated region
+    const authUrl = apiClient.getAuthorizationUrl(validRegion, state);
     res.json({ success: true, data: { authUrl } });
   }),
 
@@ -118,10 +117,9 @@ export default {
     const callbackRegion = region || 'eu'; // Default to 'eu' if somehow missing from session
 
     // Exchange code for access token
-    const tokenData = await apiClient.getAccessToken(callbackRegion, code as string);
+    const tokenData = await apiClient.getAccessToken(callbackRegion as BattleNetRegion, code as string);
 
-    // Get user info from Battle.net
-    const userInfo = await apiClient.getUserInfo(tokenData.access_token); // Region not needed for userinfo
+    const userInfo = await apiClient.getUserInfo(callbackRegion as BattleNetRegion, tokenData.access_token);
 
     // Find or create user in database
     // Use findByBattleNetId which returns UserWithTokens type

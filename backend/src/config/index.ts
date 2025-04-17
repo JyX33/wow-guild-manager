@@ -69,26 +69,32 @@ const config: AppConfig = {
     clientId: process.env.BATTLE_NET_CLIENT_ID || '', // Default should likely cause an error if missing
     clientSecret: process.env.BATTLE_NET_CLIENT_SECRET || '', // Default should likely cause an error if missing
     redirectUri: process.env.BATTLE_NET_REDIRECT_URI || 'https://localhost:5000/api/auth/callback',
+    scopes: ['openid', 'wow.profile'],
     regions: {
       eu: {
         authBaseUrl: 'https://eu.battle.net/oauth',
+        userInfoUrl: 'https://eu.battle.net/oauth/userinfo',
         apiBaseUrl: 'https://eu.api.blizzard.com'
       },
       us: {
         authBaseUrl: 'https://us.battle.net/oauth',
+        userInfoUrl: 'https://us.battle.net/oauth/userinfo',
         apiBaseUrl: 'https://us.api.blizzard.com'
       },
       kr: {
         authBaseUrl: 'https://kr.battle.net/oauth',
+        userInfoUrl: 'https://kr.battle.net/oauth/userinfo',
         apiBaseUrl: 'https://kr.api.blizzard.com'
       },
       tw: {
         authBaseUrl: 'https://tw.battle.net/oauth',
+        userInfoUrl: 'https://tw.battle.net/oauth/userinfo',
         apiBaseUrl: 'https://tw.api.blizzard.com'
       },
       cn: {
         authBaseUrl: 'https://www.battlenet.com.cn/oauth',
-        apiBaseUrl: 'https://gateway.battlenet.com.cn'
+        apiBaseUrl: 'https://gateway.battlenet.com.cn',
+        userInfoUrl: 'https://www.battlenet.com.cn/oauth/userinfo'
       }
     }
   }

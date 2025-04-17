@@ -1,8 +1,7 @@
 import express from 'express';
-import guildController from '../controllers/guild.controller';
-import authMiddleware from '../middleware/auth.middleware';
-import { isGuildMaster } from '../middleware/guild-master.middleware';
-// Removed duplicate: import { asyncHandler } from '../utils/error-handler';
+import guildController from '../controllers/guild.controller.js';
+import authMiddleware from '../middleware/auth.middleware.js';
+import { isGuildMaster } from '../middleware/guild-master.middleware.js';
 
 const router = express.Router();
 
@@ -30,7 +29,7 @@ router.get('/:guildId/rank-structure', authMiddleware.authenticate, guildControl
 // Get guild by region, realm and name - GENERIC ROUTE LAST
 router.get('/:region/:realm/:name', authMiddleware.authenticate, guildController.getGuildByName);
 
-import { asyncHandler } from '../utils/error-handler'; // Make sure asyncHandler is imported
+import { asyncHandler } from '../utils/error-handler.js'; // Make sure asyncHandler is imported
 
 // Update rank name (protected - only guild master)
 router.put('/:guildId/ranks/:rankId',

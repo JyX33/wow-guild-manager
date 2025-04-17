@@ -2,12 +2,11 @@
 import { AppError } from '../utils/error-handler.js';
 import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild.js';
 import { TokenResponse } from '../../../shared/types/auth.js';
-import { BattleNetUserProfile, BattleNetWoWProfile } from '../../../shared/types/user.js';
 import config from '../config/index.js';
-import { BattleNetRegion } from '../../../shared/types/user.js';
+import { BattleNetRegion, BattleNetUserProfile } from '../../../shared/types/user.js';
 import Bottleneck from 'bottleneck';
 import logger from '../utils/logger.js';
-import axios, { AxiosError, AxiosBasicCredentials } from 'axios';
+import axios, { AxiosBasicCredentials } from 'axios';
 
 // --- Rate Limiter Configuration ---
 const BNET_MAX_CONCURRENT = parseInt(process.env.BNET_MAX_CONCURRENT || '20', 10);
@@ -398,4 +397,90 @@ export class BattleNetApiClient {
       });
     }
   }
+
+  /**
+   * Constructs the Battle.net OAuth2 authorization URL.
+   */
+  public getAuthorizationUrl(region: BattleNetRegion, state: string): string {
+    const validRegion = this._validateRegion(region);
+    const regionConfig = config.battlenet.regions[validRegion];
+
+    if (!regionConfig || !regionConfig.authBaseUrl) {
+      throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
+    }
+
+    if (!config.battlenet.clientId || !config.battlenet.redirectUri || !config.battlenet.scopes) {
+       throw new AppError('Battle.net client configuration (clientId, redirectUri, or scopes) is incomplete.', 500, { code: 'CONFIG_ERROR' });
+    }
+
+    const authUrl = new URL(`${regionConfig.authBaseUrl}/authorize`);
+    authUrl.searchParams.append('client_id', config.battlenet.clientId);
+    authUrl.searchParams.append('redirect_uri', config.battlenet.redirectUri);
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('scope', config.battlenet.scopes.join(' '));
+    authUrl.searchParams.append('state', state);
+
+    return authUrl.toString();
+  }
+
+  /**
+   * Exchanges an authorization code for an access token.
+   */
+  public async getAccessToken(region: BattleNetRegion, code: string): Promise<TokenResponse> {
+    const validRegion = this._validateRegion(region);
+    const regionConfig = config.battlenet.regions[validRegion];
+
+    if (!regionConfig || !regionConfig.authBaseUrl) {
+      throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
+    }
+
+    if (!config.battlenet.clientId || !config.battlenet.clientSecret || !config.battlenet.redirectUri) {
+       throw new AppError('Battle.net client configuration (clientId, clientSecret, or redirectUri) is incomplete.', 500, { code: 'CONFIG_ERROR' });
+    }
+
+    const url = `${regionConfig.authBaseUrl}/token`;
+    try {
+      return await this._doAxiosPost<TokenResponse>(
+        url,
+        new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: config.battlenet.redirectUri,
+        }),
+        { username: config.battlenet.clientId, password: config.battlenet.clientSecret },
+        { 'Content-Type': 'application/x-www-form-urlencoded' }
+      );
+    } catch (error: any) {
+       const statusCode = error?.response?.status || 500;
+       const errorMessage = error?.response?.data?.error_description || error.message || String(error);
+       logger.error({ err: error, region, code }, `[ApiClient] Failed to get access token: ${errorMessage}`);
+       throw new AppError(`Failed to get access token: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_AUTH_ERROR' });
+    }
+  }
+
+  /**
+   * Retrieves the Battle.net user profile information.
+   */
+  public async getUserInfo(region: BattleNetRegion, accessToken: string): Promise<BattleNetUserProfile> {
+    const validRegion = this._validateRegion(region);
+    const regionConfig = config.battlenet.regions[validRegion];
+
+    if (!regionConfig || !regionConfig.userInfoUrl) {
+      throw new AppError(`Configuration for region ${region} is incomplete or missing userInfoUrl.`, 500, { code: 'CONFIG_ERROR' });
+    }
+
+    const url = regionConfig.userInfoUrl;
+
+    try {
+      return await this._doAxiosGet<BattleNetUserProfile>(url, accessToken);
+    } catch (error: any) {
+      const statusCode = error?.response?.status || 500;
+      const errorMessage = error?.response?.data?.error_description || error.message || String(error);
+      logger.error({ err: error, region }, `[ApiClient] Failed to get user info: ${errorMessage}`);
+      throw new AppError(`Failed to get user info: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_API_ERROR' });
+    }
+  }
+
 }
+
+
