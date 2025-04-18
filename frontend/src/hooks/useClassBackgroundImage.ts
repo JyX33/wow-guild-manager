@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { RefObject, useEffect, useState } from 'react'; // Import RefObject
 
 // Utility function to convert class name to kebab-case
 const getClassNameKebabCase = (className: string | undefined): string | null => {
@@ -17,71 +17,95 @@ const imageModules = import.meta.glob('/src/assets/class-backgrounds/*.webp');
 
 /**
  * Custom hook to dynamically load and cache background images based on WoW class names.
- * Assumes images are located in `/src/assets/class-backgrounds/` and named in kebab-case (e.g., 'death-knight.webp'). // Updated extension in comment
+ * Assumes images are located in `/src/assets/class-backgrounds/` and named in kebab-case (e.g., 'death-knight.webp').
+ * Lazily loads the image only when the target element is intersecting the viewport.
  * @param className - The character's class name (e.g., "Death Knight").
+ * @param elementRef - A React ref attached to the element that should trigger the load.
  * @returns The URL of the loaded background image, or null if not found or loading.
  */
-export const useClassBackgroundImage = (className: string | undefined): string | null => {
+export const useClassBackgroundImage = (
+  className: string | undefined,
+  elementRef: RefObject<HTMLElement> // Add elementRef parameter
+): string | null => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const kebabCaseName = getClassNameKebabCase(className);
 
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
-    setImageUrl(null); // Reset image URL when class name changes
+    let isMounted = true;
+    let observer: IntersectionObserver | null = null;
+    const element = elementRef.current; // Get the current element from the ref
 
-    if (kebabCaseName) {
-      // Construct the key to look for .webp files
+    // Reset image URL when class name or element changes
+    setImageUrl(null);
+
+    // Only proceed if we have an element to observe and a valid class name
+    if (element && kebabCaseName) {
       const expectedModuleKey = `/src/assets/class-backgrounds/${kebabCaseName}.webp`;
 
-      // Check cache first
+      // Check cache immediately in case it was loaded previously (e.g., scrolled past and back)
       if (imageCache[expectedModuleKey]) {
-        if (isMounted) {
-          setImageUrl(imageCache[expectedModuleKey]);
-        }
-        return; // Exit if image is cached
+        setImageUrl(imageCache[expectedModuleKey]);
+        return; // Already cached, no need for observer
       }
 
-      // Check if the module exists in Vite's glob import map
-      if (imageModules[expectedModuleKey]) {
-        // Dynamically import the module
-        imageModules[expectedModuleKey]()
-          .then((mod: any) => { // Using 'any' for simplicity, define type if needed
-            if (isMounted && mod.default) {
-              imageCache[expectedModuleKey] = mod.default; // Cache the image URL
-              setImageUrl(mod.default);
-            } else if (isMounted) {
-               console.warn(`Module loaded but default export missing for: ${expectedModuleKey}`);
-               setImageUrl(null); // Fallback if module structure is unexpected
+      // Define the callback for the Intersection Observer
+      const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+        entries.forEach((entry) => {
+          // If the element is intersecting and we haven't loaded the image yet
+          if (entry.isIntersecting && !imageUrl && isMounted) {
+            // Check cache again just before fetching
+            if (imageCache[expectedModuleKey]) {
+              setImageUrl(imageCache[expectedModuleKey]);
+            } else if (imageModules[expectedModuleKey]) {
+              // Dynamically import the module
+              imageModules[expectedModuleKey]()
+                .then((mod: any) => {
+                  if (isMounted && mod.default) {
+                    imageCache[expectedModuleKey] = mod.default; // Cache the image URL
+                    setImageUrl(mod.default);
+                  } else if (isMounted) {
+                    console.warn(`Module loaded but default export missing for: ${expectedModuleKey}`);
+                    setImageUrl(null);
+                  }
+                })
+                .catch(error => {
+                  console.error(`Failed to load background image module for class "${className}" at path ${expectedModuleKey}:`, error);
+                  if (isMounted) setImageUrl(null);
+                });
+            } else {
+              console.warn(`Background image module not found in glob for class "${className}". Expected key: ${expectedModuleKey}`);
+              if (isMounted) setImageUrl(null);
             }
-          })
-          .catch(error => {
-            // Log error if import fails (e.g., network issue, file corruption)
-            console.error(`Failed to load background image module for class "${className}" at path ${expectedModuleKey}:`, error);
-            if (isMounted) {
-              setImageUrl(null); // Fallback on error
+
+            // Once loaded (or failed), we don't need to observe anymore
+            if (observer) {
+              observer.unobserve(element);
             }
-          });
-      } else {
-        // Log warning if the specific image file doesn't seem to exist based on the glob map
-        // This helps identify missing assets during development
-        // Updated warning message
-        console.warn(`Background image module not found in glob for class "${className}". Expected key: ${expectedModuleKey}`);
-        if (isMounted) {
-          setImageUrl(null); // Fallback if file is missing
-        }
-      }
-    } else {
-      // No class name provided, ensure imageUrl is null
-      if (isMounted) {
-        setImageUrl(null);
-      }
+          }
+        });
+      };
+
+      // Create and start the observer
+      observer = new IntersectionObserver(handleIntersection, {
+        rootMargin: '0px', // Optional: load slightly before it enters viewport
+        threshold: 0.1 // Optional: trigger when 10% is visible
+      });
+      observer.observe(element);
+
+    } else if (!kebabCaseName && isMounted) {
+      // Handle case where class name is invalid/missing
+       setImageUrl(null);
     }
 
-    // Cleanup function to set isMounted to false when the component unmounts
+    // Cleanup function
     return () => {
       isMounted = false;
+      if (observer && element) {
+        observer.unobserve(element); // Stop observing the element
+      }
     };
-  }, [className, kebabCaseName]); // Re-run the effect if the class name changes
+    // Add elementRef to dependency array to re-run effect if the ref changes (though unlikely)
+  }, [className, kebabCaseName, imageUrl, elementRef]);
 
   return imageUrl; // Return the loaded image URL or null
 };
