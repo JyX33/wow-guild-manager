@@ -84,5 +84,3 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     </div>
   );
 };
-  );
-};
