@@ -59,7 +59,7 @@ export default {
     logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getMainCharacter request');
     if (!req.user) throw new AppError('Authentication required', 401);
     const userId = req.user.id;
-    const character = await characterModel.getMainCharacter(userId);
+    const character = await characterModel.findById(userId);
 
     if (!character) {
       return res.json({
@@ -101,8 +101,7 @@ export default {
 
     // Create the character, optionally setting it as main
     const newCharacter = await characterModel.createCharacter(
-      characterData,
-      !!is_main
+      characterData
     );
 
     res.status(201).json({
@@ -169,23 +168,6 @@ export default {
     });
   }),
 
-  /**
-   * Set a character as the main character
-   */
-  setMainCharacter: asyncHandler(async (req: Request, res: Response) => {
-    logger.info({ method: req.method, path: req.path, params: req.params, userId: req.session?.userId }, 'Handling setMainCharacter request');
-    const characterId = parseInt(req.params.id);
-    if (!req.user) throw new AppError('Authentication required', 401);
-    const userId = req.user.id;
-
-    const updatedCharacter = await characterModel.setMainCharacter(characterId, userId);
-
-    res.json({
-      success: true,
-      data: updatedCharacter
-    });
-  }),
-
 
   /**
    * Sync characters from Battle.net
@@ -245,7 +227,6 @@ export default {
               if (dbCharacter && (!dbCharacter.guild_id || dbCharacter.guild_id !== guildId)) {
                 // Update the character with guild association
                 await characterModel.update(dbCharacter.id, {
-                  guild_id: guildId,
                   updated_at: new Date().toISOString()
                 });
 
@@ -284,5 +265,4 @@ export default {
       }
     });
   })
-
 };

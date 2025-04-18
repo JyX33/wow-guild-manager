@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as guildModel from '../models/guild.model';
 import { AppError } from '../utils/error-handler';
-import { verifyGuildLeadership } from '../services/guild-leadership.service';
+import { verifyGuildLeadership } from '../services/guild-leadership.service.js';
 
 /**
  * Middleware to check if the authenticated user is a guild master

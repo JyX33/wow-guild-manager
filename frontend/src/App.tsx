@@ -10,7 +10,6 @@ import GuildManagePage from './pages/GuildManagePage';
 import EventDetailsPage from './pages/EventDetailsPage';
 import CreateEventPage from './pages/CreateEventPage';
 import EditEventPage from './pages/EditEventPage';
-import CharactersPage from './pages/CharactersPage';
 
 const queryClient = new QueryClient();
 
@@ -53,11 +52,6 @@ const App: React.FC = () => {
                   <Route path="/event/:eventId/edit" element={
                     
                       <EditEventPage />
-                    
-                  } />
-                  <Route path="/characters" element={
-                    
-                      <CharactersPage />
                     
                   } />
                   <Route path="/" element={<Navigate to="/dashboard" />} />

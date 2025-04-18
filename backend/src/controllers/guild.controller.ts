@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import {
   BattleNetCharacter, // Added
   BattleNetCharacterEquipment,
-  BattleNetGuildMember,
   BattleNetGuildRoster, // Added
   BattleNetMythicKeystoneProfile, // Added
   BattleNetProfessions, // Added
@@ -12,18 +11,18 @@ import {
   EnhancedGuildMember, // Keep for parsing roster_json
   Guild, // Import the application-level Guild type
   GuildMember, // Added for mapping
-} from '../../../shared/types/guild';
-import * as characterModel from '../models/character.model'; // Added
-import * as guildModel from '../models/guild.model';
-import * as guildMemberModel from '../models/guild_member.model'; // Added
-import * as rankModel from '../models/rank.model';
-import * as userModel from '../models/user.model';
-import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
-import logger from '../utils/logger'; // Import the logger
-import { CharacterClassificationService, ClassifiedMember } from '../services/character-classification.service'; // Added for classified roster
+} from '../../../shared/types/guild.js';
+import * as characterModel from '../models/character.model.js'; // Added
+import * as guildModel from '../models/guild.model.js';
+import * as guildMemberModel from '../models/guild_member.model.js'; // Added
+import * as rankModel from '../models/rank.model.js';
+import * as userModel from '../models/user.model.js';
+import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler.js';
+import logger from '../utils/logger.js'; // Import the logger
+import { CharacterClassificationService, ClassifiedMember } from '../services/character-classification.service.js'; // Added for classified roster
 // Import the modules themselves, not just the default instance
-import * as characterModelModule from '../models/character.model';
-import * as guildMemberModelModule from '../models/guild_member.model';
+import * as characterModelModule from '../models/character.model.js';
+import * as guildMemberModelModule from '../models/guild_member.model.js';
 
 // Instantiate the service (or use DI)
 const characterClassificationService = new CharacterClassificationService(characterModelModule, guildMemberModelModule);

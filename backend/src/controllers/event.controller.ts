@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
-import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler';
-import eventModel from '../models/event.model';
-import subscriptionModel from '../models/subscription.model';
-import { Event, EventFormValues, EventSubscription } from '../../../shared/types/event';
+import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler.js';
+import eventModel from '../models/event.model.js';
+import subscriptionModel from '../models/subscription.model.js';
+import { Event, EventFormValues, EventSubscription } from '../../../shared/types/event.js';
 
 interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
 
-import { UserWithTokens } from '../../../shared/types/user'; // Ensure UserWithTokens is imported
+import { UserWithTokens } from '../../../shared/types/user.js'; // Ensure UserWithTokens is imported
 
 interface EventRequest extends Request {
   body: EventFormValues;

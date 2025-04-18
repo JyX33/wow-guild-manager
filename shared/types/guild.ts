@@ -543,11 +543,8 @@ export interface DbCharacter {
     class: string;
     level: number;
     role?: CharacterRole; // Changed to optional
-    // is_main: boolean; // REMOVED - Moved to DbGuildMember
     created_at?: string;
     updated_at?: string;
-    // guild_id?: number | null; // REMOVED - Relationship via DbGuildMember
-    // guild_rank?: number; // REMOVED - Stored in DbGuildMember
     bnet_character_id?: number; // Added by migration
     region?: string; // Added by migration
     toy_hash?: string | null; // ADDED - For unknown user grouping
