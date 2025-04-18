@@ -235,14 +235,36 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           // --- End Region Parsing Logic ---
 
           if (existingId) {
-            // Existing character found, do nothing during onboarding sync.
-            // Updates for existing characters are handled by the background sync service.
+            // Existing character found, update it
+            // Prepare update data, ensuring only defined values are included
+            const updateData: Partial<DbCharacter> = {
+              user_id: userId, // Ensure user_id is included in update payload
+              name: character.name,
+              realm: character.realm,
+              class: character.class,
+              level: character.level,
+              role: character.role,
+              profile_json: character.profile_json,
+              region: region, // Include region in update
+              updated_at: new Date().toISOString() // Update timestamp
+            };
+
+            const filteredUpdateData = Object.entries(updateData).reduce((acc, [key, value]) => {
+              if (value !== undefined) {
+                acc[key] = value;
+              }
+              return acc;
+            }, {} as Record<string, any>);
+
+            await this.update(existingId, filteredUpdateData); // Use BaseModel update method
+            processedIds.push(existingId); // Add existing ID to processed list
+            updated++;
           } else {
-            // Insert new character, including region
+            // Insert new character
             const insertResult = await client.query(
               `INSERT INTO ${this.tableName}
-              (user_id, name, realm, class, level, role, /*is_main,*/ profile_json, region, created_at, updated_at) -- Removed is_main
-              VALUES ($1, $2, $3, $4, $5, $6, /*$7,*/ $7, $8, NOW(), NOW()) -- Removed is_main placeholder, adjusted indices
+              (user_id, name, realm, class, level, role, profile_json, region, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
               RETURNING id`, // Return the new ID
               [
                 character.user_id,
@@ -251,9 +273,8 @@ export class CharacterModel extends BaseModel<DbCharacter> {
                 character.class,
                 character.level,
                 character.role,
-                // false, // REMOVED - is_main not stored here
-                character.profile_json, // Use profile_json
-                region // Add region value
+                character.profile_json,
+                region
               ]
             );
             if (insertResult.rows.length > 0) {
