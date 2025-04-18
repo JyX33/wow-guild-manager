@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Utility function to convert class name to kebab-case
 const getClassNameKebabCase = (className: string | undefined): string | null => {
@@ -12,11 +12,12 @@ const imageCache: Record<string, string> = {};
 
 // Vite's way to handle dynamic imports from a directory
 // Ensure the path matches your asset location exactly
-const imageModules = import.meta.glob('/src/assets/class-backgrounds/*.png');
+// Change the glob pattern to look for .webp files
+const imageModules = import.meta.glob('/src/assets/class-backgrounds/*.webp');
 
 /**
  * Custom hook to dynamically load and cache background images based on WoW class names.
- * Assumes images are located in `/src/assets/class-backgrounds/` and named in kebab-case (e.g., 'death-knight.png').
+ * Assumes images are located in `/src/assets/class-backgrounds/` and named in kebab-case (e.g., 'death-knight.webp'). // Updated extension in comment
  * @param className - The character's class name (e.g., "Death Knight").
  * @returns The URL of the loaded background image, or null if not found or loading.
  */
@@ -29,7 +30,8 @@ export const useClassBackgroundImage = (className: string | undefined): string |
     setImageUrl(null); // Reset image URL when class name changes
 
     if (kebabCaseName) {
-      const expectedModuleKey = `/src/assets/class-backgrounds/${kebabCaseName}.png`;
+      // Construct the key to look for .webp files
+      const expectedModuleKey = `/src/assets/class-backgrounds/${kebabCaseName}.webp`;
 
       // Check cache first
       if (imageCache[expectedModuleKey]) {
@@ -62,6 +64,7 @@ export const useClassBackgroundImage = (className: string | undefined): string |
       } else {
         // Log warning if the specific image file doesn't seem to exist based on the glob map
         // This helps identify missing assets during development
+        // Updated warning message
         console.warn(`Background image module not found in glob for class "${className}". Expected key: ${expectedModuleKey}`);
         if (isMounted) {
           setImageUrl(null); // Fallback if file is missing
