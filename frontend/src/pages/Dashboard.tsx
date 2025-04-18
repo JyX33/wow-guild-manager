@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import withAuth from '../components/withAuth';
 import UserGuilds from '../components/UserGuilds';
 import { useAuth } from '../context/AuthContext';
@@ -27,17 +26,7 @@ const Dashboard: React.FC = () => {
       
       <div className="mt-8 mb-8">
         <UserGuilds />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Link
-          to="/characters"
-          className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
-        >
-          <h2 className="text-xl font-bold mb-4">Character Management</h2>
-          <p className="text-gray-600">Manage your characters and set your main character.</p>
-        </Link>
-      </div>
+      </div>   
     </div>
   );
 };
