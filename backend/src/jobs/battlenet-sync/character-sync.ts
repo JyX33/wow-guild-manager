@@ -60,7 +60,7 @@ export async function syncCharacter(
 
     const { updatePayload, localGuild } = await prepareCharacterUpdatePayload(apiClient, guildModel, character, enhancedDataResult);
 
-    const finalUpdatePayload = { ...updatePayload, is_available: true };
+    const finalUpdatePayload = { ...updatePayload, is_available: true, last_synced_at: new Date().toISOString() };
     await characterModel.update(character.id, finalUpdatePayload);
     logger.info(logContext, `[SyncService] Successfully synced character ${character.name} (ID: ${character.id}).`);
 

@@ -3,24 +3,24 @@ import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember } from '../../../sh
 import BaseModel from '../db/BaseModel.js';
 import { AppError } from '../utils/error-handler.js';
 import db from '../db/db.js';
+import { Guild as GuildType } from '../../../shared/types/guild.js';
 
 export class GuildModel extends BaseModel<DbGuild> {
   constructor() {
     super('guilds');
   }
   
-  async findOutdatedGuilds(): Promise<Guild[]> {
+  async findOutdatedGuilds(): Promise<GuildType[]> {
     try {
-      const oneDayAgo = new Date();
-      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000); // 8 hours ago
       
       const result = await db.query(
         `SELECT * FROM ${this.tableName}
-         WHERE (last_updated IS NULL OR last_updated < $1)
+         WHERE (last_roster_sync IS NULL OR last_roster_sync < $1)
            AND exclude_from_sync = false
-         ORDER BY last_updated ASC NULLS FIRST
+         ORDER BY last_roster_sync ASC NULLS FIRST
          LIMIT 50`,
-        [oneDayAgo.toISOString()]
+        [eightHoursAgo.toISOString()]
       );
       
       return result.rows;

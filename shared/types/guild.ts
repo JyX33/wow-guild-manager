@@ -548,10 +548,10 @@ export interface DbCharacter {
     bnet_character_id?: number; // Added by migration
     region?: string; // Added by migration
     toy_hash?: string | null; // ADDED - For unknown user grouping
-    last_synced_at?: string; // Added by migration
+    last_synced_at?: string | null; // Added by migration
     profile_json?: BattleNetCharacter; // Added by migration
     equipment_json?: BattleNetCharacterEquipment; // Added by migration
-    mythic_profile_json?: BattleNetMythicKeystoneProfile; // Added by migration
+    mythic_profile_json?: BattleNetMythicKeystoneProfile | null; // Added by migration
     is_available?: boolean; // Added: Flag indicating if the character profile is accessible via Battle.net API (set to false on 404)
     // Store only the primaries array for simplicity
     professions_json?: BattleNetProfessions['primaries']; // Changed type
@@ -587,6 +587,7 @@ export interface Guild {
     realm: string;
     region: string;
     last_updated?: string | null; // Allow null
+    last_synced_at?: string | null; // Added by migration
     guild_data_json?: BattleNetGuild; // Renamed property
     leader_id?: number | null; // Allow null
     is_guild_master?: boolean;

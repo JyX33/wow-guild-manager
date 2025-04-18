@@ -3,11 +3,11 @@ import { BattleNetWoWAccount } from '../../../shared/types/user.js'; // Import t
 import { Character, DbCharacter } from '../../../shared/types/guild.js';
 import BaseModel from '../db/BaseModel.js';
 import db from '../db/db.js';
+import { BattleNetRegion } from '../../../shared/types/user.js';
 import { AppError } from '../utils/error-handler.js';
 import { withTransaction } from '../utils/transaction.js';
 
 // Helper function to parse region from URL (can be moved to a util file later)
-import { BattleNetRegion } from '../../../shared/types/user.js'; // Need this type
 const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null => {
   if (!href) return null;
   try {
@@ -416,9 +416,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
       // Validate parsed limit, ensure it's a positive number, otherwise default to 50
       const effectiveLimit = (!isNaN(limit) && limit > 0) ? limit : 50;
 
-      const threshold = new Date();
-      // Set threshold (e.g., 1 day ago)
-      threshold.setDate(threshold.getDate() - 1);
+      const threshold = new Date(Date.now() - 8 * 60 * 60 * 1000); // 8 hours ago
 
       const result = await db.query(
         `SELECT * FROM ${this.tableName}
