@@ -10,6 +10,7 @@ import rankModelInstance, { RankModel } from '../../models/rank.model.js';
 import logger from '../../utils/logger.js';
 import { BattleNetApiClient } from '../../services/battlenet-api.client.js';
 import characterModelInstance, { CharacterModel } from '../../models/character.model.js';
+import { syncCharacter } from './character-sync.js';
 
 import { DbGuild } from '../../../../shared/types/guild.js';
 import { BattleNetRegion } from '../../../../shared/types/user.js';
@@ -56,6 +57,49 @@ export async function orchestrateGuildSync(
       guild.id,
       bnetGuildRoster
     );
+
+    // Start Step 4: Sync individual characters
+    logger.info(
+      { guildId: guild.id },
+      '[BattleNetSync] Starting individual character sync for guild'
+    );
+
+    // TODO: Syncing all characters sequentially within the main guild sync can be slow and API-intensive.
+    // This should ideally be moved to a background job queue in the future.
+    try {
+      // Assuming characterModel has findAllByGuildId method or similar join logic
+      const charactersToSync = await characterModel.findAllByGuildId(guild.id);
+
+      for (const character of charactersToSync) {
+        try {
+          await syncCharacter(
+            apiClient,
+            characterModel,
+            guildMemberModel,
+            guildModel, // guildModel is available in orchestrateGuildSync params
+            character
+          );
+        } catch (charErr) {
+          logger.error(
+            { characterId: character.id, characterName: character.name, error: charErr },
+            '[BattleNetSync] Error syncing individual character'
+          );
+          // Continue to the next character even if one fails
+        }
+      }
+
+      logger.info(
+        { guildId: guild.id },
+        '[BattleNetSync] Completed individual character sync for guild'
+      );
+
+    } catch (charSyncErr) {
+      logger.error(
+        { guildId: guild.id, error: charSyncErr },
+        '[BattleNetSync] Error during individual character sync orchestration'
+      );
+    }
+
     logger.info(
       { guildId: guild.id },
       '[BattleNetSync] Orchestrated guild sync completed successfully'

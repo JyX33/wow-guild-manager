@@ -433,7 +433,24 @@ export class CharacterModel extends BaseModel<DbCharacter> {
       throw new AppError(`Error finding outdated characters: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
-  // Closing brace for CharacterModel class
+
+ /**
+  * Find characters by guild ID by joining with guild_members table.
+  */
+ async findAllByGuildId(guildId: number): Promise<DbCharacter[]> {
+   try {
+     const result = await db.query(
+       `SELECT c.*
+        FROM characters c
+        JOIN guild_members gm ON c.id = gm.character_id
+        WHERE gm.guild_id = $1`,
+       [guildId]
+     );
+     return result.rows;
+   } catch (error) {
+     throw new AppError(`Error finding characters by guild ID: ${error instanceof Error ? error.message : String(error)}`, 500);
+   }
+ }
 }
 
 const characterModel = new CharacterModel();
