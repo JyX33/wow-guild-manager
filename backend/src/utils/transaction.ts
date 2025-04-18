@@ -1,5 +1,5 @@
-import db from '../db/db';
-import { AppError } from './error-handler';
+import db from '../db/db.js';
+import { AppError } from './error-handler.js';
 
 /**
  * Execute a function within a database transaction

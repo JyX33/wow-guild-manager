@@ -1,11 +1,11 @@
 import { jest, describe, it, expect, beforeEach, afterEach, afterAll } from '@jest/globals'; // Consolidated imports, Added afterAll
-import { BattleNetApiClient } from './battlenet-api.client';
+import { BattleNetApiClient } from './battlenet-api.client.js';
 // Removed import for battleNetService
-import { AppError } from '../utils/error-handler';
-import { BattleNetRegion } from '../../../shared/types/user';
-import { TokenResponse } from '../../../shared/types/auth'; // Added import
-import { BattleNetGuild, BattleNetGuildRoster } from '../../../shared/types/guild'; // Added imports
-import config from '../config'; // Added config import
+import { AppError } from '../utils/error-handler.js';
+import { BattleNetRegion } from '../../../shared/types/user.js';
+import { TokenResponse } from '../../../shared/types/auth.js'; // Added import
+import { BattleNetGuild, BattleNetGuildRoster } from '../../../shared/types/guild.js'; // Added imports
+import config from '../config/index.js'; // Added config import
 
 // Top-level jest.mock removed. Mocks will be set up in beforeEach.
 
@@ -32,13 +32,6 @@ describe('BattleNetApiClient', () => {
     // Provide default mock implementations (can be overridden in tests)
     doAxiosGetSpy.mockResolvedValue({}); // Default success
     doAxiosPostSpy.mockResolvedValue({}); // Default success
-  });
-
-
-  afterAll(async () => { // Add afterAll hook for cleanup
-    if (apiClient) {
-      await apiClient.disconnect();
-    }
   });
 
   

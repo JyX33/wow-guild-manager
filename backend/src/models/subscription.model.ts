@@ -1,7 +1,7 @@
-import { EventSubscription } from '../../../shared/types/index'; // Removed unused LegacyEventSubscription
-import BaseModel from '../db/BaseModel';
-import db from '../db/db';
-import { AppError } from '../utils/error-handler';
+import { EventSubscription } from '../../../shared/types/index.js'; // Removed unused LegacyEventSubscription
+import BaseModel from '../db/BaseModel.js';
+import db from '../db/db.js';
+import { AppError } from '../utils/error-handler.js';
 
 interface SubscriptionRow extends EventSubscription {
   battletag: string;

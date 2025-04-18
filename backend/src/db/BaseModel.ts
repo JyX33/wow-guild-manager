@@ -1,5 +1,5 @@
-import db from './db';
-import { AppError } from '../utils/error-handler';
+import db from './db.js';
+import { AppError } from '../utils/error-handler.js';
 
 export default class BaseModel<T> {
   tableName: string;

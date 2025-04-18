@@ -1,5 +1,5 @@
-import * as guildModel from '../models/guild.model';
-import logger from '../utils/logger'; // Import the logger
+import * as guildModel from '../models/guild.model.js';
+import logger from '../utils/logger.js'; // Import the logger
 
 export const verifyGuildLeadership = async (guildId: number, userId: number): Promise<boolean> => {
   // First check database for leader_id

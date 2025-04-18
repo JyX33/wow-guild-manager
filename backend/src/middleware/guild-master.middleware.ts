@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import * as guildModel from '../models/guild.model';
-import { AppError } from '../utils/error-handler';
+import * as guildModel from '../models/guild.model.js';
+import { AppError } from '../utils/error-handler.js';
 import { verifyGuildLeadership } from '../services/guild-leadership.service.js';
 
 /**

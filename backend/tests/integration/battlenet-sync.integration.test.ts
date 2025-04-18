@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeEach, afterEach, afterAll } from '@je
 
 // Import necessary classes and types
 import logger from '../../src/utils/logger'; // Import the pino logger
-import { BattleNetSyncService } from '../../src/jobs/battlenet-sync.service';
+import BattleNetSyncService from '../../src/jobs/battlenet-sync.service';
 import { BattleNetApiClient } from '../../src/services/battlenet-api.client';
 // Removed import for battleNetService
 import * as guildModel from '../../src/models/guild.model';
@@ -11,9 +11,6 @@ import * as rankModel from '../../src/models/rank.model';
 import * as userModel from '../../src/models/user.model';
 import * as guildMemberModel from '../../src/models/guild_member.model';
 import { DbGuild, DbCharacter, DbGuildRank, DbGuildMember, BattleNetGuildRoster, BattleNetGuildMember, BattleNetGuild } from '../../../shared/types/guild'; // Added BattleNetGuild
-import { AppError } from '../../src/utils/error-handler';
-import { BattleNetRegion, UserWithTokens } from '../../../shared/types/user';
-import { TokenResponse } from '../../../shared/types/auth';
 
 // --- Manual Mocks Defined at Describe Level ---
 // Define mocks with explicit types matching the original functions
@@ -39,7 +36,7 @@ const mockBulkDelete = jest.fn<typeof guildMemberModel.bulkDelete>();
 
 describe('BattleNetSyncService Integration Tests', () => {
   let apiClient: BattleNetApiClient;
-  let syncService: BattleNetSyncService;
+  let syncService: typeof BattleNetSyncService;
 
   // Define spies for ApiClient methods
   let getGuildDataSpy: jest.SpiedFunction<typeof apiClient.getGuildData>;

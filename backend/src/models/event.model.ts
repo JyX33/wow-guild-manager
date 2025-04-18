@@ -1,7 +1,7 @@
-import { Event } from '../../../shared/types/index';
-import BaseModel from '../db/BaseModel';
-import db from '../db/db';
-import { AppError } from '../utils/error-handler';
+import { Event } from '../../../shared/types/index.js';
+import BaseModel from '../db/BaseModel.js';
+import db from '../db/db.js';
+import { AppError } from '../utils/error-handler.js';
 
 class EventModel extends BaseModel<Event> {
   constructor() {

@@ -1,8 +1,8 @@
 /// <reference types="pg" />
 
 import { Pool } from 'pg';
-import config from '../config';
-import logger from '../utils/logger'; // Import the logger
+import config from '../config/index.js';
+import logger from '../utils/logger.js';
 
 // Create a connection pool
 const pool = new Pool({

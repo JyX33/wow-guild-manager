@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole, UserWithTokens } from '../../../shared/types/user';
-import config from '../config';
-import userModel from '../models/user.model';
-import { asyncHandler } from '../utils/error-handler';
+import { UserRole, UserWithTokens } from '../../../shared/types/user.js';
+import config from '../config/index.js';
+import userModel from '../models/user.model.js';
+import { asyncHandler } from '../utils/error-handler.js';
 
 // Extend Express Request type to include user property
 declare global {

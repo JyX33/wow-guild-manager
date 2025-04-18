@@ -1,9 +1,9 @@
-import { DbGuildMember, DbCharacter } from '../../../shared/types/guild';
-import * as characterModel from '../models/character.model';
-import * as guildMemberModel from '../models/guild_member.model';
-import db from '../db/db'; // For potential direct DB query
-import { AppError } from '../utils/error-handler';
-import logger from '../utils/logger';
+import { DbGuildMember, DbCharacter } from '../../../shared/types/guild.js';
+import * as characterModel from '../models/character.model.js';
+import * as guildMemberModel from '../models/guild_member.model.js';
+import db from '../db/db.js'; // For potential direct DB query
+import { AppError } from '../utils/error-handler.js';
+import logger from '../utils/logger.js';
 
 /**
  * Represents a guild member joined with their character data and classification details.
