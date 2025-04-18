@@ -50,7 +50,7 @@ export async function syncCharacter(
             logger.info(logContext, `[SyncService] No active guild memberships found for character ${character.name} (ID: ${character.id}) to mark as unavailable.`);
           }
         } catch (memberUpdateError: unknown) {
-          logger.error({ err: memberUpdateError, ...logContext }, `[SyncService] Failed to mark guild memberships as unavailable for character ${character.name}.`);
+          logger.error({ err: memberUpdateError, ...logContext }, `[SyncService] Character ${character.name} marked unavailable, but FAILED to mark associated guild memberships. Data may be inconsistent.`);
         }
       } catch (updateError: unknown) {
         logger.error({ err: updateError, ...logContext }, `[SyncService] Failed to mark character ${character.name} or memberships as unavailable after 404/null result.`);
@@ -58,7 +58,7 @@ export async function syncCharacter(
       return;
     }
 
-    const { updatePayload, localGuild } = await prepareCharacterUpdatePayload(guildModel, character, enhancedDataResult);
+    const { updatePayload, localGuild } = await prepareCharacterUpdatePayload(apiClient, guildModel, character, enhancedDataResult);
 
     const finalUpdatePayload = { ...updatePayload, is_available: true };
     await characterModel.update(character.id, finalUpdatePayload);

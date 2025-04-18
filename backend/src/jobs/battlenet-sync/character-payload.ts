@@ -4,7 +4,10 @@ import { GuildModel } from '../../models/guild.model.js';
 import logger from '../../utils/logger.js';
 import { calculateCharacterToyHash } from './character-toy-hash.js';
 
+import { BattleNetApiClient } from '../../services/battlenet-api.client.js';
+
 export async function prepareCharacterUpdatePayload(
+  apiClient: BattleNetApiClient,
   guildModel: GuildModel,
   character: DbCharacter,
   enhancedData: EnhancedCharacterData
@@ -46,7 +49,7 @@ export async function prepareCharacterUpdatePayload(
   }
 
   const finalRegionForHash = determinedRegion ?? character.region as BattleNetRegion;
-  const calculatedToyHash = await calculateCharacterToyHash({ ...character, region: finalRegionForHash });
+  const calculatedToyHash = await calculateCharacterToyHash(apiClient, { ...character, region: finalRegionForHash });
 
   const updatePayload: Partial<DbCharacter> = {
     bnet_character_id: bnetCharacterId,
@@ -76,9 +79,9 @@ export async function prepareCharacterUpdatePayload(
 }
 
 async function queueMissingGuildSync(
-  guildModel: any,
+  guildModel: GuildModel,
   guildData: { id: number; name: string; realm: { slug: string; name: string } } | undefined,
-  region: any
+  region: BattleNetRegion
 ): Promise<void> {
   const logPrefix = '[SyncService][QueueGuild]';
   if (!guildData?.id || !guildData.name || !guildData.realm?.name || !region) {
@@ -129,12 +132,7 @@ async function queueMissingGuildSync(
     // Intentionally NOT awaiting this in the main flow to avoid blocking character sync.
     // A queue is the correct solution for background processing.
     // This direct call is NOT suitable for production environments.
-    // TODO: Replace this direct call with a proper job queue mechanism.
-import('./core-guild-sync.js').then(({ syncGuild }) => {
-  syncGuild(guildModel, createdGuild, undefined as any, undefined as any, undefined as any, undefined as any).catch((syncError: unknown) => {
-    logger.error({ err: syncError, ...logContext, localGuildId: createdGuild.id }, `[SyncService][QueueGuild] Background sync for newly added guild failed.`);
-  });
-});
+    logger.warn({ ...logContext, localGuildId: createdGuild.id }, `${logPrefix} TODO: Implement job queue. Guild sync required for newly created guild ${createdGuild.id} but direct call removed. Add to queue.`);
   } catch (error: unknown) {
     logger.error({ err: error, ...logContext }, `${logPrefix} Error checking/creating/queueing sync for missing guild.`);
   }

@@ -1,3 +1,4 @@
+import { BattleNetApiClient } from '../../services/battlenet-api.client.js';
 import { BattleNetGuild, BattleNetGuildMember, BattleNetGuildRoster, DbGuild } from '../../../../shared/types/guild.js';
 import { BattleNetRegion } from '../../../../shared/types/user.js';
 import { UserModel } from '../../models/user.model.js';
@@ -54,6 +55,7 @@ export async function updateCoreGuildData(
     logger.info(logContext, `[SyncService] Successfully updated core guild data.`);
   } catch (updateError: unknown) {
     logger.error({ err: updateError, ...logContext }, `[SyncService] Failed to update core guild data in database.`);
+    throw updateError; // Re-throw the error
   }
 }
 
@@ -68,7 +70,7 @@ export async function updateCoreGuildData(
  * @returns An object indicating success and containing fetched data, or failure and error info
  */
 export async function syncGuild(
-  apiClient: any,
+  apiClient: BattleNetApiClient,
   guildModel: GuildModel,
   userModel: UserModel,
   guild: DbGuild

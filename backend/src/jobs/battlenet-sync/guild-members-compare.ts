@@ -45,13 +45,10 @@ export function compareGuildMembers(
         memberUpdatePayload.characterId = existingCharacterId;
         needsUpdate = true;
       }
-
-      memberUpdatePayload.bnetMemberData = rosterMember;
-      needsUpdate = true;
-
-      if (needsUpdate) {
-        membersToUpdate.push({ memberId: existingMember.id, ...memberUpdatePayload });
-      }
+if (needsUpdate) {
+  memberUpdatePayload.bnetMemberData = rosterMember; // Include latest BNet data in the update
+  membersToUpdate.push({ memberId: existingMember.id, ...memberUpdatePayload });
+}
     } else {
       if (existingCharacterId) {
         membersToAdd.push({ rosterMember, characterId: existingCharacterId });

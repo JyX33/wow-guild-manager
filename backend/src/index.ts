@@ -9,8 +9,14 @@ import https from 'https';
 import http from 'http'; // Import http module
 import path from 'path';
 import schedule from 'node-schedule';
-import { runSync } from './jobs/battlenet-sync/index.js';
+import { runSync, SyncDependencies } from './jobs/battlenet-sync/index.js';
 import config from './config/index.js';
+import { BattleNetApiClient } from './services/battlenet-api.client.js';
+import guildModelInstance from './models/guild.model.js';
+import userModelInstance from './models/user.model.js';
+import guildMemberModelInstance from './models/guild_member.model.js';
+import rankModelInstance from './models/rank.model.js';
+import characterModelInstance from './models/character.model.js';
 import logger from './utils/logger.js'; // Import the logger
 
 import authRoutes from './routes/auth.routes.js';
@@ -129,10 +135,20 @@ const defaultSyncSchedule = '0 * * * *'; // Run every hour at minute 0
 const syncSchedule = process.env.SYNC_JOB_CRON_SCHEDULE || defaultSyncSchedule;
 logger.info(`[Scheduler] Using sync schedule: "${syncSchedule}" (Default: "${defaultSyncSchedule}")`);
 
+// Instantiate dependencies for the sync job
+const dependencies: SyncDependencies = {
+  apiClient: new BattleNetApiClient(),
+  guildModel: guildModelInstance,
+  userModel: userModelInstance,
+  guildMemberModel: guildMemberModelInstance,
+  rankModel: rankModelInstance,
+  characterModel: characterModelInstance
+};
+
 const syncJob = schedule.scheduleJob(syncSchedule, async () => {
   logger.info(`[Scheduler] Running scheduled Battle.net sync job at ${new Date().toISOString()}`);
   try {
-    await runSync();
+    await runSync(dependencies);
   } catch (error) {
     logger.error({ err: error }, '[Scheduler] Error during scheduled sync job:');
   }
@@ -142,7 +158,7 @@ logger.info(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()
 // Optional: Run sync once on startup after a short delay
 setTimeout(() => {
   logger.info('[Startup] Triggering initial Battle.net sync...');
-  runSync().catch((error: any) => {
+  runSync(dependencies).catch((error: any) => {
     logger.error({ err: error }, '[Startup] Error during initial sync:');
   });
 }, 10000); // Delay 10 seconds

@@ -3,17 +3,28 @@
 import { syncGuild } from './core-guild-sync.js';
 import { syncGuildMembersTable } from './guild-members-sync.js';
 import { syncGuildRanks } from './guild-ranks-sync.js';
-import guildModelInstance, { GuildModel } from '../../models/guild.model.js';
-import userModelInstance, { UserModel } from '../../models/user.model.js';
-import guildMemberModelInstance, { GuildMemberModel } from '../../models/guild_member.model.js';
-import rankModelInstance, { RankModel } from '../../models/rank.model.js';
+import { GuildModel } from '../../models/guild.model.js';
+import { UserModel } from '../../models/user.model.js';
+import { GuildMemberModel } from '../../models/guild_member.model.js';
+import { RankModel } from '../../models/rank.model.js';
 import logger from '../../utils/logger.js';
 import { BattleNetApiClient } from '../../services/battlenet-api.client.js';
-import characterModelInstance, { CharacterModel } from '../../models/character.model.js';
+import { CharacterModel } from '../../models/character.model.js';
 import { syncCharacter } from './character-sync.js';
+
+import pLimit from 'p-limit';
 
 import { DbGuild } from '../../../../shared/types/guild.js';
 import { BattleNetRegion } from '../../../../shared/types/user.js';
+
+export interface SyncDependencies {
+  apiClient: BattleNetApiClient;
+  guildModel: GuildModel;
+  userModel: UserModel;
+  guildMemberModel: GuildMemberModel;
+  rankModel: RankModel;
+  characterModel: CharacterModel;
+}
 
 /**
  * Orchestrates the sync process for a single guild:
@@ -22,16 +33,11 @@ import { BattleNetRegion } from '../../../../shared/types/user.js';
  * 3. Handles and logs errors at each stage.
  */
 export async function orchestrateGuildSync(
-  apiClient: BattleNetApiClient,
-  guildModel: GuildModel,
-  userModel: UserModel,
-  guildMemberModel: GuildMemberModel,
-  rankModel: RankModel,
-  characterModel: CharacterModel,
+  dependencies: SyncDependencies,
   guild: DbGuild
 ): Promise<void> {
   // Step 1: Sync core guild info
-  const result = await syncGuild(apiClient, guildModel, userModel, guild);
+  const result = await syncGuild(dependencies.apiClient, dependencies.guildModel, dependencies.userModel, guild);
   if (!result.success) {
     logger.error(
       { guildId: guild.id, error: result.error },
@@ -45,15 +51,15 @@ export async function orchestrateGuildSync(
   try {
     // Step 2: Sync members
     await syncGuildMembersTable(
-      guildMemberModel,
-      characterModel,
+      dependencies.guildMemberModel,
+      dependencies.characterModel,
       guild.id,
       bnetGuildRoster,
       guild.region as BattleNetRegion
     );
     // Step 3: Sync ranks
     await syncGuildRanks(
-      rankModel,
+      dependencies.rankModel,
       guild.id,
       bnetGuildRoster
     );
@@ -68,15 +74,15 @@ export async function orchestrateGuildSync(
     // This should ideally be moved to a background job queue in the future.
     try {
       // Assuming characterModel has findAllByGuildId method or similar join logic
-      const charactersToSync = await characterModel.findAllByGuildId(guild.id);
+      const charactersToSync = await dependencies.characterModel.findAllByGuildId(guild.id);
 
       for (const character of charactersToSync) {
         try {
           await syncCharacter(
-            apiClient,
-            characterModel,
-            guildMemberModel,
-            guildModel, // guildModel is available in orchestrateGuildSync params
+            dependencies.apiClient,
+            dependencies.characterModel,
+            dependencies.guildMemberModel,
+            dependencies.guildModel, // guildModel is available in orchestrateGuildSync params
             character
           );
         } catch (charErr) {
@@ -116,37 +122,42 @@ export async function orchestrateGuildSync(
  * Orchestrates a full Battle.net sync for all guilds.
  * Loads all guilds from the database and calls orchestrateGuildSync for each.
  */
-export async function runSync(): Promise<void> {
-  const apiClient = new BattleNetApiClient();
-  const guildModel: GuildModel = guildModelInstance;
-  const userModel: UserModel = userModelInstance;
-  const guildMemberModel: GuildMemberModel = guildMemberModelInstance;
-  const rankModel: RankModel = rankModelInstance;
-  const characterModel: CharacterModel = characterModelInstance;
+export async function runSync(dependencies: SyncDependencies): Promise<void> {
+  const { guildModel } = dependencies;
 
   try {
-    const guilds: DbGuild[] = await guildModel.findAll();
-    logger.info({ count: guilds.length }, '[BattleNetSync] Starting orchestrated sync for all guilds');
+    const guilds: DbGuild[] = await guildModel.findAll({ exclude_from_sync: false });
+    logger.info({ count: guilds.length }, '[BattleNetSync] Starting orchestrated sync for active guilds');
 
-    for (const guild of guilds) {
-      logger.info({ guildId: guild.id }, '[BattleNetSync] Starting orchestrated sync for guild');
-      try {
-        await orchestrateGuildSync(
-          apiClient,
-          guildModel,
-          userModel,
-          guildMemberModel,
-          rankModel,
-          characterModel,
-          guild
-        );
-        logger.info({ guildId: guild.id }, '[BattleNetSync] Orchestrated guild sync completed');
-      } catch (guildErr) {
-        logger.error({ err: guildErr, guildId: guild.id }, '[BattleNetSync] Orchestrated guild sync failed');
-      }
+    const limit = pLimit(5); // Limit to 5 concurrent guild syncs
+
+    const syncPromises = guilds.map((guild) =>
+      limit(async () => { // Wrap the async operation in the limiter
+        logger.info({ guildId: guild.id }, '[BattleNetSync] Starting orchestrated sync for guild (concurrent)');
+        try {
+          await orchestrateGuildSync(
+            dependencies,
+            guild
+          );
+          logger.info({ guildId: guild.id }, '[BattleNetSync] Orchestrated guild sync completed');
+        } catch (guildErr) {
+          // orchestrateGuildSync already logs internal errors, so this catch might only
+          // catch very unexpected errors during the setup of the call itself.
+          // Keep logging here for safety, but note potential redundancy.
+          logger.error({ err: guildErr, guildId: guild.id }, '[BattleNetSync] Orchestrated guild sync failed unexpectedly');
+        }
+      })
+    );
+
+    const results = await Promise.allSettled(syncPromises);
+
+    // Optional: Log summary of results (e.g., how many succeeded/failed)
+    const failedCount = results.filter(r => r.status === 'rejected').length;
+    if (failedCount > 0) {
+         logger.warn({ failedCount, total: guilds.length }, `[BattleNetSync] Completed sync run with ${failedCount} guild syncs failing.`);
+    } else {
+         logger.info({ total: guilds.length }, `[BattleNetSync] Completed sync run successfully for all ${guilds.length} active guilds.`);
     }
-
-    logger.info('[BattleNetSync] All guilds orchestrated sync completed');
   } catch (err) {
     logger.error({ err }, '[BattleNetSync] Failed to run full orchestrated sync');
     throw err;

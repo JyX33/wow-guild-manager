@@ -4,6 +4,7 @@ import { DbCharacter } from '../../../../shared/types/guild.js';
 import { BattleNetRegion } from '../../../../shared/types/user.js';
 import logger from '../../utils/logger.js';
 import { createSlug } from '../../utils/slugify.js';
+import { BattleNetApiClient } from '../../services/battlenet-api.client.js';
 
 type ToyCollectionData = {
   toys: { toy: { id: number } }[];
@@ -11,7 +12,7 @@ type ToyCollectionData = {
 
 const NO_TOYS_HASH = 'a3741d687719e1c015f4f115371c77064771f699817f81f09016350165a19111';
 
-export async function calculateCharacterToyHash(character: Pick<DbCharacter, 'id' | 'name' | 'realm' | 'region' | 'user_id'>): Promise<string | null> {
+export async function calculateCharacterToyHash(apiClient: BattleNetApiClient, character: Pick<DbCharacter, 'id' | 'name' | 'realm' | 'region' | 'user_id'>): Promise<string | null> {
   if (character.user_id !== null) {
     logger.trace({ charId: character.id, charName: character.name }, `[SyncService][ToyHash] Skipping calculation for linked character.`);
     return null;
@@ -29,7 +30,7 @@ export async function calculateCharacterToyHash(character: Pick<DbCharacter, 'id
 
   try {
     logger.trace(logContext, `[SyncService][ToyHash] Fetching collections index.`);
-    const collectionsIndex = await fetchCollectionsIndex(realmSlug, characterNameLower, region);
+    const collectionsIndex = await apiClient.getCharacterCollectionsIndex(realmSlug, characterNameLower, region);
 
     if (!collectionsIndex?.toys?.href) {
       logger.debug(logContext, `[SyncService][ToyHash] Toys collection href not found in index. Using NO_TOYS_HASH.`);
@@ -39,13 +40,13 @@ export async function calculateCharacterToyHash(character: Pick<DbCharacter, 'id
     const toysHref = collectionsIndex.toys.href;
     logger.trace({ ...logContext, href: toysHref }, `[SyncService][ToyHash] Fetching toys data from href.`);
     const toyJobId = `char-toys-${region}-${realmSlug}-${characterNameLower}`;
-    const toysData = await fetchGenericBattleNetData<ToyCollectionData>(toysHref, toyJobId);
+    const toysData = await apiClient.getGenericBattleNetData<ToyCollectionData>(toysHref, toyJobId);
 
     if (toysData?.toys && Array.isArray(toysData.toys) && toysData.toys.length > 0) {
       const toyIds = toysData.toys
-        .map((t) => t?.toy?.id)
-        .filter((id): id is number => typeof id === 'number')
-        .sort((a, b) => a - b);
+        .map((t: { toy?: { id: number } }) => t?.toy?.id)
+        .filter((id: any): id is number => typeof id === 'number')
+        .sort((a: number, b: number) => a - b);
 
       if (toyIds.length === 0) {
         logger.debug(logContext, `[SyncService][ToyHash] No valid toy IDs found in fetched data. Using NO_TOYS_HASH.`);
@@ -69,15 +70,4 @@ export async function calculateCharacterToyHash(character: Pick<DbCharacter, 'id
       return null;
     }
   }
-}
-
-// Placeholder functions to be replaced with actual API client calls
-async function fetchCollectionsIndex(realmSlug: string, characterNameLower: string, region: BattleNetRegion): Promise<any> {
-  // Implement actual API call or inject API client
-  throw new Error('fetchCollectionsIndex not implemented');
-}
-
-async function fetchGenericBattleNetData<T>(href: string, jobId: string): Promise<T | null> {
-  // Implement actual API call or inject API client
-  throw new Error('fetchGenericBattleNetData not implemented');
 }

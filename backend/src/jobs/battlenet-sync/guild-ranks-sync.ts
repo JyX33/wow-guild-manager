@@ -36,8 +36,8 @@ export async function syncGuildRanks(rankModel: RankModel, guildId: number, bnet
             .catch((err: unknown) => logger.error({ err, ...rankLogContext }, `[SyncService] Failed to create/update rank ${rankId} or its count.`))
         );
       } else {
-        if ((rankRecord as any).member_count !== currentCount) {
-          logger.debug(rankLogContext, `[SyncService] Updating member count for rank ${rankId} from ${(rankRecord as any).member_count} to ${currentCount}.`);
+        if (rankRecord.member_count !== currentCount) {
+          logger.debug(rankLogContext, `[SyncService] Updating member count for rank ${rankId} from ${rankRecord.member_count} to ${currentCount}.`);
           updatePromises.push(
             rankModel.updateMemberCount(guildId, rankId, currentCount)
               .catch((err: unknown) => logger.error({ err, ...rankLogContext }, `[SyncService] Failed to update member count for rank ${rankId}.`))
@@ -50,9 +50,9 @@ export async function syncGuildRanks(rankModel: RankModel, guildId: number, bnet
     }
 
     for (const [rankId, rankRecord] of existingRankMap.entries()) {
-      if ((rankRecord as GuildRank).member_count !== 0) {
+      if (rankRecord.member_count !== 0) {
         const rankLogContext = { ...logContext, rankId };
-        logger.info(rankLogContext, `[SyncService] Rank ${rankId} ("${(rankRecord as GuildRank).rank_name}") no longer in BNet roster. Setting member count to 0.`);
+        logger.info(rankLogContext, `[SyncService] Rank ${rankId} ("${rankRecord.rank_name}") no longer in BNet roster. Setting member count to 0.`);
         updatePromises.push(
           rankModel.updateMemberCount(guildId, rankId, 0)
             .catch((err: unknown) => logger.error({ err, ...rankLogContext }, `[SyncService] Failed to set member count to 0 for rank ${rankId}.`))
@@ -70,5 +70,6 @@ export async function syncGuildRanks(rankModel: RankModel, guildId: number, bnet
     logger.info(logContext, `[SyncService] Finished rank sync.`);
   } catch (error: unknown) {
     logger.error({ err: error, ...logContext }, `[SyncService] Critical error during rank sync setup.`);
+    throw error; // Re-throw the error
   }
 }
