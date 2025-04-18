@@ -198,7 +198,8 @@ export class UserModel extends BaseModel<DbUser> {
       // Assume 'last_character_sync_at' exists based on instructions.
       // If this update fails due to column not found, schema/migrations need verification.
       // Wrap the timestamp in an array to match the expected DB column type
-      await this.update(userId, { last_character_sync_at: [new Date().toISOString()] } as Partial<DbUser>);
+      // Explicitly format as PostgreSQL array literal '{timestamp}'
+      await this.update(userId, { last_character_sync_at: `{${new Date().toISOString()}}` } as Partial<DbUser>);
 
       // Optional: Add logging for successful update or no-op if user not found
 
