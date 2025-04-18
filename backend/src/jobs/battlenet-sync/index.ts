@@ -76,23 +76,37 @@ export async function orchestrateGuildSync(
       // Assuming characterModel has findAllByGuildId method or similar join logic
       const charactersToSync = await dependencies.characterModel.findAllByGuildId(guild.id);
 
-      for (const character of charactersToSync) {
-        try {
-          await syncCharacter(
-            dependencies.apiClient,
-            dependencies.characterModel,
-            dependencies.guildMemberModel,
-            dependencies.guildModel, // guildModel is available in orchestrateGuildSync params
-            character
-          );
-        } catch (charErr) {
+      const characterSyncPromises = charactersToSync.map(character =>
+        syncCharacter(
+          dependencies.apiClient,
+          dependencies.characterModel,
+          dependencies.guildMemberModel,
+          dependencies.guildModel,
+          character
+        ).catch(charErr => {
+          // Catch errors within the promise to prevent Promise.allSettled from short-circuiting
           logger.error(
             { characterId: character.id, characterName: character.name, error: charErr },
             '[BattleNetSync] Error syncing individual character'
           );
-          // Continue to the next character even if one fails
+          // Return the error so it can be handled in allSettled results
+          return { status: 'rejected', reason: charErr, character };
+        })
+      );
+
+      const results = await Promise.allSettled(characterSyncPromises);
+
+      // Process results - syncCharacter already handles its internal logic (updates, logging)
+      // We primarily log here for overall status and any unhandled errors from the catch above
+      results.forEach(result => {
+        if (result.status === 'rejected') {
+          // Error was already logged in the catch block above
+          // If we returned the character in the catch, we could log character details here too
+        } else {
+          // Fulfilled promises mean syncCharacter completed (either successfully or marked unavailable)
+          // syncCharacter logs success/unavailable status internally
         }
-      }
+      });
 
       logger.info(
         { guildId: guild.id },
