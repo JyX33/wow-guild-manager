@@ -30,7 +30,6 @@ export function compareGuildMembers(
   for (const [key, rosterMember] of rosterMembersMap.entries()) {
     const existingMember = existingMembersMap.get(key);
     const existingCharacterId = existingCharacterMap.get(key);
-    const charLogContext = { guildId, charName: rosterMember.character.name, realmSlug: rosterMember.character.realm.slug, key };
 
     if (existingMember) {
       processedExistingMemberKeys.delete(key);
