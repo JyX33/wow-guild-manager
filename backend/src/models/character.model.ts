@@ -7,6 +7,7 @@ import logger from '../utils/logger.js';
 import { BattleNetRegion } from '../../../shared/types/user.js';
 import { AppError } from '../utils/error-handler.js';
 import { withTransaction } from '../utils/transaction.js';
+import { log } from 'console';
 
 // Helper function to parse region from URL (can be moved to a util file later)
 const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null => {
@@ -212,7 +213,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           `SELECT id, name, realm FROM ${this.tableName} WHERE user_id = $1`,
           [userId]
         );
-
+        logger.info(`Existing characters for user ${userId}:`, existingCharsResult.rows);
         const existingCharsMap = new Map<string, number>();
         existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
           existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
