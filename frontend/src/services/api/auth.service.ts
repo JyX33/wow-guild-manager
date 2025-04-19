@@ -1,3 +1,4 @@
+import { RefreshResponse } from '../../../../shared/types/auth';
 import { User, UserRole } from '../../../../shared/types/user';
 import { apiRequest } from './core';
 
@@ -9,9 +10,6 @@ interface LogoutResponse {
   message: string;
 }
 
-interface RefreshResponse {
-  message: string;
-}
 
 export const authService = {
   /**

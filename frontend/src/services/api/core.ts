@@ -156,3 +156,5 @@ export const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<
     clearTimeout(timeoutId);
   }) as Promise<T>;
 };
+
+export type { ApiResponse };
