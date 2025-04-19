@@ -65,7 +65,6 @@ app.use(session({
     maxAge: config.auth.cookieMaxAge,
     sameSite: 'none', // <-- Changed to 'none'
     path: '/', // Ensure path is root
-    ...(process.env.SESSION_COOKIE_DOMAIN && { domain: process.env.SESSION_COOKIE_DOMAIN }),
   }
 }) as any); // Cast to any to bypass complex type error for now
 

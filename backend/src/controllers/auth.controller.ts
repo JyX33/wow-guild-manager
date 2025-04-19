@@ -84,9 +84,7 @@ const state = generateState();
     const stateExpiry = Date.now() + (5 * 60 * 1000); // 5 minutes from now
 
     // Store state and validated region in session (as fallback)
-    req.session.oauthState = state;
     req.session.region = validRegion; // Assign the validated BattleNetRegion
-    req.session.stateExpiry = stateExpiry; // Store expiry in session as fallback
 
     // Explicitly save the session before sending the response
     req.session.save((err) => {
