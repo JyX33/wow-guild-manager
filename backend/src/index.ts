@@ -58,7 +58,7 @@ app.use(session({
   store: sessionStore, // Use the PostgreSQL store
   secret: config.auth.jwtSecret,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // <-- Changed to true
   cookie: {
     secure: true, // Always true since we use HTTPS
     httpOnly: true,
