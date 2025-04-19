@@ -426,7 +426,7 @@ export class BattleNetApiClient {
   /**
    * Exchanges an authorization code for an access token.
    */
-  public async getAccessToken(region: BattleNetRegion, code: string): Promise<TokenResponse> {
+  public async getAccessToken(region: BattleNetRegion, code: string, redirectUri: string): Promise<TokenResponse> {
     const validRegion = this._validateRegion(region);
     const regionConfig = config.battlenet.regions[validRegion];
 
@@ -434,8 +434,8 @@ export class BattleNetApiClient {
       throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
     }
 
-    if (!config.battlenet.clientId || !config.battlenet.clientSecret || !config.battlenet.redirectUri) {
-       throw new AppError('Battle.net client configuration (clientId, clientSecret, or redirectUri) is incomplete.', 500, { code: 'CONFIG_ERROR' });
+    if (!config.battlenet.clientId || !config.battlenet.clientSecret) {
+       throw new AppError('Battle.net client configuration (clientId or clientSecret) is incomplete.', 500, { code: 'CONFIG_ERROR' });
     }
 
     const url = `${regionConfig.authBaseUrl}/token`;
@@ -445,7 +445,7 @@ export class BattleNetApiClient {
         new URLSearchParams({
           grant_type: 'authorization_code',
           code: code,
-          redirect_uri: config.battlenet.redirectUri,
+          redirect_uri: redirectUri, // Use the provided redirectUri
         }),
         { username: config.battlenet.clientId, password: config.battlenet.clientSecret },
         { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -453,7 +453,7 @@ export class BattleNetApiClient {
     } catch (error: any) {
        const statusCode = error?.response?.status || 500;
        const errorMessage = error?.response?.data?.error_description || error.message || String(error);
-       logger.error({ err: error, region, code }, `[ApiClient] Failed to get access token: ${errorMessage}`);
+       logger.error({ err: error, region, code, redirectUri }, `[ApiClient] Failed to get access token: ${errorMessage}`);
        throw new AppError(`Failed to get access token: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_AUTH_ERROR' });
     }
   }

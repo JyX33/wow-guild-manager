@@ -149,8 +149,20 @@ const state = generateState();
     // Ensure region is valid before proceeding
     const callbackRegion = region || 'eu'; // Default to 'eu' if somehow missing from session
 
+    // Reconstruct the exact redirect URI used in the initial authorization request
+    const callbackUrl = new URL(config.battlenet.redirectUri);
+    if (stateInRedirect) {
+        callbackUrl.searchParams.set('state_in_redirect', stateInRedirect);
+    }
+    if (expiryInRedirect) {
+        callbackUrl.searchParams.set('expiry_in_redirect', expiryInRedirect);
+    }
+    const fullRedirectUri = callbackUrl.toString();
+    logger.info({ fullRedirectUri }, 'Reconstructed full redirect URI for token exchange');
+
+
     // Exchange code for access token
-    const tokenData = await apiClient.getAccessToken(callbackRegion as BattleNetRegion, code as string);
+    const tokenData = await apiClient.getAccessToken(callbackRegion as BattleNetRegion, code as string, fullRedirectUri);
 
     const userInfo = await apiClient.getUserInfo(callbackRegion as BattleNetRegion, tokenData.access_token);
 
