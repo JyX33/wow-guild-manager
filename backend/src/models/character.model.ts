@@ -208,17 +208,44 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           }
         }
 
-        // Get existing characters for this user
-        const existingCharsResult = await client.query(
-          `SELECT id, name, realm FROM ${this.tableName} WHERE user_id = $1`,
-          [userId]
-        );
-        logger.info(`Existing characters for user ${userId}:`, existingCharsResult.rows);
-        const existingCharsMap = new Map<string, number>();
-        existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
-          existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
+        // Get existing characters for this user that match the incoming Battle.net characters
+        // Extract unique name/realm pairs from battleNetCharacters
+        const uniqueNameRealmPairs = Array.from(new Set(battleNetCharacters.map(char =>
+          `${char.name?.toLowerCase() || ''}-${char.realm?.toLowerCase() || ''}`
+        ))).map(pair => {
+          const [name, realm] = pair.split('-');
+          return { name, realm };
         });
-        logger.info(`Existing characters for user ${userId}:`, existingCharsMap);
+
+        let existingCharsResult;
+        const existingCharsMap = new Map<string, number>();
+
+        if (uniqueNameRealmPairs.length > 0) {
+          // Prepare values for the query: [[name1, realm1], [name2, realm2], ...]
+          const queryValues = uniqueNameRealmPairs.map(key => [key.name, key.realm]);
+
+          // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
+          const placeholders = queryValues.map((_, index) => `($${index * 2 + 2}, $${index * 2 + 3})`).join(', ');
+          const flatValues = queryValues.flat(); // Flatten the array for query parameters
+
+          const query = `
+            SELECT id, name, realm
+            FROM ${this.tableName}
+            WHERE user_id = $1 AND (lower(name), lower(realm)) IN (${placeholders})
+          `;
+
+          existingCharsResult = await client.query(query, [userId, ...flatValues]);
+
+          existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
+            existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
+          });
+        } else {
+           // If no characters from Battle.net, there are no existing characters to match
+           existingCharsResult = { rows: [] };
+        }
+
+        logger.info(`Existing characters for user ${userId} matching Battle.net data:`, existingCharsResult.rows);
+        logger.info(`Existing characters map for user ${userId}:`, existingCharsMap);
 
 
         // Process each character
@@ -259,7 +286,16 @@ export class CharacterModel extends BaseModel<DbCharacter> {
               return acc;
             }, {} as Record<string, any>);
 
-            await this.update(existingId, filteredUpdateData); // Use BaseModel update method
+            const updateKeys = Object.keys(filteredUpdateData);
+            const updateValues = Object.values(filteredUpdateData);
+            const setClauses = updateKeys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+
+            if (updateKeys.length > 0) { // Only update if there's data to update
+              await client.query(
+                `UPDATE ${this.tableName} SET ${setClauses} WHERE id = $${updateKeys.length + 1}`,
+                [...updateValues, existingId]
+              );
+            }
             processedIds.push(existingId); // Add existing ID to processed list
             updated++;
           } else {
@@ -289,7 +325,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
 
         // Return counts and the list of processed character IDs
         // Return counts: 'updated' is always 0 here, 'processedIds' only contains new character IDs.
-        return { added, updated: 0, total: battleNetCharacters.length, processedIds };
+        return { added, updated, total: battleNetCharacters.length, processedIds };
       });
     } catch (error) {
       throw new AppError(`Error syncing characters: ${error instanceof Error ? error.message : String(error)}`, 500);
