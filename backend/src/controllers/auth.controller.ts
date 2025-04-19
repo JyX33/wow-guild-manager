@@ -206,6 +206,19 @@ const state = generateState();
 
     // Generate tokens
     const { token, refreshToken } = generateToken(user);
+    // Line removed as per docs/auth-simplification-plan.md
+    logger.info({ userId: user.id }, 'User session established');
+
+    // Trigger the onboarding process (fetches profile, syncs chars, checks GM status)
+    // This runs asynchronously in the background, not blocking the redirect.
+    onboardingService.processNewUser(user.id, tokenData.access_token, callbackRegion)
+      .then(() => {
+        logger.info({ userId: user.id }, '[AuthCallback] Background onboarding process finished.');
+      })
+      .catch((onboardingError: any) => { // Add type annotation
+        // Log error from the async onboarding process
+        logger.error({ err: onboardingError, userId: user.id }, '[AuthCallback] Error during background onboarding process:');
+      });
 
     // Redirect to frontend with tokens in fragment
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback#accessToken=${token}&refreshToken=${refreshToken}`);
