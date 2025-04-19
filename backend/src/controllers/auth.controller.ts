@@ -119,7 +119,7 @@ export default {
 
     const { code, state } = req.query;
     const { oauthState, region, stateExpiry } = req.session;
-
+    logger.info({ code, state, oauthState, region, stateExpiry }, 'Callback request parameters');
     // Verify state to prevent CSRF
     if (!state || state !== oauthState) {
       throw new AppError('Invalid state parameter', 400);
