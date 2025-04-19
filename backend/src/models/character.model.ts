@@ -217,6 +217,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
         existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
           existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
         });
+        logger.info(`Existing characters for user ${userId}:`, existingCharsMap);
 
 
         // Process each character
