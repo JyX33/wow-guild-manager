@@ -89,8 +89,18 @@ export default {
     // Set a short expiry on the state
     req.session.stateExpiry = Date.now() + (5 * 60 * 1000); // 5 minutes
 
-    const authUrl = apiClient.getAuthorizationUrl(validRegion, state);
-    res.json({ success: true, data: { authUrl } });
+    // Explicitly save the session before sending the response
+    req.session.save((err) => {
+      if (err) {
+        logger.error({ err }, 'Error saving session before sending auth URL');
+        // Handle error appropriately, maybe throw or send an error response
+        return res.status(500).json({ success: false, message: 'Failed to initiate login process.' });
+      }
+      // Session saved, now send the auth URL
+      const authUrl = apiClient.getAuthorizationUrl(validRegion, state);
+      logger.info({ authUrl, sessionId: req.sessionID }, 'Session saved, sending auth URL to frontend');
+      res.json({ success: true, data: { authUrl } });
+    });
   }),
 
   callback: asyncHandler(async (req: Request, res: Response) => {
