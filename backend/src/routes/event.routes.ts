@@ -1,34 +1,34 @@
 import express from 'express';
 import eventController from '../controllers/event.controller.js';
-import authMiddleware from '../middleware/auth.middleware.js';
+import { authenticateJWT } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
 // Get all events for a guild
-router.get('/guild/:guildId', authMiddleware.authenticate, eventController.getGuildEvents);
+router.get('/guild/:guildId', authenticateJWT, eventController.getGuildEvents);
 
 // Get a specific event by ID
-router.get('/:eventId', authMiddleware.authenticate, eventController.getEventById);
+router.get('/:eventId', authenticateJWT, eventController.getEventById);
 
 // Create a new event
-router.post('/', authMiddleware.authenticate, eventController.createEvent);
+router.post('/', authenticateJWT, eventController.createEvent);
 
 // Update an event
-router.put('/:eventId', authMiddleware.authenticate, eventController.updateEvent);
+router.put('/:eventId', authenticateJWT, eventController.updateEvent);
 
 // Delete an event
-router.delete('/:eventId', authMiddleware.authenticate, eventController.deleteEvent);
+router.delete('/:eventId', authenticateJWT, eventController.deleteEvent);
 
 // Subscribe to an event
-router.post('/:eventId/subscribe', authMiddleware.authenticate, eventController.subscribeToEvent);
+router.post('/:eventId/subscribe', authenticateJWT, eventController.subscribeToEvent);
 
 // Update subscription status
-router.put('/:eventId/subscribe', authMiddleware.authenticate, eventController.updateSubscription);
+router.put('/:eventId/subscribe', authenticateJWT, eventController.updateSubscription);
 
 // Get event subscribers
-router.get('/:eventId/subscribers', authMiddleware.authenticate, eventController.getEventSubscribers);
+router.get('/:eventId/subscribers', authenticateJWT, eventController.getEventSubscribers);
 
 // Unsubscribe from an event
-router.delete('/:eventId/subscribe', authMiddleware.authenticate, eventController.unsubscribeFromEvent);
+router.delete('/:eventId/subscribe', authenticateJWT, eventController.unsubscribeFromEvent);
 
 export default router;
