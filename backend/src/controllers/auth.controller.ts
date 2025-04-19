@@ -1,14 +1,13 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import { BattleNetRegion, BattleNetUserProfile, User, UserRole, UserWithTokens } from '../../../shared/types/user.js'; // Import BattleNetRegion
 import config from '../config/index.js'; // Assuming index.js is the entry point
 import userModel from '../models/user.model.js';
-import { User, UserRole, UserWithTokens, BattleNetUserProfile, BattleNetRegion } from '../../../shared/types/user.js'; // Import BattleNetRegion
-import { AppError } from '../utils/error-handler.js';
-import { asyncHandler } from '../utils/error-handler.js';
-import logger from '../utils/logger.js'; // Import the logger
-import { OnboardingService } from '../services/onboarding.service.js'; // Import OnboardingService
 import { BattleNetApiClient } from '../services/battlenet-api.client.js'; // Import ApiClient
+import { OnboardingService } from '../services/onboarding.service.js'; // Import OnboardingService
+import { AppError, asyncHandler } from '../utils/error-handler.js';
+import logger from '../utils/logger.js'; // Import the logger
 
 // Instantiate services (consider dependency injection for better management)
 const apiClient = new BattleNetApiClient();
@@ -95,7 +94,19 @@ export default {
   }),
 
   callback: asyncHandler(async (req: Request, res: Response) => {
-    logger.info({ method: req.method, path: req.path, query: req.query }, 'Handling callback request');
+    // Enhanced logging for debugging state issues
+    logger.info(
+      {
+        method: req.method,
+        path: req.path,
+        query: req.query,
+        sessionId: req.sessionID, // Log the session ID
+        sessionExists: !!req.session, // Log if session object exists
+        sessionData: req.session ? { ...req.session } : null // Log session data (clone to avoid logging methods)
+      },
+      'Handling callback request - Inspecting session'
+    );
+
     const { code, state } = req.query;
     const { oauthState, region, stateExpiry } = req.session;
 

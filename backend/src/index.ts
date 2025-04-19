@@ -1,33 +1,35 @@
+import connectPgSimple from 'connect-pg-simple'; // Import connect-pg-simple
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import session from 'express-session';
-import pg from 'pg'; // Import pg
-import connectPgSimple from 'connect-pg-simple'; // Import connect-pg-simple
 import fs from 'fs';
-import https from 'https';
 import http from 'http'; // Import http module
-import path from 'path';
+import https from 'https';
 import schedule from 'node-schedule';
-import { runSync, SyncDependencies } from './jobs/battlenet-sync/index.js';
+import path from 'path';
+import pg from 'pg'; // Import pg
 import config from './config/index.js';
-import { BattleNetApiClient } from './services/battlenet-api.client.js';
+import { runSync, SyncDependencies } from './jobs/battlenet-sync/index.js';
+import characterModelInstance from './models/character.model.js';
 import guildModelInstance from './models/guild.model.js';
-import userModelInstance from './models/user.model.js';
 import guildMemberModelInstance from './models/guild_member.model.js';
 import rankModelInstance from './models/rank.model.js';
-import characterModelInstance from './models/character.model.js';
+import userModelInstance from './models/user.model.js';
+import { BattleNetApiClient } from './services/battlenet-api.client.js';
 import logger from './utils/logger.js'; // Import the logger
 
 import authRoutes from './routes/auth.routes.js';
+import characterRoutes from './routes/character.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import guildRoutes from './routes/guild.routes.js';
-import characterRoutes from './routes/character.routes.js';
 import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler.js';
 
 const app = express();
 
-app.set('trust proxy', 1); // Trust the first hop (Coolify proxy)
+// Enable trust proxy before session middleware
+app.set('trust proxy', 1); // Trust the first hop (e.g., Nginx)
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());

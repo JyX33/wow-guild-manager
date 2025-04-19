@@ -3,6 +3,7 @@ import { BattleNetWoWAccount } from '../../../shared/types/user.js'; // Import t
 import { Character, DbCharacter } from '../../../shared/types/guild.js';
 import BaseModel from '../db/BaseModel.js';
 import db from '../db/db.js';
+import logger from '../utils/logger.js';
 import { BattleNetRegion } from '../../../shared/types/user.js';
 import { AppError } from '../utils/error-handler.js';
 import { withTransaction } from '../utils/transaction.js';
@@ -222,7 +223,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
         for (const character of battleNetCharacters) {
           const charKey = `${character.name?.toLowerCase() || ''}-${character.realm?.toLowerCase() || ''}`;
           const existingId = existingCharsMap.get(charKey);
-
+          logger.info(`Processing character: ${character.name} (${character.realm}) - Existing ID: ${existingId}`);
           // --- Add Region Parsing Logic ---
           let region: BattleNetRegion = 'eu'; // Default to 'eu'
           const profileData = character.profile_json as any; // Cast for easier access
