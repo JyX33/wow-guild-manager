@@ -22,3 +22,11 @@ export interface TokenResponse {
   refresh_token?: string; // Optional for client_credentials
   scope: string;
 }
+
+/**
+ * Represents the response from the backend's /auth/refresh endpoint.
+ */
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+}

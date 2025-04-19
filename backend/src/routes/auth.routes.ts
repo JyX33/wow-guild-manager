@@ -1,6 +1,6 @@
 import express from 'express';
 import authController from '../controllers/auth.controller.js';
-import authMiddleware from '../middleware/auth.middleware.js';
+import { authenticateJWT, requireRole } from '../middleware/auth.middleware.js'; // Import named exports
 import { UserRole } from '../../../shared/types/user.js';
 
 const router = express.Router();
@@ -12,18 +12,18 @@ router.get('/login', authController.login);
 router.get('/callback', authController.callback);
 
 // Refresh access token using refresh token
-router.get('/refresh', authMiddleware.refreshToken, authController.refreshToken);
+router.post('/refresh', authController.refreshToken); // Change to POST and use the controller function directly
 
 // Logout user
-router.get('/logout', authController.logout);
+router.get('/logout', authController.logout); // Logout is primarily client-side with stateless JWTs
 
 // Get current authenticated user
-router.get('/me', authMiddleware.authenticate, authController.getCurrentUser);
+router.get('/me', authenticateJWT, authController.getCurrentUser); // Use the new middleware
 
 // Update user role (admin only)
-router.put('/role', 
-  authMiddleware.authenticate, 
-  authMiddleware.requireRole(UserRole.ADMIN), 
+router.put('/role',
+  authenticateJWT, // Use the new middleware
+  requireRole(UserRole.ADMIN), // Use the named import
   authController.updateUserRole
 );
 

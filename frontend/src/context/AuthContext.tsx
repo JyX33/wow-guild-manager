@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authService } from '../services/api';
 import { User, UserRole } from '../../../shared/types/user';
-import { AuthContextType } from '../../../shared/types/auth';
+import { AuthContextType, RefreshResponse } from '../../../shared/types/auth';
+import { ApiResponse } from '../services/api/core';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -41,82 +42,98 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
     }
   }, []);
 
-  // Effect to load user data on initial mount only
+  // Effect to load user data on initial mount using stored tokens
   useEffect(() => {
-    // Track whether we've already attempted to load user data
-    let isMounted = true;
-    let authAttemptMade = false;
-    
-    const loadUserOnce = async () => {
-      if (authAttemptMade || !isMounted) return;
-      
-      authAttemptMade = true;
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await authService.getCurrentUser();
-        
-        if (isMounted) {
+    const loadUserFromTokens = async () => {
+      setLoading(true);
+      setError(null);
+
+      const accessToken = localStorage.getItem('accessToken');
+      // const refreshToken = localStorage.getItem('refreshToken'); // Refresh token not needed for initial user load
+
+      if (accessToken) {
+        try {
+          // Attempt to fetch user data using the stored access token
+          const response = await authService.getCurrentUser();
+
           if (response.success && response.data) {
             setUser(response.data);
           } else {
-            // Don't show error for auth failures - this is expected when not logged in
+            // If fetching user fails (e.g., token expired), clear tokens
+            console.error('Failed to fetch user with stored token:', response.error);
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
             setUser(null);
-            // Only set error for non-auth failures
-            if (response.error && response.error.status !== 401) {
-              setError(response.error.message);
-            }
           }
-        }
-      } catch (err) {
-        if (isMounted) {
+        } catch (err) {
+          console.error('Error fetching user with stored token:', err);
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           setUser(null);
-          // Don't show error for auth failures in console either
-          if (!(err instanceof Error && err.message.includes('401'))) {
-            setError('Failed to load user data');
-            console.error('Error loading user:', err);
-          }
-        }
-      } finally {
-        if (isMounted) {
+          // Optionally set an error if it's not a 401
+          // if (!(err instanceof Error && err.message.includes('401'))) {
+          //   setError('Failed to load user data');
+          // }
+        } finally {
           setLoading(false);
         }
+      } else {
+        // No access token found, user is not authenticated
+        setUser(null);
+        setLoading(false);
       }
     };
 
-    loadUserOnce();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-  
-  // Separate effect for token refresh that doesn't depend on user state
+    loadUserFromTokens();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Separate effect for token refresh
   useEffect(() => {
-    // Set up automatic token refresh using the ref to check authentication
     const tokenRefreshInterval = setInterval(async () => {
-      if (isAuthenticatedRef.current) {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
         try {
-          await authService.refreshToken();
+          // Call refresh token endpoint
+          const response: ApiResponse<RefreshResponse> = await authService.refreshToken();
+          if (response.success && response.data?.accessToken && response.data?.refreshToken) {
+            // Store new tokens
+            localStorage.setItem('accessToken', response.data.accessToken);
+            localStorage.setItem('refreshToken', response.data.refreshToken);
+            // Optionally refresh user data after successful token refresh
+            // refreshUser();
+          } else {
+             console.error('Token refresh failed:', response.error);
+             // If refresh fails, clear tokens and user
+             localStorage.removeItem('accessToken');
+             localStorage.removeItem('refreshToken');
+             setUser(null);
+          }
         } catch (err) {
           console.error('Token refresh failed:', err);
+          // If refresh fails, clear tokens and user
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           setUser(null);
         }
+      } else {
+        // No refresh token, clear access token and user
+        localStorage.removeItem('accessToken');
+        setUser(null);
       }
     }, 15 * 60 * 1000); // Refresh every 15 minutes
-    
+
     return () => clearInterval(tokenRefreshInterval);
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
 
   const login = async (region: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await authService.login(region);
-      
+
       if (response.success && response.data) {
+        // Backend redirects to /auth/callback with tokens in fragment
         window.location.href = response.data.authUrl;
       } else {
         setError(response.error?.message || 'Login failed');
@@ -132,18 +149,28 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const logout = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await authService.logout();
-      
-      if (response.success) {
-        setUser(null);
-      } else {
-        setError(response.error?.message || 'Logout failed');
-      }
+      // Call backend logout endpoint (optional, depends on backend implementation)
+      // await authService.logout(); // Assuming backend logout clears server-side session/refresh token
+
+      // Clear tokens from local storage
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+
+      // Clear user state
+      setUser(null);
+
+      // Optionally redirect to login page
+      // navigate('/login'); // If using navigate, make sure it's available here
+
     } catch (err) {
       console.error('Logout error:', err);
-      setError('Failed to logout');
+      // Even if backend logout fails, clear frontend state for security
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      setUser(null);
+      setError('Failed to logout'); // Still show error for user feedback
     } finally {
       setLoading(false);
     }

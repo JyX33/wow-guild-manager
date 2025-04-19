@@ -37,8 +37,8 @@ const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for t
       role: user.role,
       tvs: tokenValidSince // Add token valid since timestamp
     },
-    config.auth.jwtSecret,
-    { expiresIn: config.auth.jwtExpiresIn }
+    process.env.JWT_SECRET!, // Use environment variable
+    { expiresIn: process.env.JWT_ACCESS_TOKEN_EXPIRES_IN } // Use environment variable
   );
 
   // Generate refresh token with longer expiry
@@ -48,8 +48,8 @@ const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for t
       id: user.id,
       tvs: tokenValidSince // Add token valid since timestamp
     },
-    config.auth.jwtRefreshSecret,
-    { expiresIn: config.auth.jwtRefreshExpiresIn }
+    process.env.JWT_SECRET!, // Use environment variable
+    { expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN } // Use environment variable
   );
 
   return { token, refreshToken };
@@ -184,39 +184,8 @@ export default {
     // Generate tokens
     const { token, refreshToken } = generateToken(user);
 
-    // Set tokens in cookies
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none', // <-- Changed to 'none'
-      maxAge: config.auth.cookieMaxAge
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none', // <-- Changed to 'none'
-      path: '/api/auth/refresh',  // Only accessible by refresh endpoint
-      maxAge: config.auth.refreshCookieMaxAge
-    });
-
-    // Store userId in session for backend use
-    // Line removed as per docs/auth-simplification-plan.md
-    logger.info({ userId: user.id }, 'User session established');
-
-    // Trigger the onboarding process (fetches profile, syncs chars, checks GM status)
-    // This runs asynchronously in the background, not blocking the redirect.
-    onboardingService.processNewUser(user.id, tokenData.access_token, callbackRegion)
-      .then(() => {
-        logger.info({ userId: user.id }, '[AuthCallback] Background onboarding process finished.');
-      })
-      .catch((onboardingError: any) => { // Add type annotation
-        // Log error from the async onboarding process
-        logger.error({ err: onboardingError, userId: user.id }, '[AuthCallback] Error during background onboarding process:');
-      });
-
-    // Redirect to frontend immediately
-    res.redirect(`${config.server.frontendUrl}/auth/callback`);
+    // Redirect to frontend with tokens in fragment
+    res.redirect(`${process.env.FRONTEND_URL}/auth/callback#accessToken=${token}&refreshToken=${refreshToken}`);
   }),
 
   logout: asyncHandler(async (req: Request, res: Response) => {
@@ -236,7 +205,7 @@ export default {
       logger.warn('Logout request received but no authenticated user found (req.user missing).');
     }
 
-    // Destroy the session
+    // Destroy the session (if still used for other purposes)
     req.session.destroy((err) => {
       if (err) {
         logger.error({ err, userId }, 'Error destroying session during logout');
@@ -245,20 +214,8 @@ export default {
         logger.info({ userId }, 'Session destroyed successfully during logout');
       }
 
-      // Clear cookies regardless of session destruction success
-      res.clearCookie('token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
-      });
-
-      res.clearCookie('refreshToken', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/api/auth/refresh'
-      });
-
+      // For JWT, logout is primarily client-side.
+      // We can send a success response.
       res.json({ success: true, message: 'Logged out successfully' });
     });
   }),
@@ -281,44 +238,50 @@ export default {
   }),
 
   refreshToken: asyncHandler(async (req: Request, res: Response) => {
-    // req.user is populated by the refreshToken middleware if the incoming refresh token is valid
-    if (!req.user) {
-      // This should technically not be reached if middleware is correct, but safeguard anyway
-      throw new AppError('Authentication failed (invalid refresh token)', 401);
+    // This endpoint will receive the refresh token in the request body
+    const { refreshToken: incomingRefreshToken } = req.body;
+
+    if (!incomingRefreshToken) {
+      throw new AppError('Refresh token not provided', 400);
     }
-    const userId = req.user.id;
-    logger.info({ method: req.method, path: req.path, userId }, 'Handling refreshToken request');
 
-    // 1. Generate NEW access and refresh tokens (containing updated tvs)
-    const { token, refreshToken: newRefreshToken } = generateToken(req.user); // Pass the full user object
+    try {
+      // Verify the refresh token
+      const decoded = jwt.verify(incomingRefreshToken, process.env.JWT_SECRET!) as { id: string, tvs: string };
 
-    // 2. Update the database with the NEW refresh token
-    const expiresAt = new Date(Date.now() + (parseInt(config.auth.jwtExpiresIn, 10) * 1000)); // Ensure jwtExpiresIn is treated as number
-    await userModel.updateTokensForRefresh(userId, token, newRefreshToken, expiresAt);
-    logger.info({ userId }, 'Stored new refresh token in database.');
+      // Find the user based on the decoded ID
+      const user = await userModel.findById(parseInt(decoded.id, 10)); // Convert id to number
 
-    // 3. Set new tokens in cookies
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: config.auth.cookieMaxAge
-    });
+      if (!user) {
+        throw new AppError('User not found', 401);
+      }
 
-    res.cookie('refreshToken', newRefreshToken, { // Use the NEW refresh token
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/api/auth/refresh',
-      maxAge: config.auth.refreshCookieMaxAge
-    });
+      // Optional: Check if the tokens_valid_since matches the token's tvs
+      // This helps invalidate old refresh tokens if a user logs out or password changes
+      if (user.tokens_valid_since && new Date(decoded.tvs).getTime() < new Date(user.tokens_valid_since).getTime()) {
+         throw new AppError('Refresh token is invalid or expired due to logout/password change', 401);
+      }
 
-    logger.info({ userId }, 'Token refresh successful, new tokens issued.');
-    res.json({ success: true, message: 'Token refreshed successfully' });
+
+      // Generate NEW access and refresh tokens
+      const { token: newAccessToken, refreshToken: newRefreshToken } = generateToken(user);
+
+      // Update the database with the NEW refresh token (if storing them)
+      // If refresh tokens are stateless JWTs, you might not need this step.
+      // Assuming for now we are not storing refresh tokens in DB for statelessness.
+      // If you were storing them, you'd update the user record here.
+
+      logger.info({ userId: user.id }, 'Token refresh successful, new tokens issued.');
+      res.json({ success: true, data: { accessToken: newAccessToken, refreshToken: newRefreshToken } });
+
+    } catch (error: any) {
+      logger.error({ err: error }, 'Error refreshing token');
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
   }),
 
   updateUserRole: asyncHandler(async (req: Request, res: Response) => {
-    logger.info({ method: req.method, path: req.path, body: req.body, userId: req.session?.userId }, 'Handling updateUserRole request');
+    logger.info({ method: req.method, path: req.path, body: req.body, userId: req.user?.id }, 'Handling updateUserRole request'); // Use req.user?.id
     const { userId, role } = req.body;
 
     if (!userId || !role || !Object.values(UserRole).includes(role as UserRole)) {
