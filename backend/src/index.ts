@@ -52,21 +52,20 @@ const sessionStore = new PgStore({
   createTableIfMissing: true, // Automatically create the table
 });
 
-
 // Session middleware
 app.use(session({
   store: sessionStore, // Use the PostgreSQL store
   secret: config.auth.jwtSecret,
   resave: false,
-  saveUninitialized: true, // <-- Changed to true
+  saveUninitialized: true,
   cookie: {
-    secure: true, // Always true since we use HTTPS
+    secure: true, // Required for sameSite: 'none'
     httpOnly: true,
-    maxAge: config.auth.cookieMaxAge, // Add comma here
-    sameSite: 'lax', // Explicitly set SameSite (lowercase)
+    maxAge: config.auth.cookieMaxAge,
+    sameSite: 'none', // <-- Changed to 'none'
+    path: '/', // Ensure path is root
   }
 }) as any); // Cast to any to bypass complex type error for now
-
 
 // API Health check routes
 app.get('/api/health', (_req, res) => {
