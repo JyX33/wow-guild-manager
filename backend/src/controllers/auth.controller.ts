@@ -188,14 +188,14 @@ export default {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none', // <-- Changed to 'none'
       maxAge: config.auth.cookieMaxAge
     });
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none', // <-- Changed to 'none'
       path: '/api/auth/refresh',  // Only accessible by refresh endpoint
       maxAge: config.auth.refreshCookieMaxAge
     });
