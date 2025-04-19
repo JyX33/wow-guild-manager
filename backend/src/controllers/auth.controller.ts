@@ -34,6 +34,7 @@ const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for t
     {
       id: user.id,
       battle_net_id: user.battle_net_id,
+      battletag: user.battletag, // Include battletag in JWT payload
       role: user.role,
       tvs: tokenValidSince // Add token valid since timestamp
     },
