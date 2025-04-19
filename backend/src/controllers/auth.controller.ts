@@ -97,7 +97,10 @@ export default {
         return res.status(500).json({ success: false, message: 'Failed to initiate login process.' });
       }
       // Session saved, now send the auth URL
-      const authUrl = apiClient.getAuthorizationUrl(validRegion, state);
+      const callbackUrl = new URL(config.battlenet.redirectUri);
+      callbackUrl.searchParams.set('state_in_redirect', state);
+      const encodedRedirectUri = callbackUrl.toString();
+      const authUrl = apiClient.getAuthorizationUrl(validRegion, state, encodedRedirectUri);
       logger.info({ authUrl, sessionId: req.sessionID }, 'Session saved, sending auth URL to frontend');
       res.json({ success: true, data: { authUrl } });
     });
@@ -120,18 +123,21 @@ export default {
     const { code, state } = req.query;
     const { oauthState, region, stateExpiry } = req.session;
     logger.info({ code, state, oauthState, region, stateExpiry }, 'Callback request parameters');
+    const stateInRedirect = req.query.state_in_redirect;
+
     // Verify state to prevent CSRF
-    if (!state || state !== oauthState) {
+    if (!state || state !== stateInRedirect) {
+      logger.warn({ queryState: state, stateInRedirect: stateInRedirect, sessionId: req.sessionID }, 'Invalid state parameter during callback');
       throw new AppError('Invalid state parameter', 400);
     }
 
-    // Check if state has expired
+    // Check if state has expired (still using session state expiry as a secondary check)
     if (!stateExpiry || Date.now() > stateExpiry) {
+      logger.warn({ stateExpiry, currentTime: Date.now(), sessionId: req.sessionID }, 'Authorization request has expired');
       throw new AppError('Authorization request has expired', 400);
     }
 
-    // Clear the state from session to prevent replay attacks
-    delete req.session.oauthState;
+    // Clear the state expiry from session
     delete req.session.stateExpiry;
 
     // Ensure region is valid before proceeding

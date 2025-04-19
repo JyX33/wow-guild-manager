@@ -401,7 +401,7 @@ export class BattleNetApiClient {
   /**
    * Constructs the Battle.net OAuth2 authorization URL.
    */
-  public getAuthorizationUrl(region: BattleNetRegion, state: string): string {
+  public getAuthorizationUrl(region: BattleNetRegion, state: string, redirectUri?: string): string {
     const validRegion = this._validateRegion(region);
     const regionConfig = config.battlenet.regions[validRegion];
 
@@ -415,7 +415,7 @@ export class BattleNetApiClient {
 
     const authUrl = new URL(`${regionConfig.authBaseUrl}/authorize`);
     authUrl.searchParams.append('client_id', config.battlenet.clientId);
-    authUrl.searchParams.append('redirect_uri', config.battlenet.redirectUri);
+    authUrl.searchParams.append('redirect_uri', redirectUri || config.battlenet.redirectUri);
     authUrl.searchParams.append('response_type', 'code');
     authUrl.searchParams.append('scope', config.battlenet.scopes.join(' '));
     authUrl.searchParams.append('state', state);
