@@ -46,7 +46,7 @@ export const authService = {
    */
   refreshToken: () =>
     apiRequest<RefreshResponse>({
-      method: 'GET',
+      method: 'POST',
       url: '/auth/refresh'
     }),
     
