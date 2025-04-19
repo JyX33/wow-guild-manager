@@ -52,6 +52,7 @@ const sessionStore = new PgStore({
   createTableIfMissing: true, // Automatically create the table
 });
 
+const NODE_ENV = config.server.nodeEnv; // Use the corrected value from config
 // Session middleware
 app.use(session({
   store: sessionStore, // Use the PostgreSQL store
@@ -59,7 +60,7 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: {
-    secure: true, // Required for sameSite: 'none'
+    secure: NODE_ENV === 'production', // Required for sameSite: 'none' in production
     httpOnly: true,
     maxAge: config.auth.cookieMaxAge,
     sameSite: 'none', // <-- Changed to 'none'
@@ -93,7 +94,8 @@ app.use(errorHandlerMiddleware);
 
 // Start server based on environment
 const PORT = config.server.port;
-const NODE_ENV = config.server.nodeEnv; // Use the corrected value from config
+
+// Start server based on environment
 
 // Check process.env directly for server start logic
 // Check the corrected config value for server start logic
