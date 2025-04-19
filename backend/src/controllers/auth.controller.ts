@@ -80,14 +80,13 @@ export default {
     }
 
 
-    const state = generateState();
+const state = generateState();
+    const stateExpiry = Date.now() + (5 * 60 * 1000); // 5 minutes from now
 
-    // Store state and validated region in session
+    // Store state and validated region in session (as fallback)
     req.session.oauthState = state;
     req.session.region = validRegion; // Assign the validated BattleNetRegion
-
-    // Set a short expiry on the state
-    req.session.stateExpiry = Date.now() + (5 * 60 * 1000); // 5 minutes
+    req.session.stateExpiry = stateExpiry; // Store expiry in session as fallback
 
     // Explicitly save the session before sending the response
     req.session.save((err) => {
@@ -99,6 +98,7 @@ export default {
       // Session saved, now send the auth URL
       const callbackUrl = new URL(config.battlenet.redirectUri);
       callbackUrl.searchParams.set('state_in_redirect', state);
+      callbackUrl.searchParams.set('expiry_in_redirect', stateExpiry.toString()); // Embed expiry in redirect_uri
       const encodedRedirectUri = callbackUrl.toString();
       const authUrl = apiClient.getAuthorizationUrl(validRegion, state, encodedRedirectUri);
       logger.info({ authUrl, sessionId: req.sessionID }, 'Session saved, sending auth URL to frontend');
@@ -121,9 +121,11 @@ export default {
     );
 
     const { code, state } = req.query;
-    const { oauthState, region, stateExpiry } = req.session;
-    logger.info({ code, state, oauthState, region, stateExpiry }, 'Callback request parameters');
-    const stateInRedirect = req.query.state_in_redirect;
+    const stateInRedirect = req.query.state_in_redirect as string | undefined;
+    const expiryInRedirect = req.query.expiry_in_redirect as string | undefined;
+    const { region } = req.session; // Keep region from session
+
+    logger.info({ code, state, stateInRedirect, expiryInRedirect, region }, 'Callback request parameters');
 
     // Verify state to prevent CSRF
     if (!state || state !== stateInRedirect) {
@@ -131,14 +133,18 @@ export default {
       throw new AppError('Invalid state parameter', 400);
     }
 
-    // Check if state has expired (still using session state expiry as a secondary check)
-    if (!stateExpiry || Date.now() > stateExpiry) {
-      logger.warn({ stateExpiry, currentTime: Date.now(), sessionId: req.sessionID }, 'Authorization request has expired');
-      throw new AppError('Authorization request has expired', 400);
+    // Validate expiry from redirect_uri
+    if (!expiryInRedirect) {
+      logger.warn({ expiryInRedirect, sessionId: req.sessionID }, 'Expiry parameter missing from redirect_uri');
+      throw new AppError('Authorization request has expired', 400); // Treat missing expiry as expired
     }
 
-    // Clear the state expiry from session
-    delete req.session.stateExpiry;
+    const expiryTimestamp = parseInt(expiryInRedirect, 10);
+
+    if (isNaN(expiryTimestamp) || Date.now() > expiryTimestamp) {
+      logger.warn({ expiryInRedirect, expiryTimestamp, currentTime: Date.now(), sessionId: req.sessionID }, 'Authorization request has expired');
+      throw new AppError('Authorization request has expired', 400);
+    }
 
     // Ensure region is valid before proceeding
     const callbackRegion = region || 'eu'; // Default to 'eu' if somehow missing from session
