@@ -243,7 +243,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
            existingCharsResult = { rows: [] };
         }
 
-        logger.info({existingCharsResult: existingCharsResult}, `Existing characters for user ${userId} matching Battle.net data:`);
+        logger.info({existingCharsMap: existingCharsMap}, `Existing characters for user ${userId} matching Battle.net data:`);
 
 
         // Process each character
