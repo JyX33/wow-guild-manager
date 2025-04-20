@@ -206,15 +206,15 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           }
         }
         logger.info(`Syncing ${battleNetCharacters.length} characters from Battle.net for user ${userId}.`);
-        logger.info(`Battle.net characters: ${JSON.stringify(battleNetCharacters, null, 2)}`);
         // Get existing characters for this user that match the incoming Battle.net characters
         // Extract unique name/realm pairs from battleNetCharacters
         const uniqueNameRealmPairs = Array.from(new Set(battleNetCharacters.map(char =>
-          `${char.name?.toLowerCase() || ''}-${char.realm?.toLowerCase() || ''}`
+          `${char.name?.toLowerCase() || ''}:${char.realm?.toLowerCase() || ''}`
         ))).map(pair => {
-          const [name, realm] = pair.split('-');
+          const [name, realm] = pair.split(':');
           return { name, realm };
         });
+        logger.info(`Unique name/realm pairs for user ${userId}:`, uniqueNameRealmPairs.length);
         let existingCharsResult;
         const existingCharsMap = new Map<string, number>();
 
