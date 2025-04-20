@@ -1,13 +1,11 @@
-import { CharacterRole } from '../../../shared/types/index.js'; // Removed BattleNetCharacter
-import { BattleNetWoWAccount } from '../../../shared/types/user.js'; // Import the correct account type
 import { Character, DbCharacter } from '../../../shared/types/guild.js';
+import { CharacterRole } from '../../../shared/types/index.js'; // Removed BattleNetCharacter
+import { BattleNetRegion, BattleNetWoWAccount } from '../../../shared/types/user.js'; // Import the correct account type
 import BaseModel from '../db/BaseModel.js';
 import db from '../db/db.js';
-import logger from '../utils/logger.js';
-import { BattleNetRegion } from '../../../shared/types/user.js';
 import { AppError } from '../utils/error-handler.js';
+import logger from '../utils/logger.js';
 import { withTransaction } from '../utils/transaction.js';
-import { log } from 'console';
 
 // Helper function to parse region from URL (can be moved to a util file later)
 const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null => {
@@ -249,8 +247,8 @@ export class CharacterModel extends BaseModel<DbCharacter> {
            //existingCharsResult = { rows: [] };
         }
 
-        logger.info({existingCharsMap: existingCharsMap}, `Existing characters for user ${userId} matching Battle.net data:`);
-
+        //Log Charmap
+        console.log("existingCharsMap:", existingCharsMap);
 
         // Process each character
         for (const character of battleNetCharacters) {
