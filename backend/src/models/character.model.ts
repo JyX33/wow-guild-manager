@@ -234,7 +234,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
             WHERE (lower(name), lower(realm)) IN (${placeholders})
           `;
 
-          existingCharsResult = await client.query(query, ...flatValues);
+          existingCharsResult = await client.query(query, [...flatValues]);
 
           existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
             existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
