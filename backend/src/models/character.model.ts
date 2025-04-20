@@ -235,9 +235,14 @@ export class CharacterModel extends BaseModel<DbCharacter> {
 
             existingCharsResult = await client.query(query, flatValues);
 
+            console.log("existingCharsResult:", existingCharsResult.rows);
+            
             existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
-            existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
+              existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
+              console.log(`Added to existingCharsMap: ${row.name.toLowerCase()}-${row.realm.toLowerCase()} -> ${row.id}`);
             });
+            
+            console.log("existingCharsMap size after population:", existingCharsMap.size);
         } else {
            // If no characters from Battle.net, there are no existing characters to match
            existingCharsResult = { rows: [] };
