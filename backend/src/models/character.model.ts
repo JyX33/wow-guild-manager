@@ -205,7 +205,8 @@ export class CharacterModel extends BaseModel<DbCharacter> {
             });
           }
         }
-
+        logger.info(`Syncing ${battleNetCharacters.length} characters from Battle.net for user ${userId}.`);
+        logger.info(`Battle.net characters: ${JSON.stringify(battleNetCharacters, null, 2)}`);
         // Get existing characters for this user that match the incoming Battle.net characters
         // Extract unique name/realm pairs from battleNetCharacters
         const uniqueNameRealmPairs = Array.from(new Set(battleNetCharacters.map(char =>
