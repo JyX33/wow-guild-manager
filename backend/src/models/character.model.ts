@@ -214,7 +214,6 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           const [name, realm] = pair.split(':');
           return { name, realm };
         });
-        logger.info(`Unique name/realm pairs for user ${userId}:`, uniqueNameRealmPairs.length);
         let existingCharsResult;
         const existingCharsMap = new Map<string, number>();
 
@@ -234,27 +233,21 @@ export class CharacterModel extends BaseModel<DbCharacter> {
 
             existingCharsResult = await client.query(query, flatValues);
 
-            console.log("existingCharsResult:", existingCharsResult.rows);
             
             existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
               existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
-              console.log(`Added to existingCharsMap: ${row.name.toLowerCase()}-${row.realm.toLowerCase()} -> ${row.id}`);
             });
             
-            console.log("existingCharsMap size after population:", existingCharsMap.size);
         } else {
            // If no characters from Battle.net, there are no existing characters to match
            existingCharsResult = { rows: [] };
         }
 
-        //Log Charmap
-        console.log("existingCharsMap:", existingCharsMap);
-
         // Process each character
         for (const character of battleNetCharacters) {
           const charKey = `${character.name?.toLowerCase() || ''}-${character.realm?.toLowerCase() || ''}`;
           const existingId = existingCharsMap.get(charKey);
-          logger.info(`Processing character: ${character.name} (${character.realm}) - Existing ID: ${existingId}`);
+          logger.debug(`Processing character: ${character.name} (${character.realm}) - Existing ID: ${existingId}`);
           // --- Add Region Parsing Logic ---
           let region: BattleNetRegion = 'eu'; // Default to 'eu'
           const profileData = character.profile_json as any; // Cast for easier access
