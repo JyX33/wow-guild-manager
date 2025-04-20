@@ -222,23 +222,23 @@ export class CharacterModel extends BaseModel<DbCharacter> {
 
         if (uniqueNameRealmPairs.length > 0) {
           // Prepare values for the query: [[name1, realm1], [name2, realm2], ...]
-          const queryValues = uniqueNameRealmPairs.map(key => [key.name, key.realm]);
+            const queryValues = uniqueNameRealmPairs.map(key => [key.name.toLowerCase(), key.realm.toLowerCase()]);
 
-          // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
-          const placeholders = queryValues.map((_, index) => `($${index * 2 + 2}, $${index * 2 + 3})`).join(', ');
-          const flatValues = queryValues.flat(); // Flatten the array for query parameters
+            // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
+            const placeholders = queryValues.map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`).join(', ');
+            const flatValues = queryValues.flat(); // Flatten the array for query parameters
 
-          const query = `
+            const query = `
             SELECT id, name, realm
             FROM ${this.tableName}
             WHERE (lower(name), lower(realm)) IN (${placeholders})
-          `;
+            `;
 
-          existingCharsResult = await client.query(query, [...flatValues]);
+            existingCharsResult = await client.query(query, flatValues);
 
-          existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
+            existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
             existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
-          });
+            });
         } else {
            // If no characters from Battle.net, there are no existing characters to match
            existingCharsResult = { rows: [] };
