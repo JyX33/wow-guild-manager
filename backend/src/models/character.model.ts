@@ -216,7 +216,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           const [name, realm] = pair.split('-');
           return { name, realm };
         });
-
+        logger.info(`Unique name-realm pairs for user ${userId}:`, uniqueNameRealmPairs);
         let existingCharsResult;
         const existingCharsMap = new Map<string, number>();
 
@@ -245,7 +245,6 @@ export class CharacterModel extends BaseModel<DbCharacter> {
         }
 
         logger.info(`Existing characters for user ${userId} matching Battle.net data:`, existingCharsResult.rows);
-        logger.info(`Existing characters map for user ${userId}:`, existingCharsMap);
 
 
         // Process each character
