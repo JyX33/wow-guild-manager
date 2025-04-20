@@ -244,8 +244,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
             console.log("existingCharsMap size after population:", existingCharsMap.size);
         } else {
            // If no characters from Battle.net, there are no existing characters to match
-           logger.info(`No characters found in Battle.net data for user ${userId}.`);
-           //existingCharsResult = { rows: [] };
+           existingCharsResult = { rows: [] };
         }
 
         //Log Charmap

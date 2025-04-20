@@ -157,12 +157,14 @@ export class OnboardingService {
            if (!uniqueGuilds.has(guildInfoFromProfile.id)) {
              let guildRegion: BattleNetRegion | undefined | null = undefined;
              const realmSlug = guildInfoFromProfile.realm.slug;
+             const guildHref = guildInfoFromProfile.key.href;
 
-             if (realmSlug) {
-                 if (realmSlug.endsWith('-eu')) { guildRegion = 'eu'; }
-                 else if (realmSlug.endsWith('-kr')) { guildRegion = 'kr'; }
-                 else if (realmSlug.endsWith('-tw')) { guildRegion = 'tw'; }
-                 else if (realmSlug.endsWith('-cn')) { guildRegion = 'cn'; }
+             if (guildHref) {
+                // Extract region from the guild href URL
+                if (guildHref.startsWith('https://eu.')) { guildRegion = 'eu'; }
+                else if (guildHref.startsWith('https://us.')) { guildRegion = 'us'; }
+                else if (guildHref.startsWith('https://kr.')) { guildRegion = 'kr'; }
+                else if (guildHref.startsWith('https://tw.')) { guildRegion = 'tw'; }
              }
              if (!guildRegion && char.region && ['us', 'eu', 'kr', 'tw', 'cn'].includes(char.region)) {
                   guildRegion = char.region as BattleNetRegion;
