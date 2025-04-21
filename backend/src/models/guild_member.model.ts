@@ -66,7 +66,7 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
       const firstMember = membersData[0];
       const keys = Object.keys(firstMember).filter(k => firstMember[k as keyof DbGuildMember] !== undefined); // Cast k
       // Add created_at and updated_at automatically. is_main will be included if present in keys.
-      const columns = [...keys, 'created_at', 'updated_at'].join(', ');
+      const columns = [...keys, 'created_at', 'updated_at', 'joined_at'].join(', '); // Add joined_at
 
       const valuePlaceholders: string[] = [];
       const allValues: any[] = [];
@@ -82,8 +82,10 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
         // Add NOW() for timestamps
         rowValues.push(new Date()); // For created_at
         rowValues.push(new Date()); // For updated_at
+        rowValues.push(new Date()); // For joined_at
         rowPlaceholders.push(`$${valueIndex++}`);
         rowPlaceholders.push(`$${valueIndex++}`);
+        rowPlaceholders.push(`$${valueIndex++}`); // Placeholder for joined_at
 
         valuePlaceholders.push(`(${rowPlaceholders.join(', ')})`);
         allValues.push(...rowValues);
@@ -92,7 +94,7 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
       const query = `
         INSERT INTO ${this.tableName} (${columns})
         VALUES ${valuePlaceholders.join(', ')}
-        ON CONFLICT (guild_id, character_id) DO NOTHING
+        ON CONFLICT (guild_id, character_id) DO UPDATE SET left_at = NULL, updated_at = NOW() WHERE guild_members.left_at IS NOT NULL
       `;
 
       await dbClient.query(query, allValues);
@@ -109,7 +111,7 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
    * @param membersData Array of objects containing memberId and update payload.
    * @param client Optional transaction client.
    */
-  async bulkUpdate(membersData: { memberId: number; rank?: number; characterId?: number; memberData?: any; is_main?: boolean; isAvailable?: boolean }[], client?: any): Promise<void> { // Added isAvailable to input type
+  async bulkUpdate(membersData: { memberId: number; rank?: number; characterId?: number; memberData?: any; is_main?: boolean; isAvailable?: boolean; left_at?: Date | null }[], client?: any): Promise<void> { // Added isAvailable and left_at to input type
     if (!membersData || membersData.length === 0) {
       return;
     }
@@ -142,6 +144,11 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
           updates.push(`is_available = $${valueIndex++}`); // Use correct snake_case column name
           values.push(memberToUpdate.isAvailable);
         }
+        // Add left_at handling for soft delete
+        if (memberToUpdate.left_at !== undefined) {
+          updates.push(`left_at = $${valueIndex++}`);
+          values.push(memberToUpdate.left_at);
+        }
         updates.push(`updated_at = NOW()`);
 
         if (updates.length > 1) { // Only update if there are changes + updated_at
@@ -159,7 +166,8 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
 
   /**
    * Bulk deletes multiple guild members by their IDs within a transaction.
-   * @param memberIds Array of member IDs to delete.
+   * This method is modified to perform a soft delete by setting the `left_at` timestamp.
+   * @param memberIds Array of member IDs to soft delete.
    * @param client Optional transaction client.
    */
   async bulkDelete(memberIds: number[], client?: any): Promise<void> {
@@ -169,11 +177,11 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
     const dbClient = client || db;
     try {
       await dbClient.query(
-        `DELETE FROM ${this.tableName} WHERE id = ANY($1::int[])`,
+        `UPDATE ${this.tableName} SET left_at = NOW(), updated_at = NOW() WHERE id = ANY($1::int[])`, // Soft delete
         [memberIds]
       );
     } catch (error) {
-      throw new AppError(`Error bulk deleting guild members: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(`Error bulk soft deleting guild members: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 
@@ -246,6 +254,50 @@ export class GuildMemberModel extends BaseModel<DbGuildMember> {
   }
 
   // Add other specific methods for guild_members if needed
+  /**
+   * Finds guild members who joined recently and are still in the guild.
+   * @param guildId The ID of the guild.
+   * @param joinedSinceDate The date to filter joins from.
+   * @returns A promise resolving to an array of DbGuildMember.
+   */
+  async findRecentJoins(guildId: number, joinedSinceDate: Date): Promise<DbGuildMember[]> {
+    try {
+      const query = `
+        SELECT *
+        FROM ${this.tableName}
+        WHERE guild_id = $1
+          AND "joined_at" >= $2
+          AND "left_at" IS NULL
+      `;
+      const params = [guildId, joinedSinceDate];
+      const result = await db.query(query, params);
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error finding recent guild joins: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
+   * Finds guild members who left recently.
+   * @param guildId The ID of the guild.
+   * @param leftSinceDate The date to filter leaves from.
+   * @returns A promise resolving to an array of DbGuildMember.
+   */
+  async findRecentLeaves(guildId: number, leftSinceDate: Date): Promise<DbGuildMember[]> {
+    try {
+      const query = `
+        SELECT *
+        FROM ${this.tableName}
+        WHERE guild_id = $1
+          AND "left_at" >= $2
+      `;
+      const params = [guildId, leftSinceDate];
+      const result = await db.query(query, params);
+      return result.rows;
+    } catch (error) {
+      throw new AppError(`Error finding recent guild leaves: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
 }
 
 const guildMemberModel = new GuildMemberModel();
@@ -263,4 +315,6 @@ export const bulkCreate = guildMemberModel.bulkCreate.bind(guildMemberModel);
 export const bulkUpdate = guildMemberModel.bulkUpdate.bind(guildMemberModel);
 export const bulkDelete = guildMemberModel.bulkDelete.bind(guildMemberModel);
 
+export const findRecentJoins = guildMemberModel.findRecentJoins.bind(guildMemberModel);
+export const findRecentLeaves = guildMemberModel.findRecentLeaves.bind(guildMemberModel);
 export const findByCharacterIds = guildMemberModel.findByCharacterIds.bind(guildMemberModel);

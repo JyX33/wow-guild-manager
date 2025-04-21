@@ -1,10 +1,11 @@
 import { apiRequest } from './core';
-import { 
-  Guild, 
-  GuildMember, 
-  EnhancedGuildMember, 
+import {
+  Guild,
+  GuildMember,
+  EnhancedGuildMember,
   GuildRank,
-  ClassifiedMember // Added for classified roster
+  ClassifiedMember, // Added for classified roster
+  GuildMemberActivity // Added for member activity
 } from '../../../../shared/types/guild';
 export const guildService = {
   /**
@@ -87,5 +88,14 @@ export const guildService = {
     apiRequest<ClassifiedMember[]>({
       method: 'GET',
       url: `/guilds/${guildId}/classified-roster`
+    }),
+
+  /**
+   * Get recent guild member activity (new and left members)
+   */
+  getGuildMemberActivity: (guildId: number) =>
+    apiRequest<GuildMemberActivity>({
+      method: 'GET',
+      url: `/guilds/${guildId}/member-activity`
     }),
 };

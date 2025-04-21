@@ -26,6 +26,10 @@ const GuildPage: React.FC = () => {
   const [isGuildMaster, setIsGuildMaster] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [error, setError] = useState<string | null>(null);
+  // Add state for member activity
+  const [memberActivity, setMemberActivity] = useState<{ newMembers: any[]; leftMembers: any[] } | null>(null);
+  const [loadingActivity, setLoadingActivity] = useState(true);
+  const [activityError, setActivityError] = useState<string | null>(null);
   // Add a key to force refresh the calendar component when needed
   const [calendarKey, setCalendarKey] = useState(Date.now());
 
@@ -56,6 +60,29 @@ const GuildPage: React.FC = () => {
 
     fetchGuildData();
   }, [guildId, user?.id]);
+
+  // Effect to fetch member activity
+  useEffect(() => {
+    const fetchMemberActivity = async () => {
+      try {
+        if (!guildId) return;
+        setLoadingActivity(true);
+        const activityResponse = await guildService.getGuildMemberActivity(parseInt(guildId));
+        if (activityResponse.success && activityResponse.data) {
+          setMemberActivity(activityResponse.data);
+        } else {
+          setActivityError(activityResponse.error?.message || 'Failed to load member activity');
+        }
+      } catch (error) {
+        setActivityError('Failed to fetch member activity');
+        console.error('Failed to fetch member activity:', error);
+      } finally {
+        setLoadingActivity(false);
+      }
+    };
+
+    fetchMemberActivity();
+  }, [guildId]);
 
   const handleEventSelect = (event: Event): void => {
     navigate(`/event/${event.id}`);
@@ -187,10 +214,53 @@ const GuildPage: React.FC = () => {
         {activeTab === 'general' && guild && (
           <div className="bg-white rounded-lg shadow p-6">
             <GuildGeneralInfo guild={guild} />
+
+            {/* Member Activity Sections */}
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* New Members */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4">New Members (Last 2 Days)</h3>
+                {loadingActivity && <LoadingSpinner size="md" />}
+                {activityError && <div className="text-red-600">{activityError}</div>}
+                {memberActivity && memberActivity.newMembers.length > 0 && (
+                  <ul className="space-y-2">
+                    {memberActivity.newMembers.map((member, index) => (
+                      <li key={index} className="border-b pb-2 last:border-b-0">
+                        <p className="font-medium">{member.character_name}</p>
+                        <p className="text-sm text-gray-600">Level {member.level} {member.class_name}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {memberActivity && memberActivity.newMembers.length === 0 && !loadingActivity && !activityError && (
+                  <div className="text-gray-500">No new members in the last 2 days.</div>
+                )}
+              </div>
+
+              {/* Left Members */}
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Left Members (Last 2 Days)</h3>
+                {loadingActivity && <LoadingSpinner size="md" />}
+                {activityError && <div className="text-red-600">{activityError}</div>}
+                {memberActivity && memberActivity.leftMembers.length > 0 && (
+                  <ul className="space-y-2">
+                    {memberActivity.leftMembers.map((member, index) => (
+                      <li key={index} className="border-b pb-2 last:border-b-0">
+                        <p className="font-medium">{member.character_name}</p>
+                        <p className="text-sm text-gray-600">Level {member.level} {member.class_name}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {memberActivity && memberActivity.leftMembers.length === 0 && !loadingActivity && !activityError && (
+                  <div className="text-gray-500">No left members in the last 2 days.</div>
+                )}
+              </div>
+            </div>
           </div>
         )}
-        
-        
+
+
         {activeTab === 'members' && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <EnhancedGuildMembersList guildId={parseInt(guildId || '0')} />

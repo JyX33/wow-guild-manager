@@ -19,6 +19,7 @@ router.get('/:guildId/members/enhanced', authenticateJWT, guildController.getEnh
 // Get guild members (basic)
 router.get('/:guildId/members', authenticateJWT, guildController.getGuildMembers);
 
+router.get('/:guildId/member-activity', authenticateJWT, guildController.getGuildMemberActivity);
 // Guild rank management
 router.get('/:guildId/ranks', authenticateJWT, guildController.getGuildRanks);
 

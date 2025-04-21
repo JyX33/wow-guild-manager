@@ -532,6 +532,8 @@ export interface DbGuildMember {
     member_data_json?: BattleNetGuildMember; // Added by migration
     created_at?: string;
     updated_at?: string;
+    joined_at?: string | null; // Added for tracking join date
+    left_at?: string | null; // Added for tracking leave date (nullable for soft delete)
     consecutive_update_failures?: number; // Added for tracking update failures
 }
 
@@ -819,4 +821,12 @@ export interface ClassifiedMember {
   classification: 'Main' | 'Alt';
   groupKey: string | number | null; // user_id or toy_hash or null
   mainCharacterId: number | null; // Link to main character if this is an alt
+
+
+/**
+ * Represents recent guild member activity.
+ */
+export interface GuildMemberActivity {
+  newMembers: DbGuildMember[]; // Or a more specific type if needed for frontend
+  leftMembers: DbGuildMember[]; // Or a more specific type if needed for frontend
 }

@@ -17,6 +17,7 @@ import * as guildModel from '../models/guild.model.js';
 import * as guildMemberModel from '../models/guild_member.model.js'; // Added
 import * as rankModel from '../models/rank.model.js';
 import * as userModel from '../models/user.model.js';
+import * as guildService from '../services/guild.service.js'; // Added for member activity
 import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
 import { CharacterClassificationService, ClassifiedMember } from '../services/character-classification.service.js'; // Added for classified roster
@@ -535,8 +536,25 @@ export default {
       success: true,
       data: enhancedRanks
     });
-  })
-,
+  }),
+
+  getGuildMemberActivity: asyncHandler(async (req: Request, res: Response) => {
+    logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildMemberActivity request');
+    const { guildId } = req.params;
+    const guildIdInt = parseInt(guildId);
+
+    if (isNaN(guildIdInt)) {
+      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+    }
+
+    // Call the service function to get member activity
+    const memberActivity = await guildService.getRecentMemberActivity(guildIdInt);
+
+    res.json({
+      success: true,
+      data: memberActivity
+    });
+  }),
 
   // --- NEW: Get Classified Guild Roster ---
   getClassifiedGuildRoster: asyncHandler(async (req: Request, res: Response) => {

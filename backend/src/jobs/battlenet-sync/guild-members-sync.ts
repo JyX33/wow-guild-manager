@@ -191,6 +191,7 @@ export async function syncGuildMembersTable(
         const updatesToDeactivate = memberIdsToDeactivate.map((memberId: number) => ({
           memberId: memberId,
           is_available: false,
+          left_at: new Date(), // Add the left_at timestamp
         }));
         try {
           await guildMemberModel.bulkUpdate(updatesToDeactivate);
