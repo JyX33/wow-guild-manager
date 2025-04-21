@@ -19,6 +19,25 @@ interface ClassCounts {
 }
 
 /**
+ * Standard World of Warcraft class colors
+ */
+const WOW_CLASS_COLORS: { [className: string]: string } = {
+  'Warrior': '#C79C6E',
+  'Paladin': '#F58CBA',
+  'Hunter': '#ABD473',
+  'Rogue': '#FFF569',
+  'Priest': '#FFFFFF',
+  'Death Knight': '#C41F3B',
+  'Shaman': '#0070DE',
+  'Mage': '#40C7EB',
+  'Warlock': '#8787ED',
+  'Monk': '#00FF96',
+  'Druid': '#FF7D0A',
+  'Demon Hunter': '#A330C9',
+  'Evoker': '#33937F'
+};
+
+/**
  * Component to display general information about a guild, including roster stats.
  * Fetches guild members to calculate role breakdown.
  * @param {GuildGeneralInfoProps} props - Component props.
@@ -140,7 +159,12 @@ const GuildGeneralInfo: React.FC<GuildGeneralInfoProps> = ({ guild }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Object.entries(classCounts).map(([className, count]) => (
             <div key={className} className="bg-gray-100 p-4 rounded">
-              <p className="text-gray-600">{className}</p>
+              <p style={{
+                color: WOW_CLASS_COLORS[className] || '#9d9d9d', // Default to gray if class not found
+                textShadow: '1px 1px 1px rgba(0, 0, 0, 0.7)' // Add text shadow for better readability
+              }}>
+                {className}
+              </p>
               <p className="text-2xl font-bold">{count}</p>
             </div>
           ))}
