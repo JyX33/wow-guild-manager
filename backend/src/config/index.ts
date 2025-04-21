@@ -24,7 +24,9 @@ const requiredEnvVars = [
   'DB_PASSWORD',
   'BATTLE_NET_CLIENT_ID',
   'BATTLE_NET_CLIENT_SECRET',
-  'JWT_SECRET'
+  'JWT_SECRET',
+  'DISCORD_CLIENT_ID',
+  'DISCORD_CLIENT_SECRET'
   // Note: PORT and NODE_ENV are typically provided by the environment (like Coolify)
   // and don't strictly need to be in .env or checked here, but reading them is fine.
 ];
@@ -97,6 +99,10 @@ const config: AppConfig = {
         userInfoUrl: 'https://www.battlenet.com.cn/oauth/userinfo'
       }
     }
+  },
+  discord: {
+    clientId: process.env.DISCORD_CLIENT_ID || '',
+    clientSecret: process.env.DISCORD_CLIENT_SECRET || ''
   }
 };
 
@@ -123,6 +129,11 @@ console.log('Config:', {
       tw: config.battlenet.regions.tw,
       cn: config.battlenet.regions.cn
     }
+  }
+  },
+  discord: {
+    clientId: config.discord.clientId,
+    clientSecret: config.discord.clientSecret
   }
 });
 

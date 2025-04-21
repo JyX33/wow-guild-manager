@@ -67,4 +67,14 @@ export const authService = {
       url: '/auth/role',
       data: { userId, role }
     })
+  ,
+
+  /**
+   * Disconnect the user's Discord account
+   */
+  disconnectDiscord: () =>
+    apiRequest<{ success: boolean; message?: string }>({
+      method: 'POST',
+      url: '/auth/discord/disconnect'
+    })
 };

@@ -8,6 +8,7 @@ import { BattleNetApiClient } from '../services/battlenet-api.client.js'; // Imp
 import { OnboardingService } from '../services/onboarding.service.js'; // Import OnboardingService
 import { AppError, asyncHandler } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
+import axios from 'axios';
 
 // Instantiate services (consider dependency injection for better management)
 const apiClient = new BattleNetApiClient();
@@ -340,5 +341,117 @@ const state = generateState();
     const { access_token, refresh_token, ...safeUser } = userWithTokens;
 
     res.json({ success: true, data: safeUser });
+  }),
+
+  // --- Discord OAuth: Step 1 - Start ---
+  discordOAuthStart: asyncHandler(async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) {
+      throw new AppError('User not authenticated', 401);
+    }
+    const state = crypto.randomBytes(16).toString('hex');
+    req.session.discord_oauth_state = state;
+    req.session.save((err) => {
+      if (err) {
+        logger.error({ err }, 'Error saving session for Discord OAuth');
+        return res.status(500).json({ success: false, message: 'Failed to initiate Discord OAuth.' });
+      }
+      const params = new URLSearchParams({
+        client_id: config.discord.clientId,
+        redirect_uri: `${config.server.frontendUrl.replace(/\/$/, '')}/api/auth/discord/callback`,
+        response_type: 'code',
+        scope: 'identify',
+        state
+      });
+      const discordAuthUrl = `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+      res.redirect(discordAuthUrl);
+    });
+  }),
+
+  // --- Discord OAuth: Step 2 - Callback ---
+  discordOAuthCallback: asyncHandler(async (req: Request, res: Response) => {
+    const { code, state } = req.query;
+    if (!code || !state) {
+      return res.status(400).send('Missing code or state.');
+    }
+    if (!req.session.discord_oauth_state || req.session.discord_oauth_state !== state) {
+      logger.warn({ sessionState: req.session.discord_oauth_state, queryState: state }, 'Discord OAuth state mismatch');
+      return res.status(400).send('Invalid state parameter.');
+    }
+    // Clear state from session
+    delete req.session.discord_oauth_state;
+
+    // Exchange code for access token
+    let tokenResponse;
+    try {
+      tokenResponse = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+        client_id: config.discord.clientId,
+        client_secret: config.discord.clientSecret,
+        grant_type: 'authorization_code',
+        code: code as string,
+        redirect_uri: `${config.server.frontendUrl.replace(/\/$/, '')}/api/auth/discord/callback`
+      }), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+    } catch (err: any) {
+      logger.error({ err: err?.response?.data || err }, 'Discord token exchange failed');
+      return res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=error_token`);
+    }
+    const { access_token } = tokenResponse.data;
+    if (!access_token) {
+      logger.error('No access_token in Discord token response');
+      return res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=error_token`);
+    }
+
+    // Fetch Discord user info
+    let discordUser;
+    try {
+      const userResp = await axios.get('https://discord.com/api/users/@me', {
+        headers: { Authorization: `Bearer ${access_token}` }
+      });
+      discordUser = userResp.data;
+    } catch (err: any) {
+      logger.error({ err: err?.response?.data || err }, 'Failed to fetch Discord user info');
+      return res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=error_userinfo`);
+    }
+
+    // Get logged-in app user (from session/JWT)
+    const appUser = req.user;
+    if (!appUser) {
+      logger.error('No authenticated app user in Discord callback');
+      return res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=error_auth`);
+    }
+
+    // Check for duplicate discord_id
+    const existing = await userModel.findOne({ discord_id: discordUser.id });
+    if (existing && existing.id !== appUser.id) {
+      logger.warn({ discordId: discordUser.id, userId: existing.id }, 'Discord ID already linked to another user');
+      return res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=duplicate`);
+    }
+
+    // Update user's discord_id
+    try {
+      await userModel.update(appUser.id, { discord_id: discordUser.id });
+    } catch (err: any) {
+      logger.error({ err }, 'Failed to update user with Discord ID');
+      return res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=error_db`);
+    }
+
+    res.redirect(`${config.server.frontendUrl}/dashboard?discord_link_status=success`);
+  }),
+
+  // --- Discord Disconnect ---
+  discordDisconnect: asyncHandler(async (req: Request, res: Response) => {
+    const appUser = req.user;
+    if (!appUser) {
+      throw new AppError('User not authenticated', 401);
+    }
+    try {
+      await userModel.update(appUser.id, { discord_id: null });
+      res.json({ success: true, message: 'Discord account disconnected.' });
+    } catch (err: any) {
+      logger.error({ err }, 'Failed to disconnect Discord account');
+      res.status(500).json({ success: false, message: 'Failed to disconnect Discord account.' });
+    }
   })
 };

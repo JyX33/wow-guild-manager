@@ -114,6 +114,7 @@ export interface DbUser {
   role?: UserRole;
   region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;
+  discord_id?: string | null;
 }
 
 /**
@@ -132,6 +133,10 @@ export interface User {
   region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;
   tokens_valid_since?: string; // Added for token revocation
+  discord_id?: string | null;
+  // Optionally add these if backend provides them:
+  // discord_username?: string | null;
+  // discord_avatar?: string | null;
 }
 
 // For backend use only - not exported directly in index.ts

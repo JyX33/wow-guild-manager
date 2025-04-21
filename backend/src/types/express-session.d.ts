@@ -8,5 +8,6 @@ declare module 'express-session' {
     region?: BattleNetRegion; // Add the region property, mark as optional
     oauthState?: string; // State parameter for OAuth flow
     stateExpiry?: number; // Timestamp for state expiry
+    discord_oauth_state?: string; // For Discord OAuth CSRF protection
   }
 }

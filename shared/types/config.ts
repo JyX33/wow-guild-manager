@@ -42,9 +42,16 @@ export interface BattleNetConfig {
   };
 }
 
+export interface DiscordConfig {
+  clientId: string;
+  clientSecret: string;
+}
+
+
 export interface AppConfig {
   server: ServerConfig;
   database: DatabaseConfig;
   auth: AuthConfig;
   battlenet: BattleNetConfig;
+  discord: DiscordConfig;
 }
