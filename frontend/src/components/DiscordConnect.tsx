@@ -7,9 +7,25 @@ const DiscordConnect: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleConnect = () => {
-    // Redirect to backend Discord OAuth endpoint
-    window.location.href = '/api/auth/discord';
+  const handleConnect = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // This call likely needs to handle a redirect response from the backend,
+      // or the backend needs to be adjusted. For now, implementing as requested.
+      const response = await authService.connectDiscord();
+      if (response.success) {
+        // Assuming connectDiscord might return user info or success status
+        // If it triggers OAuth flow, refreshUser might not be needed here directly
+        await refreshUser();
+      } else {
+        setError(response.message || 'Failed to initiate Discord connection');
+      }
+    } catch (err: any) {
+      setError('Failed to initiate Discord connection');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -53,7 +69,9 @@ const DiscordConnect: React.FC = () => {
         </div>
       ) : (
         <div>
-          <button onClick={handleConnect}>Connect Discord</button>
+          <button onClick={handleConnect} disabled={loading}>
+            {loading ? 'Connecting...' : 'Connect Discord'}
+          </button>
         </div>
       )}
     </div>
@@ -61,3 +79,4 @@ const DiscordConnect: React.FC = () => {
 };
 
 export default DiscordConnect;
+

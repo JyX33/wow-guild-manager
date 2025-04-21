@@ -77,4 +77,14 @@ export const authService = {
       method: 'POST',
       url: '/auth/discord/disconnect'
     })
+  ,
+   /**
+    * Connect the usr discord account
+    *  
+    */
+  connectDiscord: () =>
+    apiRequest<{ success: boolean; message?: string }>({  
+      method: 'POST',
+      url: '/auth/discord'
+    }) 
 };
