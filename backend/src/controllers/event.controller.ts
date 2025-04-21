@@ -9,7 +9,7 @@ interface ApiResponse<T> {
   data: T;
 }
 
-import { UserWithTokens } from '../../../shared/types/user.js'; // Ensure UserWithTokens is imported
+import { UserWithTokens, UserRole } from '../../../shared/types/user.js'; // Ensure UserWithTokens and UserRole are imported
 
 interface EventRequest extends Request {
   body: EventFormValues;
@@ -92,12 +92,16 @@ export default {
       });
     }
     
-    if (existingEvent.created_by !== req.user.id) {
-      throw new AppError('Permission denied', 403, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
+    // Authorization: ADMIN can update any event, USER can only update their own
+    if (req.user.role === UserRole.USER) {
+      if (existingEvent.created_by !== req.user.id) {
+        throw new AppError('Forbidden: You do not have permission to update this event', 403, {
+          code: ERROR_CODES.AUTH_ERROR,
+          request: req
+        });
+      }
     }
+    // If ADMIN, bypass ownership check
     
     const updatedEvent = await eventModel.update(parseInt(eventId), req.body);
     
@@ -126,12 +130,16 @@ export default {
       });
     }
     
-    if (existingEvent.created_by !== req.user.id) {
-      throw new AppError('Permission denied', 403, {
-        code: ERROR_CODES.AUTH_ERROR,
-        request: req
-      });
+    // Authorization: ADMIN can delete any event, USER can only delete their own
+    if (req.user.role === UserRole.USER) {
+      if (existingEvent.created_by !== req.user.id) {
+        throw new AppError('Forbidden: You do not have permission to delete this event', 403, {
+          code: ERROR_CODES.AUTH_ERROR,
+          request: req
+        });
+      }
     }
+    // If ADMIN, bypass ownership check
     
     const deletedEvent = await eventModel.deleteEvent(parseInt(eventId));
     

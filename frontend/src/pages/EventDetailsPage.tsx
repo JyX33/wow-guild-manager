@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { eventService, characterService } from '../services/api';
+import { UserRole } from '../../../shared/types/user';
 import { CharacterSelector } from '../components/CharacterSelector';
 import { format } from 'date-fns';
 import withAuth from '@/components/withAuth';
@@ -191,8 +192,10 @@ const EventDetailsPage: React.FC = () => {
   const formattedStart = format(startDate, 'PPP p');
   const formattedEnd = format(endDate, 'PPP p');
 
-  // Check if user is the event creator
-  const isCreator = user?.id === event.created_by;
+  // Check if user is allowed to edit/delete this event
+  const canEditOrDelete =
+    user?.role === UserRole.ADMIN ||
+    (user?.role === UserRole.USER && user?.id === event.created_by);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -216,7 +219,7 @@ const EventDetailsPage: React.FC = () => {
             </div>
           </div>
           
-          {isCreator && (
+          {canEditOrDelete && (
             <div className="flex space-x-2">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"

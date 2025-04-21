@@ -26,7 +26,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       const response = await authService.getCurrentUser();
       
       if (response.success && response.data) {
-        setUser(response.data);
+        // Include the role from the API response
+        setUser({ ...response.data, role: response.data.role });
       } else {
         setUser(null);
         if (response.error) {
@@ -57,7 +58,8 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           const response = await authService.getCurrentUser();
 
           if (response.success && response.data) {
-            setUser(response.data);
+            // Include the role from the API response
+            setUser({ ...response.data, role: response.data.role });
           } else {
             // If fetching user fails (e.g., token expired), clear tokens
             console.error('Failed to fetch user with stored token:', response.error);
