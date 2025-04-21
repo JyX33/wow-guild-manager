@@ -12,7 +12,7 @@ router.get('/login', authController.login);
 router.get('/callback', authController.callback);
 
 // Discord OAuth routes
-router.get('/discord', authController.discordOAuthStart);
+router.get('/discord', authenticateJWT, authController.discordOAuthStart);
 router.get('/discord/callback', authController.discordOAuthCallback);
 router.post('/discord/disconnect', authenticateJWT, authController.discordDisconnect);
  
