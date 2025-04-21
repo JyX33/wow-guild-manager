@@ -10,6 +10,10 @@ interface LogoutResponse {
   message: string;
 }
 
+interface DiscordConnectResponse {
+  redirectUrl: string;
+}
+
 
 export const authService = {
   /**
@@ -78,13 +82,26 @@ export const authService = {
       url: '/auth/discord/disconnect'
     })
   ,
-   /**
-    * Connect the usr discord account
-    *  
-    */
-  connectDiscord: () =>
-    apiRequest<{ success: boolean; message?: string }>({  
-      method: 'GET',
-      url: '/auth/discord'
-    }) 
+  /**
+   * Initiates the Discord account connection flow.
+   * Fetches the Discord OAuth URL from the backend and redirects the browser.
+   */
+  connectDiscord: async () => {
+    try {
+      const response = await apiRequest<DiscordConnectResponse>({
+        method: 'GET',
+        url: '/auth/discord'
+      });
+      // Access the data property from the apiRequest response
+      if (response && response.data && response.data.redirectUrl) {
+        window.location.href = response.data.redirectUrl;
+      } else {
+        console.error('Failed to get Discord redirect URL from backend response data:', response);
+        // Optionally throw an error or handle UI feedback here
+      }
+    } catch (error) {
+      console.error('Error initiating Discord connection:', error);
+      // Optionally throw an error or handle UI feedback here
+    }
+  }
 };

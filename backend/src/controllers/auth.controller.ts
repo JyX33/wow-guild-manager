@@ -364,7 +364,7 @@ const state = generateState();
         state
       });
       const discordAuthUrl = `https://discord.com/api/oauth2/authorize?${params.toString()}`;
-      res.redirect(discordAuthUrl);
+      res.json({ redirectUrl: discordAuthUrl });
     });
   }),
 

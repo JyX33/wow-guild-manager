@@ -11,16 +11,11 @@ const DiscordConnect: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // This call likely needs to handle a redirect response from the backend,
-      // or the backend needs to be adjusted. For now, implementing as requested.
-      const response = await authService.connectDiscord();
-      if (response.success) {
-        // Assuming connectDiscord might return user info or success status
-        // If it triggers OAuth flow, refreshUser might not be needed here directly
-        await refreshUser();
-      } else {
-        setError(response.message || 'Failed to initiate Discord connection');
-      }
+      // The connectDiscord service now handles the redirect internally.
+      // We just call it and handle potential errors during the API call itself.
+      await authService.connectDiscord();
+      // No need to check response or refresh user here,
+      // the redirect and callback flow will handle updates.
     } catch (err: any) {
       setError('Failed to initiate Discord connection');
     } finally {
