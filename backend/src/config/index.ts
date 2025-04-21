@@ -128,8 +128,7 @@ console.log('Config:', {
       kr: config.battlenet.regions.kr,
       tw: config.battlenet.regions.tw,
       cn: config.battlenet.regions.cn
-    }
-  }
+    }  
   },
   discord: {
     clientId: config.discord.clientId,
