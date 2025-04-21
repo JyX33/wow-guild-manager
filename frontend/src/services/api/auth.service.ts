@@ -84,7 +84,7 @@ export const authService = {
     */
   connectDiscord: () =>
     apiRequest<{ success: boolean; message?: string }>({  
-      method: 'POST',
+      method: 'GET',
       url: '/auth/discord'
     }) 
 };
