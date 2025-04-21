@@ -44,11 +44,17 @@ export const authService = {
   /**
    * Refresh the authentication token
    */
-  refreshToken: () =>
-    apiRequest<RefreshResponse>({
+  refreshToken: () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      return Promise.reject(new Error('No refresh token found in localStorage'));
+    }
+    return apiRequest<RefreshResponse>({
       method: 'POST',
-      url: '/auth/refresh'
-    }),
+      url: '/auth/refresh',
+      data: { refreshToken }
+    });
+  },
     
   /**
    * Update a user's role (admin only)
