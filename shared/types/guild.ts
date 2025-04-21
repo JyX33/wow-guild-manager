@@ -815,13 +815,13 @@ export interface ClassifiedMember {
     equipment_json?: BattleNetCharacterEquipment; // Optional
     mythic_profile_json?: BattleNetMythicKeystoneProfile | null; // Added
     professions_json?: BattleNetProfessions['primaries']; // Added
-  };
+  }
 
   // Classification details
   classification: 'Main' | 'Alt';
   groupKey: string | number | null; // user_id or toy_hash or null
   mainCharacterId: number | null; // Link to main character if this is an alt
-
+}
 
 /**
  * Represents recent guild member activity.
