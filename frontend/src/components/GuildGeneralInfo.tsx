@@ -14,6 +14,9 @@ interface RoleCounts {
   tank: number;
   unknown: number;
 }
+interface ClassCounts {
+  [key: string]: number;
+}
 
 /**
  * Component to display general information about a guild, including roster stats.
@@ -27,6 +30,7 @@ const GuildGeneralInfo: React.FC<GuildGeneralInfoProps> = ({ guild }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [roleCounts, setRoleCounts] = useState<RoleCounts>({ dps: 0, healer: 0, tank: 0, unknown: 0 });
+  const [classCounts, setClassCounts] = useState<ClassCounts>({});
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -37,6 +41,7 @@ const GuildGeneralInfo: React.FC<GuildGeneralInfoProps> = ({ guild }) => {
         if (response.success && response.data) {
           setMembers(response.data);
           calculateRoleCounts(response.data);
+          calculateClassCounts(response.data);
         } else {
           setError(response.error?.message || 'Failed to load guild members');
         }
@@ -67,6 +72,18 @@ const GuildGeneralInfo: React.FC<GuildGeneralInfoProps> = ({ guild }) => {
       else counts.unknown++; // Count 'Support' or any other unexpected roles as unknown for now
     });
     setRoleCounts(counts);
+  };
+  /**
+   * Calculates the count of characters for each class.
+   * @param {GuildMember[]} memberList - The list of members in the guild.
+   */
+  const calculateClassCounts = (memberList: GuildMember[]) => {
+    const counts: ClassCounts = {};
+    memberList.forEach(member => {
+      const className = member.character_class ?? 'Unknown Class';
+      counts[className] = (counts[className] || 0) + 1;
+    });
+    setClassCounts(counts);
   };
 
   return (
@@ -119,6 +136,15 @@ const GuildGeneralInfo: React.FC<GuildGeneralInfoProps> = ({ guild }) => {
                <p className="text-2xl font-bold">{roleCounts.unknown}</p>
              </div>
            )}
+        <h3 className="text-xl font-semibold mb-3">Class Breakdown</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Object.entries(classCounts).map(([className, count]) => (
+            <div key={className} className="bg-gray-100 p-4 rounded">
+              <p className="text-gray-600">{className}</p>
+              <p className="text-2xl font-bold">{count}</p>
+            </div>
+          ))}
+        </div>
         </div>
       )}
     </div>
