@@ -25,8 +25,6 @@ const requiredEnvVars = [
   'BATTLE_NET_CLIENT_ID',
   'BATTLE_NET_CLIENT_SECRET',
   'JWT_SECRET',
-  'DISCORD_CLIENT_ID',
-  'DISCORD_CLIENT_SECRET'
   // Note: PORT and NODE_ENV are typically provided by the environment (like Coolify)
   // and don't strictly need to be in .env or checked here, but reading them is fine.
 ];
@@ -100,10 +98,7 @@ const config: AppConfig = {
       }
     }
   },
-  discord: {
-    clientId: process.env.DISCORD_CLIENT_ID || '',
-    clientSecret: process.env.DISCORD_CLIENT_SECRET || ''
-  }
+  discord: { clientId: '', clientSecret: '' }
 };
 
 // Log the config object for debugging purposes
@@ -130,10 +125,6 @@ console.log('Config:', {
       cn: config.battlenet.regions.cn
     }  
   },
-  discord: {
-    clientId: config.discord.clientId,
-    clientSecret: config.discord.clientSecret
-  }
 });
 
 export default config;

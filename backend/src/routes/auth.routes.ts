@@ -11,11 +11,6 @@ router.get('/login', authController.login);
 // Handle Battle.net OAuth callback
 router.get('/callback', authController.callback);
 
-// Discord OAuth routes
-router.get('/discord', authenticateJWT, authController.discordOAuthStart);
-router.get('/discord/callback', authController.discordOAuthCallback);
-router.post('/discord/disconnect', authenticateJWT, authController.discordDisconnect);
- 
 // Refresh access token using refresh token
 router.post('/refresh', authController.refreshToken); // Change to POST and use the controller function directly
  
