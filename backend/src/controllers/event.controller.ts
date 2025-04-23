@@ -10,6 +10,8 @@ interface ApiResponse<T> {
 }
 
 import { UserWithTokens, UserRole } from '../../../shared/types/user.js'; // Ensure UserWithTokens and UserRole are imported
+import { postEventToDiscord } from '../modules/discord/eventIntegration.js';
+import logger from '../utils/logger.js';
 
 interface EventRequest extends Request {
   body: EventFormValues;
@@ -66,6 +68,13 @@ export default {
     };
     
     const event = await eventModel.create(eventData);
+
+    if (event) {
+      logger.info(`Event ${event.id} created, triggering Discord post.`);
+      postEventToDiscord(event).catch((err: unknown) => {
+        logger.error({ err, eventId: event.id }, 'Error triggering postEventToDiscord after creation (background task)');
+      });
+    }
     
     if (!event) {
       throw new AppError('Failed to create event', 500, {
@@ -104,6 +113,13 @@ export default {
     // If ADMIN, bypass ownership check
     
     const updatedEvent = await eventModel.update(parseInt(eventId), req.body);
+
+    if (updatedEvent) {
+      logger.info(`Event ${updatedEvent.id} updated, triggering Discord post.`);
+      postEventToDiscord(updatedEvent).catch((err: unknown) => {
+        logger.error({ err, eventId: updatedEvent.id }, 'Error triggering postEventToDiscord after update (background task)');
+      });
+    }
     
     if (!updatedEvent) {
       throw new AppError('Failed to update event', 500, {

@@ -10,6 +10,7 @@ import GuildManagePage from './pages/GuildManagePage';
 import EventDetailsPage from './pages/EventDetailsPage';
 import CreateEventPage from './pages/CreateEventPage';
 import EditEventPage from './pages/EditEventPage';
+import DiscordLinkPage from './pages/DiscordLinkPage';
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App: React.FC = () => {
                       <EditEventPage />
                     
                   } />
+                  <Route path="/link-discord" element={<DiscordLinkPage />} />
                   <Route path="/" element={<Navigate to="/dashboard" />} />
                 </Routes>
               </main>

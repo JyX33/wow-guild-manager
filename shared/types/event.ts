@@ -36,6 +36,8 @@ export interface Event {
   guild_id: number;
   max_participants: number;
   event_details?: EventDetails;
+  discord_thread_id?: string | null;
+  discord_message_id?: string | null;
 }
 
 export interface EventSubscription {

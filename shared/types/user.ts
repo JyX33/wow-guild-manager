@@ -115,6 +115,7 @@ export interface DbUser {
   region?: BattleNetRegion;
   user_data?: BattleNetUserProfile;
   discord_id?: string | null;
+  discord_username?: string | null;
 }
 
 /**

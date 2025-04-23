@@ -19,6 +19,11 @@ import userModelInstance from './models/user.model.js';
 import { BattleNetApiClient } from './services/battlenet-api.client.js';
 import logger from './utils/logger.js'; // Import the logger
 
+import { initializeDiscordClient, client as discordClient } from './modules/discord/discordClient.js';
+import { registerCommands, attachCommandListener } from './modules/discord/commandHandler.js';
+// logger is already imported
+import { scheduleReminderJob } from './modules/discord/reminderService.js';
+
 import authRoutes from './routes/auth.routes.js';
 import characterRoutes from './routes/character.routes.js';
 import eventRoutes from './routes/event.routes.js';
@@ -131,6 +136,33 @@ if (NODE_ENV === 'production') {
   }
 }
 
+async function startDiscordBot() {
+   logger.info('Attempting to initialize Discord Bot...');
+   const token = process.env.DISCORD_BOT_TOKEN;
+   const clientId = process.env.DISCORD_CLIENT_ID;
+   const guildId = process.env.DISCORD_GUILD_ID;
+
+   if (!token || !clientId || !guildId) {
+       logger.error('Missing required Discord environment variables (DISCORD_BOT_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID). Bot initialization skipped.');
+       return;
+   }
+
+   try {
+       await initializeDiscordClient(); // Logs in and sets up 'ready' listener
+       // Wait briefly for client to potentially be ready before registering commands
+       // A more robust solution might involve waiting for the 'ready' event explicitly here
+       await new Promise(resolve => setTimeout(resolve, 2000)); // Simple 2-second delay
+
+       await registerCommands(clientId, guildId, token);
+       attachCommandListener(discordClient);
+       logger.info('Discord Bot Initialized and Listener Attached.');
+
+   } catch (error) {
+       logger.error({ err: error }, 'Failed to initialize Discord Bot');
+   }
+}
+startDiscordBot();
+
 // Schedule background sync job (e.g., run every hour at the start of the hour)
 // Define the default cron schedule
 const defaultSyncSchedule = '0 * * * *'; // Run every hour at minute 0
@@ -156,6 +188,7 @@ const syncJob = schedule.scheduleJob(syncSchedule, async () => {
     logger.error({ err: error }, '[Scheduler] Error during scheduled sync job:');
   }
 });
+scheduleReminderJob();
 logger.info(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()}`);
 
 // Optional: Run sync once on startup after a short delay

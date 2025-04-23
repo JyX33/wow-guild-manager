@@ -1,0 +1,21 @@
+.container {
+  max-width: 400px;
+  margin: 40px auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+.errorMessage {
+  color: #d32f2f;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.successMessage {
+  color: #388e3c;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
