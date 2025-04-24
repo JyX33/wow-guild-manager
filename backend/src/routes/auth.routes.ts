@@ -33,40 +33,6 @@ router.put('/role',
 );
  
 // Discord account linking verification endpoint
-router.get('/discord-link', async (req: Request, res: Response) => {
-    logger.info('Received request for /api/auth/discord-link');
-    const { token } = req.query;
-    const userId = req.session.userId; // Assuming session middleware adds this
-
-    if (!userId) {
-        logger.warn('Discord link attempt without logged-in user session.');
-        return res.status(401).json({ success: false, message: 'Unauthorized. Please log in first.' });
-    }
-
-    if (!token || typeof token !== 'string') {
-        logger.warn('Discord link attempt with missing or invalid token.');
-        return res.status(400).json({ success: false, message: 'Missing or invalid token.' });
-    }
-
-    const tokenDetails = retrieveTokenDetails(token);
-
-    if (!tokenDetails) {
-        logger.warn(`Discord link attempt with invalid/expired token: ${token}`);
-        return res.status(400).json({ success: false, message: 'Invalid or expired link token.' });
-    }
-
-    try {
-        logger.info(`Attempting to link Discord user ${tokenDetails.discordUsername} (${tokenDetails.discordId}) to user ID ${userId}`);
-        await userModelInstance.update(userId, {
-            discord_id: tokenDetails.discordId,
-            discord_username: tokenDetails.discordUsername
-        });
-        logger.info(`Successfully linked Discord account for user ID ${userId}`);
-        return res.status(200).json({ success: true, message: 'Discord account linked successfully.' });
-    } catch (error) {
-        logger.error({ err: error, userId, discordId: tokenDetails.discordId }, 'Failed to update user record with Discord ID');
-        return res.status(500).json({ success: false, message: 'An internal error occurred while linking the account.' });
-    }
-});
+router.get('/discord-link', authenticateJWT, authController.verifyDiscordLink); // Use controller function
 
 export default router;

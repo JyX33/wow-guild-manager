@@ -6,6 +6,7 @@ import config from '../config/index.js'; // Assuming index.js is the entry point
 import userModel from '../models/user.model.js';
 import { BattleNetApiClient } from '../services/battlenet-api.client.js'; // Import ApiClient
 import { OnboardingService } from '../services/onboarding.service.js'; // Import OnboardingService
+import { retrieveTokenDetails } from '../modules/discord/discordTokenStore.js'; // Import for Discord link verification
 import { AppError, asyncHandler } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
 import axios from 'axios';
@@ -341,6 +342,42 @@ const state = generateState();
     const { access_token, refresh_token, ...safeUser } = userWithTokens;
 
     res.json({ success: true, data: safeUser });
+  }),
+verifyDiscordLink: asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Received request for /api/auth/discord-link');
+    const { token } = req.query;
+    // @ts-ignore - Assuming authenticateJWT populates req.user
+    const userId = req.user?.id; // Get user ID from JWT middleware
+
+    // The authenticateJWT middleware handles the unauthorized case.
+
+    if (!token || typeof token !== 'string') {
+        logger.warn('Discord link attempt with missing or invalid token.');
+        return res.status(400).json({ success: false, message: 'Missing or invalid token.' });
+    }
+
+    // Import retrieveTokenDetails if not already imported at the top
+    // Assuming it's imported or available in scope. If not, add:
+    // import { retrieveTokenDetails } from '../modules/discord/discordTokenStore.js';
+    const tokenDetails = retrieveTokenDetails(token); // Assuming retrieveTokenDetails is imported/available
+
+    if (!tokenDetails) {
+        logger.warn(`Discord link attempt with invalid/expired token: ${token}`);
+        return res.status(400).json({ success: false, message: 'Invalid or expired link token.' });
+    }
+
+    try {
+        logger.info(`Attempting to link Discord user ${tokenDetails.discordUsername} (${tokenDetails.discordId}) to user ID ${userId}`);
+        await userModel.update(userId, { // Use userModel directly as userModelInstance is not defined here
+            discord_id: tokenDetails.discordId,
+            discord_username: tokenDetails.discordUsername
+        });
+        logger.info(`Successfully linked Discord account for user ID ${userId}`);
+        return res.status(200).json({ success: true, message: 'Discord account linked successfully.' });
+    } catch (error) {
+        logger.error({ err: error, userId, discordId: tokenDetails.discordId }, 'Failed to update user record with Discord ID');
+        return res.status(500).json({ success: false, message: 'An internal error occurred while linking the account.' });
+    }
   }),
 
 };
