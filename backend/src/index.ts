@@ -23,6 +23,7 @@ import { initializeDiscordClient, client as discordClient } from './modules/disc
 import { registerCommands, attachCommandListener } from './modules/discord/commandHandler.js';
 // logger is already imported
 import { scheduleReminderJob } from './modules/discord/reminderService.js';
+import { scheduleThreadCleanupJob } from './modules/discord/threadCleanupService.js';
 
 import authRoutes from './routes/auth.routes.js';
 import characterRoutes from './routes/character.routes.js';
@@ -188,6 +189,7 @@ const syncJob = schedule.scheduleJob(syncSchedule, async () => {
     logger.error({ err: error }, '[Scheduler] Error during scheduled sync job:');
   }
 });
+scheduleThreadCleanupJob();
 scheduleReminderJob();
 logger.info(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()}`);
 
