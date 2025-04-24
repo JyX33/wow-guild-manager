@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import styles from './DiscordLinkPage.module.css';
+import { authService } from '../services/api/auth.service';
 
 const DiscordLinkPage: React.FC = () => {
     const [searchParams] = useSearchParams();
@@ -24,21 +25,15 @@ const DiscordLinkPage: React.FC = () => {
             setIsError(false);
 
             try {
-                const response = await fetch(`/api/auth/discord-link?token=${token}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include',
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    setMessage(data.message || 'Discord account linked successfully!');
+                const response = await authService.verifyDiscordLink(token);
+                if (response.success) {
+                    setMessage(response.data?.message || 'Discord account linked successfully!');
                     setIsError(false);
                 } else {
-                    setMessage(data.message || 'Failed to link Discord account. The link may be invalid or expired.');
+                    setMessage(
+                        response.error?.message ||
+                        'Failed to link Discord account. The link may be invalid or expired.'
+                    );
                     setIsError(true);
                 }
             } catch (error) {

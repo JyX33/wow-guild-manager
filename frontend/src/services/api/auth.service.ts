@@ -12,6 +12,13 @@ interface LogoutResponse {
 
 
 
+/**
+ * Response for verifying Discord link
+ */
+export interface VerifyDiscordLinkResponse {
+  message: string;
+}
+
 export const authService = {
   /**
    * Initiate login with Battle.net OAuth
@@ -67,5 +74,15 @@ export const authService = {
       method: 'PUT',
       url: '/auth/role',
       data: { userId, role }
+    }),
+
+  /**
+   * Verify Discord link using a token
+   * @param token Discord verification token
+   */
+  verifyDiscordLink: async (token: string) =>
+    apiRequest<VerifyDiscordLinkResponse>({
+      method: 'GET',
+      url: `/auth/discord-link?token=${encodeURIComponent(token)}`
     })
 };
