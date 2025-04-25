@@ -179,6 +179,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                      // Keep localRoster already set
                 }
                 // CRUCIAL: Update members state with API response
+                console.log('Setting members in handleSelectRoster:', membersFromApi);
                 setSelectedRosterMembers(membersFromApi);
                 console.log("Roster details loaded for ID:", idBeingFetched, response.data);
                 setSuccessMessage(response.message || `Roster "${localRoster.name}" details loaded.`); // Optional success message
@@ -187,6 +188,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                 // API Success but data object itself is missing/null
                 console.error("API response missing data object for ID:", idBeingFetched, response);
                 setError(response.message || `Failed to load full details for roster "${localRoster.name}". Displaying basic info.`);
+                console.log('Setting empty members (no data) in handleSelectRoster');
                 setSelectedRosterMembers([]); // Ensure members are empty
             }
         } catch (err: any) {
@@ -202,6 +204,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
             // --- Process Error (only if fetch is not stale) ---
             // Keep the localRoster selected (already set)
             setError(err?.message || `Failed to load details for roster "${localRoster.name}". Please try again.`);
+            console.log('Setting empty members (error) in handleSelectRoster');
             setSelectedRosterMembers([]); // Ensure members are empty on error
         } finally {
             // --- Race Condition Check (Finally Block) ---
@@ -294,6 +297,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         try {
             await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId);
             setSuccessMessage(`Member removed successfully.`);
+            console.log('Updating members in performRemoveMember for charId:', characterId);
             setSelectedRosterMembers(prev => prev.filter(m => m.characterId !== characterId));
         } catch (err: any) {
             console.error("Error removing member:", err);
@@ -309,6 +313,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         const originalMembers = [...selectedRosterMembers];
         const roleToSend = newRole.trim() || null;
 
+        console.log('Updating members in handleUpdateRole for charId:', characterId);
         setSelectedRosterMembers(prev =>
             prev.map(m => m.characterId === characterId ? { ...m, role: roleToSend } : m)
         );
@@ -319,6 +324,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         } catch (err: any) {
             console.error("Error updating role:", err);
             setError(err?.message || 'Failed to update member role. Please try again.');
+            console.log('Reverting members in handleUpdateRole');
             setSelectedRosterMembers(originalMembers);
         }
     };
@@ -331,9 +337,13 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         try {
             const response = await rosterServiceApi.rosterService.addRosterMembers(selectedRoster.id, additions);
             if (response.data && Array.isArray(response.data)) {
+                console.log('Setting members in handleAddMembers:', response.data);
                 setSelectedRosterMembers(response.data);
                 setSuccessMessage("Members updated successfully.");
             } else {
+                // If response.data is not an array, we might still want to log or handle it,
+                // but for now, just keep the success message.
+                // Consider if setSelectedRosterMembers should be called here with [] or fetched data.
                 setSuccessMessage("Members updated successfully.");
             }
             setAddCharSearch('');
