@@ -336,18 +336,17 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         clearMessages();
         try {
             const response = await rosterServiceApi.rosterService.addRosterMembers(selectedRoster.id, additions);
-            if (response.data) {
-                const addedCount = response.data.length;
-                setSuccessMessage(`${addedCount} member(s) added successfully.`);
+            if (response.data && Array.isArray(response.data)) {
+                setSelectedRosterMembers(response.data);
+                setSuccessMessage("Members updated successfully.");
             } else {
-                setSuccessMessage(`Member addition request sent.`);
+                setSuccessMessage("Members updated successfully.");
             }
             setAddCharSearch('');
             setSelectedCharToAdd(null);
             setAddCharRole('');
             setSelectedRanksToAdd([]);
             setAddRankRole('');
-            await handleSelectRoster(selectedRoster.id);
         } catch (err: any) {
             console.error("Error adding members:", err);
             setError(err?.message || 'Failed to add members. Please check your selections and try again.');
