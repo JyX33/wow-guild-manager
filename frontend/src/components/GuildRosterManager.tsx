@@ -379,6 +379,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                 {/* Roster List & Creation */}
                 <div className="md:col-span-1 flex flex-col">
                     <h3 className="text-xl font-semibold mb-3 text-yellow-300">Rosters</h3>
+                    {console.log('[RosterManager Render] loadingRosters check:', loadingRosters)} {/* Add log here */}
                     {loadingRosters ? (
                         <LoadingSpinner />
                     ) : (
