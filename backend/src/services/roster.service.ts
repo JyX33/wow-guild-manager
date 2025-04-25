@@ -105,31 +105,23 @@ export const deleteRoster = async (rosterId: number): Promise<boolean> => {
  * Fetches members for a specific roster, including character details.
  */
 export const getRosterMembers = async (rosterId: number): Promise<RosterMember[]> => {
+  // Fetch members directly from guild_members, joining characters and ranks
   const query = `
     SELECT
-      rm.character_id as "characterId",
+      gm.character_id as "characterId",
       c.name,
       c.class,
-      gr.rank_name as rank, -- Select rank_name from guild_ranks
-      rm.role
-    FROM roster_members rm
-    JOIN characters c ON rm.character_id = c.id
-    JOIN guild_members gm ON c.id = gm.character_id -- Join through guild_members
-    -- Assuming the character_id implies the correct guild context for gm
-    LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id -- Join guild_ranks using gm.rank and gm.guild_id
-    WHERE rm.roster_id = $1
+      gr.rank_name as rank,
+      NULL as role -- Role is not directly stored in guild_members, set to null for now
+    FROM guild_members gm
+    JOIN characters c ON gm.character_id = c.id
+    LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id -- Use LEFT JOIN for ranks
+    WHERE gm.guild_id = $1 -- Filter by guild_id (which corresponds to rosterId)
     ORDER BY c.name ASC;
   `;
   const { rows } = await db.query(query, [rosterId]);
-  // pg returns lowercase keys by default unless quoted in SELECT
-  // Adjust mapping if needed based on actual return keys
-  return rows.map(row => ({
-    characterId: row.characterId, // Assuming quoted alias works
-    name: row.name,
-    rank: row.rank || 'Unknown Rank',
-    class: row.class,
-    role: row.role,
-  }));
+  // Use the robust mapping helper function
+  return rows.map(mapDbRowToRosterMember);
 };
 
 /**
