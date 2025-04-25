@@ -168,10 +168,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
 
             // --- Process Response (only if fetch is not stale) ---
             if (response.data) {
-                console.log("Roster API response structure:", JSON.stringify(response.data, null, 2));
-                const rosterFromApi = response.data.roster;
+                const rosterFromApi = response.data.data?.roster;
                 // Try accessing members from the right path based on the console output
-                const membersFromApi = response.data.members || [];
+                const membersFromApi = response.data.data?.members || [];
 
                 // Update roster state only if API provided a full object (optional, could keep local)
                 if (rosterFromApi) {
@@ -181,7 +180,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                      // Keep localRoster already set
                 }
                 // CRUCIAL: Update members state with API response
-                console.log('Setting members in handleSelectRoster:', response.data.members);
+                console.log('Setting members in handleSelectRoster:', membersFromApi);
                 setSelectedRosterMembers(membersFromApi);
                 console.log("Roster details loaded for ID:", idBeingFetched, response.data);
                 setSuccessMessage(response.message || `Roster "${localRoster.name}" details loaded.`); // Optional success message
