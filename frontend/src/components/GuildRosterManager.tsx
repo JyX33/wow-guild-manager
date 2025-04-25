@@ -385,7 +385,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                         <>
                             <div className="flex-grow overflow-hidden mb-4">
                                 <ul className="space-y-2 max-h-72 overflow-y-auto pr-2 border border-gray-700 rounded p-2 bg-gray-900/50">
-                                    {Array.isArray(rosters) && rosters.map((roster) => (
+                                    {Array.isArray(rosters) && rosters.map((roster) => {
+                                        console.log(`[RosterManager Render] Mapping roster: ID=${roster.id}, Name=${roster.name}`); // Add log inside map
+                                        return (
                                         <li key={roster.id}
                                             className={`flex justify-between items-center p-2 rounded cursor-pointer transition-colors duration-150 ${selectedRoster?.id === roster.id ? 'bg-blue-700 hover:bg-blue-600 ring-1 ring-blue-400' : 'bg-gray-700 hover:bg-gray-600'}`}
                                             onClick={() => handleSelectRoster(roster.id)}> {/* Pass number ID */}
@@ -399,7 +401,8 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 🗑️
                                             </button>
                                         </li>
-                                    ))}
+                                        );
+                                    })}
                                     {rosters.length === 0 && <li className="text-gray-400 italic p-2">No rosters found.</li>}
                                 </ul>
                             </div>
