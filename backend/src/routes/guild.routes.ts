@@ -1,5 +1,6 @@
 import express from 'express';
 import guildController from '../controllers/guild.controller.js';
+import * as rosterController from '../controllers/roster.controller.js'; // Use named import
 import { authenticateJWT } from '../middleware/auth.middleware.js'; // Import the new middleware
 import { isGuildMaster } from '../middleware/guild-master.middleware.js';
 const router = express.Router();
@@ -37,5 +38,21 @@ router.put('/:guildId/ranks/:rankId',
   asyncHandler(isGuildMaster), // Wrap the async middleware
   guildController.updateRankName
 );
+
+// --- Roster Routes for a specific Guild ---
+
+// Get all rosters for a guild
+router.get('/:guildId/rosters',
+  authenticateJWT,
+  asyncHandler(rosterController.getGuildRosters) // Assuming rosterController has this method
+);
+
+// Create a new roster for a guild (protected - only guild master)
+router.post('/:guildId/rosters',
+  authenticateJWT,
+  asyncHandler(isGuildMaster),
+  asyncHandler(rosterController.createGuildRoster) // Assuming rosterController has this method
+);
+
 
 export default router;

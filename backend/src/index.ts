@@ -29,6 +29,7 @@ import authRoutes from './routes/auth.routes.js';
 import characterRoutes from './routes/character.routes.js';
 import eventRoutes from './routes/event.routes.js';
 import guildRoutes from './routes/guild.routes.js';
+import rosterRoutes from './routes/roster.routes.js'; // Add roster routes import
 import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler.js';
 
 const app = express();
@@ -93,6 +94,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/guilds', guildRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/characters', characterRoutes);
+app.use('/api/rosters', rosterRoutes); // Mount roster routes
 
 // Error handling
 app.use(notFoundHandler);

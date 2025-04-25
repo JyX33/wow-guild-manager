@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { guildService } from '../services/api/guild.service';
 import { Guild } from '../../../shared/types/guild';
 import { GuildRankManager } from '../components/GuildRankManager';
+import GuildRosterManager from '../components/GuildRosterManager'; // Import GuildRosterManager as default
 import LoadingSpinner from '../components/LoadingSpinner';
 import withAuth from '@/components/withAuth';
 
@@ -16,7 +17,7 @@ const GuildManagePage: React.FC = () => {
   const [isGuildMaster, setIsGuildMaster] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'ranks' | 'roster'>('general');
   const [error, setError] = useState<string | null>(null);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  // syncMessage state removed as it's no longer used
 
   useEffect(() => {
     const fetchGuildData = async () => {
@@ -136,26 +137,8 @@ const GuildManagePage: React.FC = () => {
       
       {activeTab === 'roster' && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">Guild Roster Management</h2>
-          <p className="text-gray-600 mb-4">
-            Synchronize guild roster data with your database to maintain up-to-date guild member information.
-            This will update character-guild associations and guild rank information.
-          </p>
-          
-          {syncMessage && (
-            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded mb-4">
-              {syncMessage}
-            </div>
-          )}
-          {/* Sync button removed as sync is now automatic */}
-          <div className="mt-4 border-t pt-4">
-            <h3 className="text-lg font-semibold mb-2">Current Status</h3>
-            <p className="text-gray-600">
-              Guild ID: {guildId}<br />
-              Guild Leader ID: {guild.leader_id || 'Not set'}<br />
-              Last Updated: {guild.last_updated ? new Date(guild.last_updated).toLocaleString() : 'Never'}
-            </p>
-          </div>
+          {/* Render GuildRosterManager component */}
+          <GuildRosterManager guildId={guildId || ''} />
         </div>
       )}
     </div>
