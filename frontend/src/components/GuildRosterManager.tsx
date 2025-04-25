@@ -170,7 +170,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
             if (response.data) {
                 const rosterFromApi = response.data;
                 // Try accessing members from the right path based on the console output
-                const membersFromApi = response.data.members || [];
+                const membersFromApi = response.data.data.members || [];
 
                 // Update roster state only if API provided a full object (optional, could keep local)
                 if (rosterFromApi) {
