@@ -155,12 +155,13 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
           existingMemberIds.add(addition.characterId); // Add to set to prevent duplicates within the same batch
         }
       } else if (addition.type === 'rank') {
-        // Find characters in the rank within the guild
-        const rankCharsResult = await client.query('SELECT id FROM characters WHERE rank_id = $1 AND guild_id = $2', [addition.rankId, guildId]);
-        rankCharsResult.rows.forEach(charRow => {
-          if (!existingMemberIds.has(charRow.id)) {
-            membersToAdd.push({ character_id: charRow.id, role });
-            existingMemberIds.add(charRow.id); // Add to set
+        // Find character IDs belonging to the specified rank within the guild
+        const rankCharsResult = await client.query('SELECT character_id FROM guild_members WHERE rank = $1 AND guild_id = $2', [addition.rankId, guildId]);
+        rankCharsResult.rows.forEach(memberRow => {
+          // Ensure the character_id exists before adding
+          if (memberRow.character_id && !existingMemberIds.has(memberRow.character_id)) {
+            membersToAdd.push({ character_id: memberRow.character_id, role });
+            existingMemberIds.add(memberRow.character_id); // Add to set
           }
         });
       }
