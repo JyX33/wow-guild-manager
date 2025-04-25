@@ -149,7 +149,13 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
 
       if (addition.type === 'character') {
         // Check if character exists in the guild and is not already in the roster
-        const charResult = await client.query('SELECT id FROM characters WHERE id = $1 AND guild_id = $2', [addition.characterId, guildId]);
+        // Check if character exists in the guild and is not already in the roster
+        const charResult = await client.query(`
+          SELECT c.id
+          FROM characters c
+          JOIN guild_members gm ON c.id = gm.character_id
+          WHERE c.id = $1 AND gm.guild_id = $2
+        `, [addition.characterId, guildId]);
         if ((charResult.rowCount ?? 0) > 0 && !existingMemberIds.has(addition.characterId)) { // Handle null rowCount
           membersToAdd.push({ character_id: addition.characterId, role });
           existingMemberIds.add(addition.characterId); // Add to set to prevent duplicates within the same batch
