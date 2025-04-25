@@ -360,6 +360,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         : [];
 
     // --- Render ---
+    console.log('[RosterManager Render] Type of rosters:', typeof rosters, 'Value:', rosters);
+    console.log('[RosterManager Render] Type of selectedRosterMembers:', typeof selectedRosterMembers, 'Value:', selectedRosterMembers);
+    console.log('[RosterManager Render] Type of filteredGuildMembers:', typeof filteredGuildMembers, 'Value:', filteredGuildMembers);
+
     return (
         <div className="p-4 bg-gray-800 text-white rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold mb-4 text-yellow-400">Roster Management</h2>
@@ -381,7 +385,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                         <>
                             <div className="flex-grow overflow-hidden mb-4">
                                 <ul className="space-y-2 max-h-72 overflow-y-auto pr-2 border border-gray-700 rounded p-2 bg-gray-900/50">
-                                    {rosters.map((roster) => (
+                                    {Array.isArray(rosters) && rosters.map((roster) => (
                                         <li key={roster.id}
                                             className={`flex justify-between items-center p-2 rounded cursor-pointer transition-colors duration-150 ${selectedRoster?.id === roster.id ? 'bg-blue-700 hover:bg-blue-600 ring-1 ring-blue-400' : 'bg-gray-700 hover:bg-gray-600'}`}
                                             onClick={() => handleSelectRoster(roster.id)}> {/* Pass number ID */}
@@ -446,7 +450,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                             </tr>
                                         </thead>
                                         <tbody className="bg-gray-700 divide-y divide-gray-600">
-                                            {selectedRosterMembers.map((member) => (
+                                            {Array.isArray(selectedRosterMembers) && selectedRosterMembers.map((member) => (
                                                 <tr key={member.characterId} className="hover:bg-gray-600/50"> {/* Use characterId for key */}
                                                     <td className={`px-4 py-2 whitespace-nowrap text-sm font-medium ${getClassColor(member.class)}`}>{member.name}</td> {/* Use direct properties */}
                                                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">{member.rank}</td> {/* Use direct properties */}
@@ -501,7 +505,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 />
                                                 {addCharSearch && filteredGuildMembers.length > 0 && (
                                                     <ul className="absolute z-20 w-full bg-gray-900 border border-gray-600 rounded mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                                        {filteredGuildMembers.slice(0, 10).map(member => ( // Limit suggestions shown
+                                                        {Array.isArray(filteredGuildMembers) && filteredGuildMembers.slice(0, 10).map(member => ( // Limit suggestions shown
                                                             <li key={member.id}
                                                                 className={`p-2 cursor-pointer hover:bg-blue-600 ${getClassColor(member.class)}`}
                                                                 onClick={() => {
