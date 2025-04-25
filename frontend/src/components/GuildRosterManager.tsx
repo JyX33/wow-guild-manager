@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import * as rosterServiceApi from '../services/api/roster.service'; // Renamed to avoid conflict
 import * as guildServiceApi from '../services/api/guild.service'; // Renamed to avoid conflict
-import { Roster, RosterMember, RosterMemberAddition } from '../../../../shared/types/api'; // Corrected path
-import { GuildMember, GuildRank } from '../../../../shared/types/guild'; // Corrected path
+import { Roster, RosterMember, RosterMemberAddition } from '@shared/types/api'; // Use path alias
+import { GuildMember, GuildRank } from '@shared/types/guild'; // Use path alias
 import LoadingSpinner from './LoadingSpinner';
 // import ConfirmationDialog from './ConfirmationDialog'; // Assuming this exists and has props: isOpen, onClose, onConfirm, title, message
 // import FormStatus from './FormStatus'; // Assuming this exists and has props: message, type ('error' | 'success')
@@ -79,7 +79,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         try {
             // Use correct service variable and access .data
             const response = await rosterServiceApi.rosterService.getRostersByGuild(numericGuildId);
-            setRosters(response.data || []);
+            setRosters(response.data || []); // Reverted: response.data is already Roster[]
         } catch (err: any) {
             console.error("Error fetching rosters:", err);
             setError(err?.message || 'Failed to load rosters. Please try again.');
@@ -105,7 +105,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
             ]);
             setGuildMembers(membersResponse.data || []);
             // Sort ranks by level for display
-            setGuildRanks((ranksResponse.data || []).sort((a: GuildRank, b: GuildRank) => a.level - b.level));
+            setGuildRanks((ranksResponse.data || []).sort((a: GuildRank, b: GuildRank) => a.rank_id - b.rank_id)); // Sort by rank_id
         } catch (err: any) {
             console.error("Error fetching guild data:", err);
             setError((prevError) => prevError ? `${prevError}\n${err?.message || 'Failed to load guild data.'}` : (err?.message || 'Failed to load guild data.'));
@@ -321,7 +321,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }
         const addition: RosterMemberAddition = {
             type: 'character',
-            characterId: selectedCharToAdd.id,
+            characterId: selectedCharToAdd.character_id!, // Use character_id, add non-null assertion after check in button
             role: addCharRole.trim() || null,
         };
         handleAddMembers([addition]);
@@ -354,7 +354,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // --- Autocomplete Logic ---
     const filteredGuildMembers = addCharSearch && guildMembers.length > 0
         ? guildMembers.filter(member =>
-            member.name.toLowerCase().includes(addCharSearch.toLowerCase()) &&
+            member.character_name.toLowerCase().includes(addCharSearch.toLowerCase()) && // Use character_name
             !selectedRosterMembers.some(rm => rm.characterId === member.id) // Exclude already rostered members using characterId and member.id
           )
         : [];
@@ -507,19 +507,19 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                     <ul className="absolute z-20 w-full bg-gray-900 border border-gray-600 rounded mt-1 max-h-40 overflow-y-auto shadow-lg">
                                                         {Array.isArray(filteredGuildMembers) && filteredGuildMembers.slice(0, 10).map(member => ( // Limit suggestions shown
                                                             <li key={member.id}
-                                                                className={`p-2 cursor-pointer hover:bg-blue-600 ${getClassColor(member.class)}`}
+                                                                className={`p-2 cursor-pointer hover:bg-blue-600 ${getClassColor(member.character_class)}`} // Use character_class
                                                                 onClick={() => {
                                                                     setSelectedCharToAdd(member);
-                                                                    setAddCharSearch(member.name); // Fill input with selected name
+                                                                    setAddCharSearch(member.character_name); // Fill input with selected name - Use character_name
                                                                     clearMessages();
                                                                 }}>
-                                                                {member.name} ({member.class})
+                                                                {member.character_name} ({member.character_class}) // Use character_name and character_class
                                                             </li>
                                                         ))}
                                                     </ul>
                                                 )}
                                             </div>
-                                            {selectedCharToAdd && <p className="text-xs text-green-400">Selected: {selectedCharToAdd.name}</p>}
+                                            {selectedCharToAdd && <p className="text-xs text-green-400">Selected: {selectedCharToAdd.character_name}</p>} {/* Use character_name */}
                                             <input
                                                 type="text"
                                                 value={addCharRole}
@@ -528,7 +528,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 disabled={isSubmitting}
                                                 className="w-full p-2 rounded bg-gray-900 border border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                                             />
-                                            <button type="submit" disabled={!selectedCharToAdd || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            <button type="submit" disabled={!selectedCharToAdd || !selectedCharToAdd.character_id || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"> {/* Check character_id exists */}
                                                 {isSubmitting ? <LoadingSpinner size="sm" /> : 'Add Character'}
                                             </button>
                                         </form>
@@ -545,7 +545,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 className="w-full p-2 rounded bg-gray-900 border border-gray-600 h-24 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                                             >
                                                 {guildRanks.map(rank => (
-                                                    <option key={rank.id} value={rank.id}>{rank.rank_name} (Lvl {rank.level})</option>
+                                                    <option key={rank.rank_id} value={rank.rank_id}>{rank.rank_name} (ID {rank.rank_id})</option>
                                                 ))}
                                             </select>
                                             <input
