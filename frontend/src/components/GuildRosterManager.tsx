@@ -32,7 +32,6 @@ const getClassColor = (className: string): string => {
     return colors[className] || 'text-gray-400';
 };
 
-
 const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     const [rosters, setRosters] = useState<Roster[]>([]);
     const [selectedRoster, setSelectedRoster] = useState<Roster | null>(null);
@@ -58,7 +57,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
 
     // Confirmation Dialog State (Example structure)
     // const [confirmAction, setConfirmAction] = useState<{ type: 'deleteRoster' | 'removeMember'; data: any; message: string } | null>(null);
-
 
     // --- Clear Messages ---
     const clearMessages = () => {
@@ -93,7 +91,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         setLoadingGuildData(true);
         const numericGuildId = parseInt(guildId, 10);
         if (isNaN(numericGuildId)) {
-             // Error already set by fetchRosters if it runs first
+            // Error already set by fetchRosters if it runs first
             if (!error) setError("Invalid Guild ID provided.");
             setLoadingGuildData(false);
             return;
@@ -118,49 +116,110 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     useEffect(() => {
         fetchRosters();
         fetchGuildData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [guildId]); // Fetch only when guildId changes
 
     // --- Roster Selection ---
     const handleSelectRoster = useCallback(async (rosterId: number | null) => {
         clearMessages();
-        if (rosterId === null || selectedRoster?.id === rosterId) {
-            setSelectedRoster(null); // Deselect
+        const currentSelectedId = selectedRoster?.id; // Capture current selection ID before async
+
+        // Handle deselection or clicking the same roster again
+        if (rosterId === null || currentSelectedId === rosterId) {
+            setSelectedRoster(null);
             setSelectedRosterMembers([]);
             return;
         }
 
-        setLoadingRosterDetails(true);
-        // Find roster in the local list first
         const localRoster = rosters.find(r => r.id === rosterId);
-        setSelectedRoster(localRoster || null); // Set basic info immediately if found
-        setSelectedRosterMembers([]); // Clear previous members
+        if (!localRoster) {
+            console.error(`Roster with ID ${rosterId} not found in local list.`);
+            setError(`Selected roster not found.`);
+            setSelectedRoster(null); // Ensure deselected if not found locally
+            setSelectedRosterMembers([]);
+            return; // Don't proceed if not found locally
+        }
 
-        if (rosterId !== null) { // Check if rosterId is not null before fetching
-            try {
-                // Fetch full details from the API
-                const response = await rosterServiceApi.rosterService.getRosterDetails(rosterId);
-                if (response.data) {
-                    setSelectedRoster(response.data.roster); // Update with full details
-                    // Ensure we initialize with an empty array if members is undefined or null
-                    setSelectedRosterMembers(response.data.members || []);
+        // Set local roster immediately, clear members for loading state
+        setSelectedRoster(localRoster);
+        setSelectedRosterMembers([]);
+        setLoadingRosterDetails(true);
+        const idBeingFetched = rosterId; // Capture the ID we are fetching for this specific call
+
+        try {
+            // Fetch full details from the API
+            const response = await rosterServiceApi.rosterService.getRosterDetails(idBeingFetched);
+
+            // --- Race Condition Check --- 
+            // After await, check if the selected roster *still* matches the one we fetched for.
+            // Use a functional state update for selectedRoster to get the *latest* state value for comparison.
+            let stillSelected = false;
+            setSelectedRoster(currentSelected => {
+                if (currentSelected?.id === idBeingFetched) {
+                    stillSelected = true;
+                    return currentSelected; // No change needed here, just checking
+                }
+                return currentSelected; // Not the one we fetched, keep current state
+            });
+
+            if (!stillSelected) {
+                 console.log("Roster selection changed during fetch, ignoring stale data for ID:", idBeingFetched);
+                 // Don't update state or loading status, let the new selection handler manage it.
+                 return; // Exit early
+            }
+
+            // --- Process Response (only if still selected) ---
+            if (response.data) {
+                // API Success: Data object exists
+                const rosterFromApi = response.data.roster;
+                const membersFromApi = response.data.members || [];
+
+                if (rosterFromApi) {
+                    // Valid roster object received from API
+                    setSelectedRoster(rosterFromApi); // Update with full details
+                    setSelectedRosterMembers(membersFromApi);
                     console.log("Roster details loaded:", response.data);
                 } else {
-                    throw new Error(response.message || "Roster details not found.");
+                    // API Success but roster object is null/missing
+                    console.warn("API response successful but missing roster object for ID:", idBeingFetched, ". Displaying basic info.");
+                    // Keep the localRoster selected (it's already set)
+                    setSelectedRosterMembers(membersFromApi); // Update members if provided
+                    setError(response.message || `Loaded basic info for roster "${localRoster.name}", but full details might be missing.`);
                 }
-            } catch (err: any) {
-                console.error("Error fetching roster details:", err);
-                setError(err?.message || `Failed to load details for roster.`);
-                setSelectedRoster(null); // Clear selection on error
-            } finally {
-                setLoadingRosterDetails(false);
+            } else {
+                 // API Success but data object itself is missing/null
+                 console.error("API response missing data object for ID:", idBeingFetched, response);
+                 // Keep the localRoster selected (already set)
+                 setError(response.message || `Failed to load full details for roster "${localRoster.name}". Displaying basic info.`);
+                 setSelectedRosterMembers([]); // Ensure members are empty
             }
-        } else {
-            setLoadingRosterDetails(false); // Roster not found in local list
+        } catch (err: any) {
+            // API Failure
+            console.error("Error fetching roster details for ID:", idBeingFetched, err);
+            // Check if the selection is still the one that failed
+             setSelectedRoster(currentSelected => {
+                 if (currentSelected?.id === idBeingFetched) {
+                     // Keep the localRoster selected (already set), show error, ensure members are empty
+                     setError(err?.message || `Failed to load details for roster "${localRoster.name}". Please try again.`);
+                     setSelectedRosterMembers([]);
+                     return currentSelected; // Keep localRoster
+                 } else {
+                     console.log("Error occurred for a stale fetch (ID:", idBeingFetched,"), ignoring.");
+                     return currentSelected; // Selection changed, ignore error for stale fetch
+                 }
+             });
+        } finally {
+             // Only stop loading if this fetch corresponds to the *currently* selected roster
+             setSelectedRoster(currentSelected => {
+                 if (currentSelected?.id === idBeingFetched) {
+                     setLoadingRosterDetails(false);
+                 }
+                 // Always return the currentSelected state, regardless of whether loading changed
+                 return currentSelected;
+             });
         }
-        // Ensure this function always returns a Promise for proper awaiting
-        return;
-    }, [rosters, selectedRoster?.id]);
+    // Dependencies: only need rosters list. Comparison logic inside handles selection changes.
+    }, [rosters]);
 
     // --- Roster CRUD ---
     const handleCreateRoster = async (e: React.FormEvent) => {
@@ -205,7 +264,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }
     };
 
-    // Removed duplicate definition, kept the one expecting number
     const performDeleteRoster = async (rosterId: number) => { // Expect number
         setIsSubmitting(true); // Use submitting state for delete operation
         clearMessages();
@@ -229,28 +287,20 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     const triggerRemoveMember = (member: RosterMember) => {
         clearMessages();
         // Using window.confirm for simplicity
-        const confirmRemove = window.confirm(`Are you sure you want to remove ${member.name} from the roster "${selectedRoster?.name}"?`); // Use member.name
+        const confirmRemove = window.confirm(`Are you sure you want to remove ${member.name} from the roster "${selectedRoster?.name}"?`);
         if (confirmRemove) {
-            performRemoveMember(member.characterId); // Pass characterId (number)
+            performRemoveMember(member.characterId);
         }
-        // Example with ConfirmationDialog state:
-        // setConfirmAction({
-        //     type: 'removeMember',
-        //     data: member.character.id,
-        //     message: `Are you sure you want to remove ${member.name} from the roster "${selectedRoster?.name}"?` // Use member.name
-        // });
     };
 
-    const performRemoveMember = async (characterId: number) => { // Expect characterId (number)
+    const performRemoveMember = async (characterId: number) => {
         if (!selectedRoster) return;
-        setIsSubmitting(true); // Can use a specific loading state per row if needed
+        setIsSubmitting(true);
         clearMessages();
         try {
-            await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId); // Pass numbers
+            await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId);
             setSuccessMessage(`Member removed successfully.`);
-            // Optimistically update UI
-            setSelectedRosterMembers(prev => prev.filter(m => m.characterId !== characterId)); // Use characterId
-            // Optionally: re-fetch full details if needed: handleSelectRoster(selectedRoster.id);
+            setSelectedRosterMembers(prev => prev.filter(m => m.characterId !== characterId));
         } catch (err: any) {
             console.error("Error removing member:", err);
             setError(err?.message || 'Failed to remove member. Please try again.');
@@ -259,28 +309,24 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }
     };
 
-    const handleUpdateRole = async (characterId: number, newRole: string) => { // Expect characterId (number)
+    const handleUpdateRole = async (characterId: number, newRole: string) => {
         if (!selectedRoster) return;
         clearMessages();
-        const originalMembers = [...selectedRosterMembers]; // For potential rollback
-        const roleToSend = newRole.trim() || null; // Send null if empty/whitespace
+        const originalMembers = [...selectedRosterMembers];
+        const roleToSend = newRole.trim() || null;
 
-        // Optimistically update UI
         setSelectedRosterMembers(prev =>
-            prev.map(m => m.characterId === characterId ? { ...m, role: roleToSend } : m) // Use characterId
+            prev.map(m => m.characterId === characterId ? { ...m, role: roleToSend } : m)
         );
 
         try {
-            await rosterServiceApi.rosterService.updateRosterMemberRole(selectedRoster.id, characterId, roleToSend); // Pass numbers and role/null
+            await rosterServiceApi.rosterService.updateRosterMemberRole(selectedRoster.id, characterId, roleToSend);
             setSuccessMessage(`Role updated successfully.`);
-             // Optionally: re-fetch full details if needed: handleSelectRoster(selectedRoster.id);
         } catch (err: any) {
             console.error("Error updating role:", err);
             setError(err?.message || 'Failed to update member role. Please try again.');
-            // Revert optimistic update on error
-            setSelectedRosterMembers(originalMembers); // Revert UI
+            setSelectedRosterMembers(originalMembers);
         }
-        // No specific submitting state here as it's per-row on blur
     };
 
     // --- Add Members ---
@@ -289,23 +335,21 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         setIsSubmitting(true);
         clearMessages();
         try {
-            const response = await rosterServiceApi.rosterService.addRosterMembers(selectedRoster.id, additions); // Pass number ID
-             if (response.data) {
-                 const addedCount = response.data.length; // Count members returned
-                 setSuccessMessage(`${addedCount} member(s) added successfully.`);
-             } else {
-                 setSuccessMessage(`Member addition request sent.`); // Fallback message
-             }
-            // Reset forms
+            const response = await rosterServiceApi.rosterService.addRosterMembers(selectedRoster.id, additions);
+            if (response.data) {
+                const addedCount = response.data.length;
+                setSuccessMessage(`${addedCount} member(s) added successfully.`);
+            } else {
+                setSuccessMessage(`Member addition request sent.`);
+            }
             setAddCharSearch('');
             setSelectedCharToAdd(null);
             setAddCharRole('');
             setSelectedRanksToAdd([]);
             setAddRankRole('');
-            // Re-fetch details to show new members
-            await handleSelectRoster(selectedRoster.id); // Pass number ID
+            await handleSelectRoster(selectedRoster.id);
         } catch (err: any) {
-             console.error("Error adding members:", err);
+            console.error("Error adding members:", err);
             setError(err?.message || 'Failed to add members. Please check your selections and try again.');
         } finally {
             setIsSubmitting(false);
@@ -320,7 +364,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }
         const addition: RosterMemberAddition = {
             type: 'character',
-            characterId: selectedCharToAdd.id!, // Use character_id, add non-null assertion after check in button
+            characterId: selectedCharToAdd.id!,
             role: addCharRole.trim() || null,
         };
         handleAddMembers([addition]);
@@ -334,16 +378,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }
         const additions: RosterMemberAddition[] = selectedRanksToAdd.map(rankIdStr => ({
             type: 'rank',
-            rankId: parseInt(rankIdStr, 10), // Parse rankId to number
+            rankId: parseInt(rankIdStr, 10),
             role: addRankRole.trim() || null,
         }));
-        // Filter out any additions where rankId parsing failed
         const validAdditions = additions.filter(a => a.type === 'rank' && !isNaN(a.rankId));
-        console.log("Add by Rank additions:", additions, "Valid:", validAdditions);
-        if (validAdditions.length !== additions.length) {
-             console.warn("Some selected ranks had invalid IDs and were ignored.");
-             // Optionally set an error message
-        }
         if (validAdditions.length > 0) {
             handleAddMembers(validAdditions);
         } else {
@@ -354,26 +392,19 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // --- Autocomplete Logic ---
     const filteredGuildMembers = addCharSearch && guildMembers.length > 0
         ? guildMembers.filter(member =>
-            member.character_name.toLowerCase().includes(addCharSearch.toLowerCase()) && // Use character_name
-            !selectedRosterMembers.some(rm => rm.characterId === member.id) // Exclude already rostered members using characterId and member.id
-          )
+            member.character_name.toLowerCase().includes(addCharSearch.toLowerCase()) &&
+            !selectedRosterMembers.some(rm => rm.characterId === member.id)
+        )
         : [];
 
     // --- Render ---
-    // console.log('[RosterManager Render] Type of rosters:', typeof rosters, 'Value:', rosters); // Removed diagnostic log
-    // console.log('[RosterManager Render] Type of selectedRosterMembers:', typeof selectedRosterMembers, 'Value:', selectedRosterMembers); // Removed diagnostic log
-    // console.log('[RosterManager Render] Type of filteredGuildMembers:', typeof filteredGuildMembers, 'Value:', filteredGuildMembers); // Removed diagnostic log
-
     return (
         <div className="p-4 bg-gray-800 text-white rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold mb-4 text-yellow-400">Roster Management</h2>
 
             {/* Status Messages */}
             {error && <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
-            {/* {error && <FormStatus message={error} type="error" />} */}
             {successMessage && <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded relative mb-4" role="alert">{successMessage}</div>}
-            {/* {successMessage && <FormStatus message={successMessage} type="success" />} */}
-
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Roster List & Creation */}
@@ -388,10 +419,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                     {Array.isArray(rosters) && rosters.map((roster) => (
                                         <li key={roster.id}
                                             className={`flex justify-between items-center p-2 rounded cursor-pointer transition-colors duration-150 ${selectedRoster?.id === roster.id ? 'bg-blue-700 hover:bg-blue-600 ring-1 ring-blue-400' : 'bg-gray-700 hover:bg-gray-600'}`}
-                                            onClick={() => handleSelectRoster(roster.id)}> {/* Pass number ID */}
+                                            onClick={() => handleSelectRoster(roster.id)}>
                                             <span className="font-medium truncate" title={roster.name}>{roster.name}</span>
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); triggerDeleteRoster(roster); }} // triggerDelete expects Roster object
+                                                onClick={(e) => { e.stopPropagation(); triggerDeleteRoster(roster); }}
                                                 disabled={isSubmitting}
                                                 className="ml-2 text-red-400 hover:text-red-300 text-xs p-1 rounded bg-gray-800 hover:bg-red-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                                                 title={`Delete ${roster.name}`}
@@ -423,7 +454,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
 
                 {/* Selected Roster Details */}
                 <div className="md:col-span-2">
-                    {loadingRosterDetails || (isSubmitting && !selectedRoster) ? ( // Show loading if submitting affects the whole view
+                    {loadingRosterDetails || (isSubmitting && !selectedRoster) ? (
                         <div className="flex justify-center items-center h-64">
                             <LoadingSpinner />
                         </div>
@@ -431,7 +462,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                         <div className="bg-gray-700 p-4 rounded-lg">
                             <div className="flex justify-between items-center mb-3">
                                 <h3 className="text-xl font-semibold text-yellow-300 truncate" title={selectedRoster.name}>{selectedRoster.name}</h3>
-                                {/* Optional: Add Edit Roster Name Button */}
                                 <button onClick={() => handleSelectRoster(null)} className="text-gray-400 hover:text-white text-sm">Close [X]</button>
                             </div>
 
@@ -451,15 +481,15 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                         </thead>
                                         <tbody className="bg-gray-700 divide-y divide-gray-600">
                                             {Array.isArray(selectedRosterMembers) && selectedRosterMembers.map((member) => (
-                                                <tr key={member.characterId} className="hover:bg-gray-600/50"> {/* Use characterId for key */}
-                                                    <td className={`px-4 py-2 whitespace-nowrap text-sm font-medium ${getClassColor(member.class)}`}>{member.name}</td> {/* Use direct properties */}
-                                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">{member.rank}</td> {/* Use direct properties */}
-                                                    <td className={`px-4 py-2 whitespace-nowrap text-sm ${getClassColor(member.class)}`}>{member.class}</td> {/* Use direct properties */}
+                                                <tr key={member.characterId} className="hover:bg-gray-600/50">
+                                                    <td className={`px-4 py-2 whitespace-nowrap text-sm font-medium ${getClassColor(member.class)}`}>{member.name}</td>
+                                                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">{member.rank}</td>
+                                                    <td className={`px-4 py-2 whitespace-nowrap text-sm ${getClassColor(member.class)}`}>{member.class}</td>
                                                     <td className="px-4 py-2 whitespace-nowrap text-sm">
                                                         <input
                                                             type="text"
                                                             defaultValue={member.role || ''}
-                                                            onBlur={(e) => handleUpdateRole(member.characterId, e.target.value)} // Pass characterId
+                                                            onBlur={(e) => handleUpdateRole(member.characterId, e.target.value)}
                                                             placeholder="Assign Role"
                                                             disabled={isSubmitting}
                                                             className="w-28 p-1 rounded bg-gray-900 border border-gray-600 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
@@ -467,10 +497,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                     </td>
                                                     <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                                                         <button
-                                                            onClick={() => triggerRemoveMember(member)} // triggerRemove expects RosterMember object
+                                                            onClick={() => triggerRemoveMember(member)}
                                                             disabled={isSubmitting}
                                                             className="text-red-400 hover:text-red-300 text-xs p-1 rounded bg-gray-800 hover:bg-red-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
-                                                            title={`Remove ${member.name}`} // Use direct property
+                                                            title={`Remove ${member.name}`}
                                                         >
                                                             Remove
                                                         </button>
@@ -485,7 +515,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                             )}
 
                             {/* Add Member Controls */}
-                             <div className="mt-6 pt-4 border-t border-gray-600">
+                            <div className="mt-6 pt-4 border-t border-gray-600">
                                 <h4 className="text-lg font-medium mb-3 text-yellow-200">Add Members</h4>
                                 {loadingGuildData ? <LoadingSpinner /> : (
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -505,21 +535,21 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 />
                                                 {addCharSearch && filteredGuildMembers.length > 0 && (
                                                     <ul className="absolute z-20 w-full bg-gray-900 border border-gray-600 rounded mt-1 max-h-40 overflow-y-auto shadow-lg">
-                                                        {Array.isArray(filteredGuildMembers) && filteredGuildMembers.slice(0, 10).map(member => ( // Limit suggestions shown
+                                                        {Array.isArray(filteredGuildMembers) && filteredGuildMembers.slice(0, 10).map(member => (
                                                             <li key={member.id}
-                                                                className={`p-2 cursor-pointer hover:bg-blue-600 ${getClassColor(member.character_class)}`} // Use character_class
+                                                                className={`p-2 cursor-pointer hover:bg-blue-600 ${getClassColor(member.character_class)}`}
                                                                 onClick={() => {
                                                                     setSelectedCharToAdd(member);
-                                                                    setAddCharSearch(member.character_name); // Fill input with selected name - Use character_name
+                                                                    setAddCharSearch(member.character_name);
                                                                     clearMessages();
                                                                 }}>
-                                                                {member.character_name} ({member.character_class}) // Use character_name and character_class
+                                                                {member.character_name} ({member.character_class})
                                                             </li>
                                                         ))}
                                                     </ul>
                                                 )}
                                             </div>
-                                            {selectedCharToAdd && <p className="text-xs text-green-400">Selected: {selectedCharToAdd.character_name}</p>} {/* Use character_name */}
+                                            {selectedCharToAdd && <p className="text-xs text-green-400">Selected: {selectedCharToAdd.character_name}</p>}
                                             <input
                                                 type="text"
                                                 value={addCharRole}
@@ -528,7 +558,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 disabled={isSubmitting}
                                                 className="w-full p-2 rounded bg-gray-900 border border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                                             />
-                                            <button type="submit" disabled={!selectedCharToAdd || !selectedCharToAdd.id || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"> {/* Check character_id exists */}
+                                            <button type="submit" disabled={!selectedCharToAdd || !selectedCharToAdd.id || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 {isSubmitting ? <LoadingSpinner size="sm" /> : 'Add Character'}
                                             </button>
                                         </form>
