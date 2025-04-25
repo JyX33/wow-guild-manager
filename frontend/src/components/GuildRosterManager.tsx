@@ -391,6 +391,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         : [];
 
     // --- Render ---
+    console.log('selectedRosterMembers', selectedRosterMembers);
     return (
         <div className="p-4 bg-gray-800 text-white rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold mb-4 text-yellow-400">Roster Management</h2>
