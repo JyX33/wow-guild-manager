@@ -361,9 +361,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         : [];
 
     // --- Render ---
-    console.log('[RosterManager Render] Type of rosters:', typeof rosters, 'Value:', rosters);
-    console.log('[RosterManager Render] Type of selectedRosterMembers:', typeof selectedRosterMembers, 'Value:', selectedRosterMembers);
-    console.log('[RosterManager Render] Type of filteredGuildMembers:', typeof filteredGuildMembers, 'Value:', filteredGuildMembers);
+    // console.log('[RosterManager Render] Type of rosters:', typeof rosters, 'Value:', rosters); // Removed diagnostic log
+    // console.log('[RosterManager Render] Type of selectedRosterMembers:', typeof selectedRosterMembers, 'Value:', selectedRosterMembers); // Removed diagnostic log
+    // console.log('[RosterManager Render] Type of filteredGuildMembers:', typeof filteredGuildMembers, 'Value:', filteredGuildMembers); // Removed diagnostic log
 
     return (
         <div className="p-4 bg-gray-800 text-white rounded-lg shadow-md">

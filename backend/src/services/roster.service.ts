@@ -105,11 +105,13 @@ export const getRosterMembers = async (rosterId: number): Promise<RosterMember[]
       rm.character_id as "characterId",
       c.name,
       c.class,
-      gr.name as rank,
+      gr.rank_name as rank, -- Select rank_name from guild_ranks
       rm.role
     FROM roster_members rm
     JOIN characters c ON rm.character_id = c.id
-    LEFT JOIN guild_ranks gr ON c.rank_id = gr.id
+    JOIN guild_members gm ON c.id = gm.character_id -- Join through guild_members
+    -- Assuming the character_id implies the correct guild context for gm
+    LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id -- Join guild_ranks using gm.rank and gm.guild_id
     WHERE rm.roster_id = $1
     ORDER BY c.name ASC;
   `;
