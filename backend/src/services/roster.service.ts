@@ -108,15 +108,20 @@ export const getRosterMembers = async (rosterId: number): Promise<RosterMember[]
   // Fetch members directly from guild_members, joining characters and ranks
   const query = `
     SELECT
-      gm.character_id as "characterId",
+      rm.character_id as "characterId",
       c.name,
       c.class,
       gr.rank_name as rank,
-      c.role as role
-    FROM guild_members gm
-    JOIN characters c ON gm.character_id = c.id
-    LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id -- Use LEFT JOIN for ranks
-    WHERE gm.guild_id = $1 -- Filter by guild_id (which corresponds to rosterId)
+      rm.role -- Get role from roster_members
+    FROM roster_members rm
+    JOIN characters c ON rm.character_id = c.id
+    -- Join rosters to get the guild_id associated with this roster
+    JOIN rosters r ON rm.roster_id = r.id
+    -- Join guild_members using character_id AND the specific guild_id from the roster
+    LEFT JOIN guild_members gm ON rm.character_id = gm.character_id AND r.guild_id = gm.guild_id
+    -- Join guild_ranks using the rank identifier from guild_members and the correct guild_id
+    LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id
+    WHERE rm.roster_id = $1 -- Filter by the actual roster_id passed to the function
     ORDER BY c.name ASC;
   `;
   const { rows } = await db.query(query, [rosterId]);
@@ -155,7 +160,6 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
       const role = addition.role !== undefined ? addition.role : null;
 
       if (addition.type === 'character') {
-        // Check if character exists in the guild and is not already in the roster
         // Check if character exists in the guild and is not already in the roster
         const charResult = await client.query(`
           SELECT c.id
