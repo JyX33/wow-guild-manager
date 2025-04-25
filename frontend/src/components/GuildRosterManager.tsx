@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import * as rosterServiceApi from '../services/api/roster.service'; // Renamed to avoid conflict
-import * as guildServiceApi from '../services/api/guild.service'; // Renamed to avoid conflict
 import { Roster, RosterMember, RosterMemberAddition } from '@shared/types/api'; // Use path alias
 import { GuildMember, GuildRank } from '@shared/types/guild'; // Use path alias
+import React, { useCallback, useEffect, useState } from 'react';
+import * as guildServiceApi from '../services/api/guild.service'; // Renamed to avoid conflict
+import * as rosterServiceApi from '../services/api/roster.service'; // Renamed to avoid conflict
 import LoadingSpinner from './LoadingSpinner';
 // import ConfirmationDialog from './ConfirmationDialog'; // Assuming this exists and has props: isOpen, onClose, onConfirm, title, message
 // import FormStatus from './FormStatus'; // Assuming this exists and has props: message, type ('error' | 'success')
@@ -142,7 +142,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                 const response = await rosterServiceApi.rosterService.getRosterDetails(rosterId);
                 if (response.data) {
                     setSelectedRoster(response.data.roster); // Update with full details
+                    // Ensure we initialize with an empty array if members is undefined or null
                     setSelectedRosterMembers(response.data.members || []);
+                    console.log("Roster details loaded:", response.data);
                 } else {
                     throw new Error(response.message || "Roster details not found.");
                 }
@@ -201,12 +203,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         if (confirmDelete) {
             performDeleteRoster(roster.id); // Pass number ID
         }
-        // Example with ConfirmationDialog state:
-        // setConfirmAction({
-        //     type: 'deleteRoster',
-        //     data: roster.id,
-        //     message: `Are you sure you want to delete the roster "${roster.name}"? This action cannot be undone.`
-        // });
     };
 
     // Removed duplicate definition, kept the one expecting number
@@ -575,22 +571,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                     )}
                 </div>
             </div>
-
-            {/* Confirmation Dialog Placeholder */}
-            {/* <ConfirmationDialog
-                isOpen={!!confirmAction}
-                onClose={() => setConfirmAction(null)}
-                onConfirm={() => {
-                    if (confirmAction?.type === 'deleteRoster') {
-                        performDeleteRoster(confirmAction.data);
-                    } else if (confirmAction?.type === 'removeMember') {
-                        performRemoveMember(confirmAction.data);
-                    }
-                    setConfirmAction(null);
-                }}
-                title={confirmAction?.type === 'deleteRoster' ? 'Delete Roster' : 'Remove Member'}
-                message={confirmAction?.message || 'Are you sure?'}
-            /> */}
         </div>
     );
 };
