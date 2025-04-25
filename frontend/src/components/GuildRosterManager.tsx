@@ -137,14 +137,14 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         setSelectedRosterMembers([]); // Clear previous members
 
         if (rosterId !== null) { // Check if rosterId is not null before fetching
-             try {
+            try {
                 // Fetch full details from the API
                 const response = await rosterServiceApi.rosterService.getRosterDetails(rosterId);
                 if (response.data) {
                     setSelectedRoster(response.data.roster); // Update with full details
                     setSelectedRosterMembers(response.data.members || []);
                 } else {
-                     throw new Error(response.message || "Roster details not found.");
+                    throw new Error(response.message || "Roster details not found.");
                 }
             } catch (err: any) {
                 console.error("Error fetching roster details:", err);
@@ -156,14 +156,16 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         } else {
             setLoadingRosterDetails(false); // Roster not found in local list
         }
-    }, [rosters, selectedRoster?.id]); // Removed guildId dependency
+        // Ensure this function always returns a Promise for proper awaiting
+        return;
+    }, [rosters, selectedRoster?.id]);
 
     // --- Roster CRUD ---
     const handleCreateRoster = async (e: React.FormEvent) => {
         e.preventDefault();
         clearMessages();
         const numericGuildId = parseInt(guildId, 10);
-         if (isNaN(numericGuildId)) {
+        if (isNaN(numericGuildId)) {
             setError("Invalid Guild ID.");
             return;
         }
@@ -175,14 +177,14 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         try {
             // Use correct service variable, pass name directly, access .data
             const response = await rosterServiceApi.rosterService.createRoster(numericGuildId, newRosterName.trim());
-             if (response.data) {
+            if (response.data) {
                 setNewRosterName('');
                 await fetchRosters(); // Re-fetch rosters list
                 setSuccessMessage(`Roster "${response.data.name}" created successfully.`);
-                // Optionally auto-select the new roster
-                handleSelectRoster(response.data.id);
+                // Auto-select the new roster and wait for selection to finish
+                await handleSelectRoster(response.data.id);
             } else {
-                 throw new Error(response.message || "Failed to create roster.");
+                throw new Error(response.message || "Failed to create roster.");
             }
         } catch (err: any) {
             console.error("Error creating roster:", err);
