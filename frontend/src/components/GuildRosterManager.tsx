@@ -79,7 +79,8 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         try {
             // Use correct service variable and access .data
             const response = await rosterServiceApi.rosterService.getRostersByGuild(numericGuildId);
-            setRosters(response.data || []); // Reverted: response.data is already Roster[]
+            // Assuming the actual API response is { success: boolean, data: Roster[] } based on logs
+            setRosters((response.data as any)?.data || []); // Access nested data, use 'as any' to bypass TS error
         } catch (err: any) {
             console.error("Error fetching rosters:", err);
             setError(err?.message || 'Failed to load rosters. Please try again.');
@@ -379,16 +380,13 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                 {/* Roster List & Creation */}
                 <div className="md:col-span-1 flex flex-col">
                     <h3 className="text-xl font-semibold mb-3 text-yellow-300">Rosters</h3>
-                    {console.log('[RosterManager Render] loadingRosters check:', loadingRosters)} {/* Add log here */}
                     {loadingRosters ? (
                         <LoadingSpinner />
                     ) : (
                         <>
                             <div className="flex-grow overflow-hidden mb-4">
                                 <ul className="space-y-2 max-h-72 overflow-y-auto pr-2 border border-gray-700 rounded p-2 bg-gray-900/50">
-                                    {Array.isArray(rosters) && rosters.map((roster) => {
-                                        console.log(`[RosterManager Render] Mapping roster: ID=${roster.id}, Name=${roster.name}`); // Add log inside map
-                                        return (
+                                    {Array.isArray(rosters) && rosters.map((roster) => (
                                         <li key={roster.id}
                                             className={`flex justify-between items-center p-2 rounded cursor-pointer transition-colors duration-150 ${selectedRoster?.id === roster.id ? 'bg-blue-700 hover:bg-blue-600 ring-1 ring-blue-400' : 'bg-gray-700 hover:bg-gray-600'}`}
                                             onClick={() => handleSelectRoster(roster.id)}> {/* Pass number ID */}
@@ -402,8 +400,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 🗑️
                                             </button>
                                         </li>
-                                        );
-                                    })}
+                                    ))}
                                     {rosters.length === 0 && <li className="text-gray-400 italic p-2">No rosters found.</li>}
                                 </ul>
                             </div>
