@@ -56,7 +56,7 @@ export const isRosterGuildMaster = async (req: AuthenticatedRequest, res: Respon
     // Now check if any of those characters are in the target guild with rank 0
     const gmCheckResult = await db.query(
         `SELECT 1 FROM guild_members gm
-         JOIN guild_ranks gr ON gm.rank_id = gr.id AND gm.guild_id = gr.guild_id
+         JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id -- Corrected join: gm.rank links to gr.rank_id
          WHERE gm.guild_id = $1
            AND gm.character_id = ANY($2::int[])
            AND gr.rank_id = 0 -- Assuming rank_id 0 is Guild Master
