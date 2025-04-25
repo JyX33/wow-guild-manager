@@ -139,11 +139,21 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
 
     const membersToAdd: { character_id: number; role: string | null }[] = [];
 
-    // 1. Fetch existing member IDs for duplicate check
+    // 1. Verify rosterId belongs to the provided guildId
+    const rosterCheckResult = await client.query('SELECT guild_id FROM rosters WHERE id = $1', [rosterId]);
+    if (rosterCheckResult.rowCount === 0) {
+      throw new Error(`Roster with ID ${rosterId} not found.`);
+    }
+    const actualGuildId = rosterCheckResult.rows[0].guild_id;
+    if (actualGuildId !== guildId) {
+      throw new Error(`Roster ${rosterId} belongs to guild ${actualGuildId}, but operation attempted with guild ${guildId}.`);
+    }
+
+    // 2. Fetch existing member IDs for duplicate check
     const existingMembersResult = await client.query('SELECT character_id FROM roster_members WHERE roster_id = $1', [rosterId]);
     const existingMemberIds = new Set(existingMembersResult.rows.map(r => r.character_id));
 
-    // 2. Process additions
+    // 3. Process additions
     for (const addition of additions) {
       const role = addition.role !== undefined ? addition.role : null;
 
@@ -159,9 +169,13 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
         if ((charResult.rowCount ?? 0) > 0 && !existingMemberIds.has(addition.characterId)) { // Handle null rowCount
           membersToAdd.push({ character_id: addition.characterId, role });
           existingMemberIds.add(addition.characterId); // Add to set to prevent duplicates within the same batch
+        } else if (!existingMemberIds.has(addition.characterId)) {
+           // Log if character exists but validation failed (not in guild_members or wrong guildId used)
+           console.warn(`Character ID ${addition.characterId} is valid but not found in guild ${guildId} members list or already exists in roster.`);
         }
       } else if (addition.type === 'rank') {
         // Find character IDs belonging to the specified rank within the guild
+        // Ensure rankId is treated as integer if it comes from guild_ranks.rank_id
         const rankCharsResult = await client.query('SELECT character_id FROM guild_members WHERE rank = $1 AND guild_id = $2', [addition.rankId, guildId]);
         rankCharsResult.rows.forEach(memberRow => {
           // Ensure the character_id exists before adding
@@ -173,7 +187,7 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
       }
     }
 
-    // 3. Insert unique new members if any
+    // 4. Insert unique new members if any
     if (membersToAdd.length > 0) {
       // Build multi-row insert query
       const valuesPlaceholders = membersToAdd.map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`).join(',');
