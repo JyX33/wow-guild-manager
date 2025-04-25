@@ -112,9 +112,9 @@ export const getRosterMembers = async (rosterId: number): Promise<RosterMember[]
       c.name,
       c.class,
       gr.rank_name as rank,
-      NULL as role -- Role is not directly stored in guild_members, set to null for now
+      c.role as role
     FROM guild_members gm
-    JOIN characters c ON gm.character_id = c.id
+    JOIN characters c ON gm.character_id = c.character_id
     LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id -- Use LEFT JOIN for ranks
     WHERE gm.guild_id = $1 -- Filter by guild_id (which corresponds to rosterId)
     ORDER BY c.name ASC;

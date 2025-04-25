@@ -32,7 +32,7 @@ export const rosterService = {
    * @param rosterId - The ID of the roster.
    * @returns A promise resolving to the API response containing the roster details and its members.
    */
-  getRosterDetails: (rosterId: number): Promise<ApiResponse<{ roster: Roster, members: RosterMember[] }>> => {
+  getRosterDetails: (rosterId: number): Promise<ApiResponse<Roster & { members: RosterMember[]  }>> => {
     return apiClient.get(`/rosters/${rosterId}`);
   },
 
