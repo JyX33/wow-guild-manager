@@ -324,7 +324,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }
         const addition: RosterMemberAddition = {
             type: 'character',
-            characterId: selectedCharToAdd.character_id!, // Use character_id, add non-null assertion after check in button
+            characterId: selectedCharToAdd.id!, // Use character_id, add non-null assertion after check in button
             role: addCharRole.trim() || null,
         };
         handleAddMembers([addition]);
@@ -343,6 +343,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         }));
         // Filter out any additions where rankId parsing failed
         const validAdditions = additions.filter(a => a.type === 'rank' && !isNaN(a.rankId));
+        console.log("Add by Rank additions:", additions, "Valid:", validAdditions);
         if (validAdditions.length !== additions.length) {
              console.warn("Some selected ranks had invalid IDs and were ignored.");
              // Optionally set an error message
@@ -531,7 +532,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 disabled={isSubmitting}
                                                 className="w-full p-2 rounded bg-gray-900 border border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                                             />
-                                            <button type="submit" disabled={!selectedCharToAdd || !selectedCharToAdd.character_id || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"> {/* Check character_id exists */}
+                                            <button type="submit" disabled={!selectedCharToAdd || !selectedCharToAdd.id || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"> {/* Check character_id exists */}
                                                 {isSubmitting ? <LoadingSpinner size="sm" /> : 'Add Character'}
                                             </button>
                                         </form>
@@ -548,7 +549,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                                                 className="w-full p-2 rounded bg-gray-900 border border-gray-600 h-24 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                                             >
                                                 {guildRanks.map(rank => (
-                                                    <option key={rank.rank_id} value={rank.rank_id}>{rank.rank_name} (ID {rank.rank_id})</option>
+                                                    <option key={rank.rank_id} value={String(rank.rank_id)}>{rank.rank_name} (ID {rank.rank_id})</option>
                                                 ))}
                                             </select>
                                             <input
