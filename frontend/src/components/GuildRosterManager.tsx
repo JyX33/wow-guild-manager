@@ -1,6 +1,6 @@
 import { Roster, RosterMember, RosterMemberAddition } from '@shared/types/api'; // Use path alias
 import { GuildMember, GuildRank } from '@shared/types/guild'; // Use path alias
-import React, { useCallback, useEffect, useState, useRef } from 'react'; // Added useRef
+import React, { useCallback, useEffect, useRef, useState } from 'react'; // Added useRef
 import * as guildServiceApi from '../services/api/guild.service'; // Renamed to avoid conflict
 import * as rosterServiceApi from '../services/api/roster.service'; // Renamed to avoid conflict
 import LoadingSpinner from './LoadingSpinner';
@@ -179,8 +179,8 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                      // Keep localRoster already set
                 }
                 // CRUCIAL: Update members state with API response
-                console.log('Setting members in handleSelectRoster:', membersFromApi);
-                setSelectedRosterMembers(membersFromApi);
+                console.log('Setting members in handleSelectRoster:', response.data.members);
+                setSelectedRosterMembers(response.data.members);
                 console.log("Roster details loaded for ID:", idBeingFetched, response.data);
                 setSuccessMessage(response.message || `Roster "${localRoster.name}" details loaded.`); // Optional success message
 
