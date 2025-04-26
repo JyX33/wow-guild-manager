@@ -173,47 +173,25 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                 const membersFromApi = response.data.data.members || [];
 
                 // Update roster state only if API provided a full object (optional, could keep local)
+                // Remove all temporary debug logs and keep only the correct state update logic
                 if (rosterFromApi) {
                     setSelectedRoster(rosterFromApi); // Update with potentially more details
                 } else {
-                     console.warn("API response successful but missing roster object for ID:", idBeingFetched, ". Displaying basic info.");
-                     // Keep localRoster already set
+                    // Keep localRoster already set
                 }
-                // CRUCIAL: Update members state with API response
-                console.log('Setting members in handleSelectRoster:', membersFromApi);
                 setSelectedRosterMembers(membersFromApi);
-                console.log("Roster details loaded for ID:", idBeingFetched, response.data);
                 setSuccessMessage(response.message || `Roster "${localRoster.name}" details loaded.`); // Optional success message
 
             } else {
-                // API Success but data object itself is missing/null
-                console.error("API response missing data object for ID:", idBeingFetched, response);
                 setError(response.message || `Failed to load full details for roster "${localRoster.name}". Displaying basic info.`);
-                console.log('Setting empty members (no data) in handleSelectRoster');
                 setSelectedRosterMembers([]); // Ensure members are empty
             }
         } catch (err: any) {
-            // API Failure
-            console.error("Error fetching roster details for ID:", idBeingFetched, err);
-
-            // --- Race Condition Check (Catch Block) ---
-            if (fetchingRosterIdRef.current !== idBeingFetched) {
-                console.log("Error occurred for a stale fetch (ID:", idBeingFetched,"), ignoring error.");
-                return; // Selection changed, ignore error for stale fetch
-            }
-
-            // --- Process Error (only if fetch is not stale) ---
-            // Keep the localRoster selected (already set)
             setError(err?.message || `Failed to load details for roster "${localRoster.name}". Please try again.`);
-            console.log('Setting empty members (error) in handleSelectRoster');
             setSelectedRosterMembers([]); // Ensure members are empty on error
         } finally {
-            // --- Race Condition Check (Finally Block) ---
-            // Only stop loading if this fetch corresponds to the *currently* tracked fetch ID
             if (fetchingRosterIdRef.current === idBeingFetched) {
                 setLoadingRosterDetails(false);
-                // Optionally clear the ref now that this fetch attempt is complete
-                // fetchingRosterIdRef.current = null; // Or keep it to compare against future clicks
             }
         }
     // Dependencies: rosters for finding local, rosterServiceApi for fetching. Ref handles async state.
