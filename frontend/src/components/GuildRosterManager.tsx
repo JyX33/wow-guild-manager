@@ -151,6 +151,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
 
         // Set initial state for loading
         setSelectedRoster(localRoster); // Show local data immediately
+        console.log('Setting selected roster with localRoster:', localRoster);
         setSelectedRosterMembers([]); // Clear members while loading details
         setLoadingRosterDetails(true);
         setError(null); // Clear previous errors for this roster
@@ -176,6 +177,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                 // Remove all temporary debug logs and keep only the correct state update logic
                 if (rosterFromApi) {
                     setSelectedRoster(rosterFromApi); // Update with potentially more details
+                    console.log('Setting selected roster:', rosterFromApi);
                 } else {
                     // Keep localRoster already set
                 }
@@ -391,7 +393,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         : [];
 
     // --- Render ---
-    console.log('selectedRosterMembers', selectedRosterMembers);
     return (
         <div className="p-4 bg-gray-800 text-white rounded-lg shadow-md">
             <h2 className="text-2xl font-semibold mb-4 text-yellow-400">Roster Management</h2>
