@@ -7,6 +7,7 @@ import ConfirmationDialog from './ConfirmationDialog';
 import { useGuildRosters } from '../hooks/useGuildRosters';
 import { useGuildData } from '../hooks/useGuildData';
 import { useRosterActions } from '../hooks/useRosterActions';
+import { rosterService } from '../services/api/roster.service';
 
 interface GuildRosterManagerProps {
   guildId: string;
@@ -47,7 +48,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     setSelectedRosterMembers,
     isSubmitting: memberSubmitting,
     removingMembers,
-    loadingMembers, // Added loadingMembers
+    loadingMembers,
     error: memberError,
     successMessage: memberSuccess,
     setError: setMemberError,
@@ -56,6 +57,8 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     handleRemoveMember,
     handleAddMembers,
   } = useRosterActions(selectedRoster);
+// Local state for loading roster details
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   // Form state for add member forms
   const [addCharSearch, setAddCharSearch] = useState('');
@@ -97,13 +100,37 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     setAddCharRole('');
     setSelectedRanksToAdd([]);
     setAddRankRole('');
-    setSelectedRosterMembers([]);
   }, [selectedRoster, setSelectedRosterMembers]);
 
   // Handle roster selection and details fetch
+// Fetch roster members when selectedRoster changes
+  useEffect(() => {
+    if (selectedRoster) {
+      setIsLoadingDetails(true);
+      setMemberError(null); // Clear previous errors before fetching
+      const fetchDetails = async () => {
+        try {
+          const response = await rosterService.getRosterDetails(selectedRoster.id);
+          // Safely access members, defaulting to an empty array if data or members are missing
+          setSelectedRosterMembers(response?.data?.data.members ?? []);
+          setMemberError(null); // Clear error on success
+        } catch (error) {
+          console.error('Error fetching roster members:', error);
+          setMemberError('Failed to load roster members.');
+          setSelectedRosterMembers([]); // Clear members on error
+        } finally {
+          setIsLoadingDetails(false);
+        }
+      };
+      fetchDetails();
+    } else {
+      // Clear members and error when no roster is selected
+      setSelectedRosterMembers([]);
+      setMemberError(null);
+    }
+  }, [selectedRoster, setIsLoadingDetails, setSelectedRosterMembers, setMemberError]);
   const onSelectRoster = (rosterId: number) => {
     handleSelectRoster(rosterId);
-    setSelectedRosterMembers([]);
   };
 
   // Confirmation dialog handlers
@@ -212,7 +239,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
             <RosterDetails
               roster={selectedRoster}
               members={selectedRosterMembers}
-              loading={loadingMembers}
+              loading={isLoadingDetails} // Use local loading state
               isSubmitting={memberSubmitting}
               onClose={() => { setSelectedRoster(null); setSelectedRosterMembers([]); }}
               onUpdateRole={handleUpdateRole}
