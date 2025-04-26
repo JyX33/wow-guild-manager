@@ -44,6 +44,7 @@ export function useGuildData(guildId: string) {
         guildServiceApi.guildService.getGuildMembers(numericGuildId),
         guildServiceApi.guildService.getGuildRanks(numericGuildId),
       ]);
+      console.log('Fetched guild members:', membersResponse.data);
       setGuildMembers(Array.isArray(membersResponse.data?.data) ? membersResponse.data.data : []);
       setGuildRanks(prev =>
         Array.isArray(ranksResponse.data)
