@@ -292,7 +292,11 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     };
 
     const performRemoveMember = async (characterId: number) => {
-        if (!selectedRoster) return;
+        if (!selectedRoster || typeof selectedRoster.id !== 'number') {
+            setError('No roster selected or invalid roster ID.');
+            setIsSubmitting(false); // Ensure submitting state is reset
+            return;
+        }
         setIsSubmitting(true);
         clearMessages();
         try {
@@ -309,7 +313,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     };
 
     const handleUpdateRole = async (characterId: number, newRole: string) => {
-        if (!selectedRoster) return;
+        if (!selectedRoster || typeof selectedRoster.id !== 'number') {
+            setError('No roster selected or invalid roster ID.');
+            return;
+        }
         clearMessages();
         const originalMembers = [...selectedRosterMembers];
         const roleToSend = newRole.trim() || null;
@@ -332,7 +339,11 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
 
     // --- Add Members ---
     const handleAddMembers = async (additions: RosterMemberAddition[]) => {
-        if (!selectedRoster || additions.length === 0) return;
+        if (!selectedRoster || typeof selectedRoster.id !== 'number' || additions.length === 0) {
+            setError('No roster selected or invalid roster ID.');
+            setIsSubmitting(false); // Ensure submitting state is reset
+            return;
+        }
         setIsSubmitting(true);
         clearMessages();
         try {
