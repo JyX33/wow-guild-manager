@@ -13,6 +13,7 @@ import * as rosterServiceApi from '../services/api/roster.service';
 export function useRosterActions(selectedRoster: Roster | null) {
   const [selectedRosterMembers, setSelectedRosterMembers] = useState<RosterMember[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false); // Added loadingMembers state
   const [removingMembers, setRemovingMembers] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -138,6 +139,7 @@ export function useRosterActions(selectedRoster: Roster | null) {
     selectedRosterMembers,
     setSelectedRosterMembers,
     isSubmitting,
+    loadingMembers, // Added loadingMembers to return
     removingMembers,
     error,
     successMessage,

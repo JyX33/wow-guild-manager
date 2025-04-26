@@ -54,10 +54,15 @@ export function useGuildRosters(guildId: string) {
     try {
       // NOTE: The API service does not support abort signals yet.
       const response: ApiResponse<Roster[]> = await rosterServiceApi.rosterService.getRostersByGuild(numericGuildId);
-      setRosters(Array.isArray(response.data) ? response.data : []);
-    } catch (err: any) {
+
+      setRosters(Array.isArray(response.data) ? response.data.data : []);
+    } catch (error: any) {
       if (abortController.signal.aborted) return;
-      setError(err?.message || 'Failed to load rosters. Please try again.');
+      setError(
+        error?.message
+          ? `Failed to load rosters: ${error.message}`
+          : 'Failed to load rosters. Please try again.'
+      );
     } finally {
       if (!abortController.signal.aborted) setLoadingRosters(false);
     }

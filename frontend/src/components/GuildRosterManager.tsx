@@ -47,6 +47,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     setSelectedRosterMembers,
     isSubmitting: memberSubmitting,
     removingMembers,
+    loadingMembers, // Added loadingMembers
     error: memberError,
     successMessage: memberSuccess,
     setError: setMemberError,
@@ -211,7 +212,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
             <RosterDetails
               roster={selectedRoster}
               members={selectedRosterMembers}
-              loading={false}
+              loading={loadingMembers}
               isSubmitting={memberSubmitting}
               onClose={() => { setSelectedRoster(null); setSelectedRosterMembers([]); }}
               onUpdateRole={handleUpdateRole}
