@@ -56,7 +56,7 @@ export function useGuildRosters(guildId: string) {
       const response: ApiResponse<Roster[]> = await rosterServiceApi.rosterService.getRostersByGuild(numericGuildId);
       // Log the actual data received from the API before setting state
       console.log('Fetched rosters data:', response.data);
-      setRosters(Array.isArray(response.data) ? response.data.data : []);
+      setRosters(Array.isArray(response.data?.data) ? response.data.data : []);
     } catch (error: any) {
       if (abortController.signal.aborted) return;
       // Log the entire error object for debugging
