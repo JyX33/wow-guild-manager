@@ -1,10 +1,11 @@
 import { Roster, RosterMember, RosterMemberAddition } from '@shared/types/api'; // Use path alias
 import { GuildMember, GuildRank } from '@shared/types/guild'; // Use path alias
 import React, { useCallback, useEffect, useRef, useState } from 'react'; // Added useRef
+import { useDebounce } from 'react-use';
+import LoadingSpinner from './LoadingSpinner';
 import * as guildServiceApi from '../services/api/guild.service'; // Renamed to avoid conflict
 import * as rosterServiceApi from '../services/api/roster.service'; // Renamed to avoid conflict
-import LoadingSpinner from './LoadingSpinner';
-// import ConfirmationDialog from './ConfirmationDialog'; // Assuming this exists and has props: isOpen, onClose, onConfirm, title, message
+import ConfirmationDialog from './ConfirmationDialog';
 // import FormStatus from './FormStatus'; // Assuming this exists and has props: message, type ('error' | 'success')
 // import Autocomplete from 'react-autocomplete'; // Example if using an autocomplete library
 
@@ -56,8 +57,18 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     const [selectedRanksToAdd, setSelectedRanksToAdd] = useState<string[]>([]);
     const [addRankRole, setAddRankRole] = useState<string>('');
 
-    // Confirmation Dialog State (Example structure)
-    // const [confirmAction, setConfirmAction] = useState<{ type: 'deleteRoster' | 'removeMember'; data: any; message: string } | null>(null);
+    // Confirmation Dialog States
+    const [confirmDialogOpen, setConfirmDialogOpen] = useState<boolean>(false);
+    const [confirmDialogData, setConfirmDialogData] = useState<{
+        title: string;
+        message: string;
+        confirmAction: () => void;
+        type: 'delete-roster' | 'remove-member';
+        itemId: number;
+    } | null>(null);
+
+    // Track members being removed for visual feedback
+    const [removingMembers, setRemovingMembers] = useState<Set<number>>(new Set());
 
     // --- Clear Messages ---
     const clearMessages = () => {
@@ -235,11 +246,18 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
 
     const triggerDeleteRoster = (roster: Roster) => {
         clearMessages();
-        // Using window.confirm for simplicity, replace with ConfirmationDialog if available
-        const confirmDelete = window.confirm(`Are you sure you want to delete the roster "${roster.name}"? This action cannot be undone.`);
-        if (confirmDelete) {
-            performDeleteRoster(roster.id); // Pass number ID
-        }
+        
+        // Setup confirmation dialog data
+        setConfirmDialogData({
+            title: 'Delete Roster',
+            message: `Are you sure you want to delete the roster "${roster.name}"? This action cannot be undone.`,
+            confirmAction: () => {
+                performDeleteRoster(roster.id);
+            },
+            type: 'delete-roster',
+            itemId: roster.id
+        });
+        setConfirmDialogOpen(true);
     };
 
     const performDeleteRoster = async (rosterId: number) => { // Expect number
@@ -264,32 +282,79 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // --- Member Management ---
     const triggerRemoveMember = (member: RosterMember) => {
         clearMessages();
-        // Using window.confirm for simplicity
-        const confirmRemove = window.confirm(`Are you sure you want to remove ${member.name} from the roster "${selectedRoster?.name}"?`);
-        if (confirmRemove) {
+        
+        // Add the member ID to removingMembers set for visual feedback
+        setRemovingMembers(prev => new Set(prev).add(member.characterId));
+        
+        // Setup confirmation dialog data
+        setConfirmDialogData({
+          title: 'Remove Member',
+          message: `Are you sure you want to remove ${member.name} from the roster "${selectedRoster?.name}"?`,
+          confirmAction: () => {
             performRemoveMember(member.characterId);
-        }
+          },
+          type: 'remove-member',
+          itemId: member.characterId
+        });
+        setConfirmDialogOpen(true);
     };
 
-    const performRemoveMember = async (characterId: number) => {
-        if (!selectedRoster || typeof selectedRoster.id !== 'number') {
+    // Create a ref to store the current characterId for debounce
+    const currentCharIdRef = useRef<number | null>(null);
+    
+    // Debounced version of performRemoveMember to prevent multiple calls
+    const [debouncedPerformRemoveMember] = useDebounce(
+        async () => {
+          const characterId = currentCharIdRef.current;
+          if (characterId === null) return;
+          
+          console.log('selectedRoster in performRemoveMember:', selectedRoster);
+          if (!selectedRoster || typeof selectedRoster.id !== 'number') {
             setError('No roster selected or invalid roster ID.');
-            setIsSubmitting(false); // Ensure submitting state is reset
+            setIsSubmitting(false);
+            setRemovingMembers(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(characterId);
+              return newSet;
+            });
             return;
-        }
-        setIsSubmitting(true);
-        clearMessages();
-        try {
-            await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId);
-            setSuccessMessage(`Member removed successfully.`);
-            console.log('Updating members in performRemoveMember for charId:', characterId);
+          }
+          
+          // Optimistic UI update - remove the member immediately for better UX
+          console.log('Updating members in performRemoveMember for charId:', characterId);
+          const memberToRemove = selectedRosterMembers.find(m => m.characterId === characterId);
+          if (memberToRemove) {
             setSelectedRosterMembers(prev => prev.filter(m => m.characterId !== characterId));
-        } catch (err: any) {
+          }
+          
+          setIsSubmitting(true);
+          try {
+            await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId);
+            setSuccessMessage(`${memberToRemove?.name || 'Member'} removed successfully.`);
+          } catch (err: any) {
             console.error("Error removing member:", err);
             setError(err?.message || 'Failed to remove member. Please try again.');
-        } finally {
+            
+            // Revert optimistic update on error
+            if (memberToRemove) {
+              setSelectedRosterMembers(prev => [...prev, memberToRemove]);
+            }
+          } finally {
             setIsSubmitting(false);
-        }
+            setRemovingMembers(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(characterId);
+              return newSet;
+            });
+          }
+        },
+        500, // 500ms debounce time
+        [selectedRoster, selectedRosterMembers]
+    );
+
+    const performRemoveMember = (characterId: number) => {
+        currentCharIdRef.current = characterId;
+        debouncedPerformRemoveMember();
     };
 
     const handleUpdateRole = async (characterId: number, newRole: string) => {
@@ -398,8 +463,15 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
             <h2 className="text-2xl font-semibold mb-4 text-yellow-400">Roster Management</h2>
 
             {/* Status Messages */}
-            {error && <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
-            {successMessage && <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded relative mb-4" role="alert">{successMessage}</div>}
+            {error && <div className="bg-red-900 border border-red-700 text-red-100 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong className="font-bold">Error: </strong>
+                <span className="block sm:inline">{error}</span>
+            </div>}
+
+            {successMessage && <div className="bg-green-900 border border-green-700 text-green-100 px-4 py-3 rounded relative mb-4" role="alert">
+                <strong className="font-bold">Success: </strong>
+                <span className="block sm:inline">{successMessage}</span>
+            </div>}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Roster List & Creation */}
@@ -596,6 +668,32 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
                     )}
                 </div>
             </div>
+            
+            {/* Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={confirmDialogOpen}
+                title={confirmDialogData?.title || ''}
+                message={confirmDialogData?.message || ''}
+                confirmText={confirmDialogData?.type === 'delete-roster' ? 'Delete' : 'Remove'}
+                cancelText="Cancel"
+                onConfirm={() => {
+                    confirmDialogData?.confirmAction();
+                    setConfirmDialogOpen(false);
+                }}
+                onCancel={() => {
+                    setConfirmDialogOpen(false);
+                    // Clear removing state for the current item if dialog is closed
+                    if (confirmDialogData?.type === 'remove-member' && confirmDialogData.itemId) {
+                        setRemovingMembers(prev => {
+                            const newSet = new Set(prev);
+                            newSet.delete(confirmDialogData.itemId);
+                            return newSet;
+                        });
+                    }
+                }}
+                isLoading={isSubmitting}
+                confirmButtonClass={confirmDialogData?.type === 'delete-roster' ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'}
+            />
         </div>
     );
 };
