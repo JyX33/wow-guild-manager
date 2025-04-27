@@ -180,9 +180,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
   };
 
   const triggerRemoveMember = (characterId: number, memberName: string) => {
-    // --- Logging Start ---
-    console.log(`[GuildRosterManager] triggerRemoveMember called for characterId: ${characterId}, name: ${memberName}`); // <<< ENSURE LOG EXISTS
-    // --- Logging End ---
     clearMemberMessages?.(); // Clear previous messages before showing dialog
     setConfirmDialogData({
       title: 'Remove Member',
@@ -328,19 +325,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
         confirmText={confirmDialogData?.type === 'delete-roster' ? 'Delete' : 'Remove'}
         cancelText="Cancel"
         onConfirm={() => {
-          // --- Logging Start ---
-          console.log(`[GuildRosterManager] ConfirmationDialog onConfirm triggered for type: ${confirmDialogData?.type}, itemId: ${confirmDialogData?.itemId}`); // <<< ENSURE LOG EXISTS
-          // --- Logging End ---
-          // --- Logging Start ---
-          console.log(`[GuildRosterManager] Calling confirmAction...`); // <<< ADD LOG
-          // --- Logging End ---
           confirmDialogData?.confirmAction();
           setConfirmDialogOpen(false);
         }}
         onCancel={() => {
-          // --- Logging Start ---
-          console.log('[GuildRosterManager] ConfirmationDialog onCancel triggered.'); // <<< ADD LOG
-          // --- Logging End ---
           setConfirmDialogOpen(false);
         }}
         // Use specific submitting state based on the action type

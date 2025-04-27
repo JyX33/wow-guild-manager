@@ -70,13 +70,8 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
 
 
   const handleAddMembers = useCallback(async (additions: RosterMemberAddition[]) => {
-    // --- Logging Start ---
-    console.log('[useRosterActions] handleAddMembers called with additions:', JSON.stringify(additions));
-    // --- Logging End ---
     if (!selectedRoster || additions.length === 0) {
-      // --- Logging Start ---
       console.error('[useRosterActions] handleAddMembers aborted: No selected roster or empty additions.');
-      // --- Logging End ---
       return Promise.reject(new Error("Invalid input")); // Return rejected promise
     }
     clearMessages();
@@ -84,15 +79,9 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
     const actionId = Date.now();
     latestActionRef.current = actionId;
 
-    try {
-      // --- Logging Start ---
-      console.log(`[useRosterActions] Calling rosterService.addRosterMembers for roster ${selectedRoster.id} (Action ID: ${actionId})`);
-      // --- Logging End ---
+    try {-
       await rosterServiceApi.rosterService.addRosterMembers(selectedRoster.id, additions);
       if (latestActionRef.current === actionId) {
-        // --- Logging Start ---
-        console.log(`[useRosterActions] addRosterMembers SUCCESS (Action ID: ${actionId}). Triggering onSuccess.`);
-        // --- Logging End ---
         setSuccessMessage('Member(s) added successfully.');
         onSuccess?.(); // Trigger refetch via callback
         return Promise.resolve(); // Resolve the promise on success
@@ -103,9 +92,6 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
       }
     } catch (err: any) {
       if (latestActionRef.current === actionId) {
-        // --- Logging Start ---
-        console.error(`[useRosterActions] addRosterMembers FAILED (Action ID: ${actionId}):`, err);
-        // --- Logging End ---
         setError(err.response?.data?.message || err.message || 'Failed to add members.');
         return Promise.reject(err); // Reject the promise on error
       } else {
@@ -115,9 +101,6 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
       }
     } finally {
       if (latestActionRef.current === actionId) {
-        // --- Logging Start ---
-        console.log(`[useRosterActions] addRosterMembers FINALLY (Action ID: ${actionId}). Setting isSubmitting=false.`);
-        // --- Logging End ---
         setIsSubmitting(false);
       }
     }
@@ -126,9 +109,6 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
   }, [selectedRoster, clearMessages, onSuccess]);
 
   const handleRemoveMember = useCallback(async (characterId: number) => {
-    // --- Logging Start ---
-    console.log(`[useRosterActions] handleRemoveMember called for characterId: ${characterId}`); // <<< ENSURE LOG EXISTS
-    // --- Logging End ---
     if (!selectedRoster) {
       console.error('[useRosterActions] handleRemoveMember aborted: No selected roster.');
       return;
@@ -139,9 +119,6 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
     const actionId = Date.now();
     latestActionRef.current = actionId;
 
-    // --- Logging Start ---
-    console.log(`[useRosterActions] Entering try block for removeRosterMember (Action ID: ${actionId})`); // <<< ADD LOG
-    // --- Logging End ---
     try {
       console.log(`[useRosterActions] Calling rosterService.removeRosterMember for roster ${selectedRoster.id}, character ${characterId}`); // <<< ENSURE LOG EXISTS
       await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId);
