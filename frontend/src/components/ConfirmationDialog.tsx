@@ -26,6 +26,10 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   confirmButtonClass = 'bg-red-600 hover:bg-red-700',
   isLoading = false
 }) => {
+  // --- Logging Start ---
+  console.log(`[ConfirmationDialog] Rendering. isOpen: ${isOpen}, title: ${title}`);
+  // --- Logging End ---
+
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
 
   if (!isOpen) return null;
@@ -34,8 +38,8 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
     <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+        <div
+          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           aria-hidden="true"
           onClick={onCancel}
         ></div>
