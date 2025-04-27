@@ -163,35 +163,59 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
     // 2. Fetch existing member IDs for duplicate check
     const existingMembersResult = await client.query('SELECT character_id FROM roster_members WHERE roster_id = $1', [rosterId]);
     const existingMemberIds = new Set(existingMembersResult.rows.map(r => r.character_id));
+    // --- Logging Start ---
+    console.log(`[RosterService.addRosterMembers] Existing member IDs for roster ${rosterId}:`, Array.from(existingMemberIds));
+    // --- Logging End ---
+
 
     // 3. Process additions
     for (const addition of additions) {
       const role = addition.role !== undefined ? addition.role : null;
 
       if (addition.type === 'character') {
+        // --- Logging Start ---
+        console.log(`[RosterService.addRosterMembers] Processing character addition: ID=${addition.characterId}, Role=${role}`);
+        // --- Logging End ---
         // Check if character exists in the guild and is not already in the roster
         const charResult = await client.query(`
           SELECT c.id
           FROM characters c
           JOIN guild_members gm ON c.id = gm.character_id
           WHERE c.id = $1 AND gm.guild_id = $2
-        `, [addition.characterId, guildId]);
-        if ((charResult.rowCount ?? 0) > 0 && !existingMemberIds.has(addition.characterId)) { // Handle null rowCount
+        `, [addition.characterId, guildId]); // Ensure guildId is correct here
+
+        const characterExistsInGuild = (charResult.rowCount ?? 0) > 0;
+        const characterAlreadyInRoster = existingMemberIds.has(addition.characterId);
+        // --- Logging Start ---
+        console.log(`[RosterService.addRosterMembers] Character ID ${addition.characterId}: ExistsInGuild=${characterExistsInGuild}, AlreadyInRoster=${characterAlreadyInRoster}`);
+        // --- Logging End ---
+
+        if (characterExistsInGuild && !characterAlreadyInRoster) {
           membersToAdd.push({ character_id: addition.characterId, role });
           existingMemberIds.add(addition.characterId); // Add to set to prevent duplicates within the same batch
-        } else if (!existingMemberIds.has(addition.characterId)) {
+          console.log(`[RosterService.addRosterMembers] Character ID ${addition.characterId} WILL be added.`); // Log success case
+        } else if (!characterAlreadyInRoster) { // Only warn if not already in roster but failed guild check
            // Log if character exists but validation failed (not in guild_members or wrong guildId used)
-           console.warn(`Character ID ${addition.characterId} is valid but not found in guild ${guildId} members list or already exists in roster.`);
+           console.warn(`[RosterService.addRosterMembers] Character ID ${addition.characterId} not found in guild ${guildId} members list or already exists in roster.`);
         }
       } else if (addition.type === 'rank') {
+        // --- Logging Start ---
+        console.log(`[RosterService.addRosterMembers] Processing rank addition: ID=${addition.rankId}, Role=${role}`);
+        // --- Logging End ---
         // Find character IDs belonging to the specified rank within the guild
         // Ensure rankId is treated as integer if it comes from guild_ranks.rank_id
         const rankCharsResult = await client.query('SELECT character_id FROM guild_members WHERE rank = $1 AND guild_id = $2', [addition.rankId, guildId]);
+        // --- Logging Start ---
+        console.log(`[RosterService.addRosterMembers] Found ${rankCharsResult.rowCount} members for rank ID ${addition.rankId} in guild ${guildId}.`);
+        // --- Logging End ---
         rankCharsResult.rows.forEach(memberRow => {
           // Ensure the character_id exists before adding
           if (memberRow.character_id && !existingMemberIds.has(memberRow.character_id)) {
             membersToAdd.push({ character_id: memberRow.character_id, role });
             existingMemberIds.add(memberRow.character_id); // Add to set
+            console.log(`[RosterService.addRosterMembers] Character ID ${memberRow.character_id} from rank ${addition.rankId} WILL be added.`); // Log success case
+          } else if (memberRow.character_id) {
+             console.log(`[RosterService.addRosterMembers] Character ID ${memberRow.character_id} from rank ${addition.rankId} already exists in roster, skipping.`);
           }
         });
       }
@@ -211,23 +235,40 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
       // --- Logging Start ---
       console.log(`[RosterService.addRosterMembers] Insert result rowCount for roster ${rosterId}:`, insertResult.rowCount);
       // --- Logging End ---
+    } else {
+       // --- Logging Start ---
+       console.log(`[RosterService.addRosterMembers] No new members to insert for roster ${rosterId}.`);
+       // --- Logging End ---
     }
 
+
     await client.query('COMMIT');
+    // --- Logging Start ---
+    console.log(`[RosterService.addRosterMembers] Transaction COMMIT successful for roster ${rosterId}`);
+    // --- Logging End ---
 
   } catch (error) {
     if (client) {
       await client.query('ROLLBACK');
+      // --- Logging Start ---
+      console.log(`[RosterService.addRosterMembers] Transaction ROLLBACK due to error for roster ${rosterId}`);
+      // --- Logging End ---
     }
     console.error('Error adding roster members:', error);
     throw error;
   } finally {
     if (client) {
       client.release();
+      // --- Logging Start ---
+      console.log(`[RosterService.addRosterMembers] Released DB client for roster ${rosterId}`);
+      // --- Logging End ---
     }
   }
 
   // Return the updated full list of members
+  // --- Logging Start ---
+  console.log(`[RosterService.addRosterMembers] Fetching and returning updated member list for roster ${rosterId}`);
+  // --- Logging End ---
   return getRosterMembers(rosterId);
 };
 
@@ -246,11 +287,16 @@ export const updateRosterMemberRole = async (rosterId: number, characterId: numb
         rm.character_id as "characterId",
         c.name,
         c.class,
-        gr.name as rank,
+        gr.rank_name as rank, -- Corrected to use rank_name from guild_ranks
         rm.role
       FROM roster_members rm
       JOIN characters c ON rm.character_id = c.id
-      LEFT JOIN guild_ranks gr ON c.rank_id = gr.id
+      -- Join rosters to get the guild_id associated with this roster
+      JOIN rosters r ON rm.roster_id = r.id
+      -- Join guild_members using character_id AND the specific guild_id from the roster
+      LEFT JOIN guild_members gm ON rm.character_id = gm.character_id AND r.guild_id = gm.guild_id
+      -- Join guild_ranks using the rank identifier from guild_members and the correct guild_id
+      LEFT JOIN guild_ranks gr ON gm.rank = gr.rank_id AND gm.guild_id = gr.guild_id
       WHERE rm.roster_id = $1 AND rm.character_id = $2;
     `;
     const { rows } = await db.query(selectQuery, [rosterId, characterId]);

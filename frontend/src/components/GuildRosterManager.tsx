@@ -207,13 +207,13 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
   const handleAddSingleCharacter = (e: React.FormEvent) => {
     e.preventDefault();
     clearMemberMessages?.(); // Clear previous messages
-    if (!selectedCharToAdd || !selectedCharToAdd.id) {
+    if (!selectedCharToAdd || !selectedCharToAdd.character_id) { // Check for character_id instead of id
       setMemberError("Please select a valid character to add.");
       return;
     }
     const addition: RosterMemberAddition = {
       type: 'character',
-      characterId: selectedCharToAdd.id,
+      characterId: selectedCharToAdd.character_id, // Use character_id here
       role: addCharRole.trim() || null,
     };
     // --- Logging Start ---
