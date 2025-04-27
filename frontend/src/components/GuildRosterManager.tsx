@@ -338,6 +338,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
           setConfirmDialogOpen(false);
         }}
         onCancel={() => {
+          // --- Logging Start ---
+          console.log('[GuildRosterManager] ConfirmationDialog onCancel triggered.'); // <<< ADD LOG
+          // --- Logging End ---
           setConfirmDialogOpen(false);
         }}
         // Use specific submitting state based on the action type

@@ -41,7 +41,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         <div
           className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
           aria-hidden="true"
-          onClick={onCancel}
+          // onClick={onCancel} // <<< TEMPORARILY REMOVE/COMMENT OUT
         ></div>
 
         {/* This centers the modal content */}
