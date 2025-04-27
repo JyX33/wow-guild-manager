@@ -48,36 +48,13 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
   const [selectedRosterMembers, setSelectedRosterMembers] = useState<RosterMember[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false); // Keep local loading state
 
-  // Define the fetch function using useCallback
-  const fetchRosterDetails = useCallback(async () => {
-    if (!selectedRoster) {
-      setSelectedRosterMembers([]); // Use local setter
-      return;
-    }
+  // --- Refactor Action Hook Setup ---
+  // State to trigger refetching roster details after an action
+  const [refetchCounter, setRefetchCounter] = useState(0);
+  // Stable function to increment the counter, triggering a refetch effect
+  const triggerRefetch = useCallback(() => setRefetchCounter(c => c + 1), []);
 
-    setIsLoadingDetails(true);
-    // Error state is managed by the action hook, clear it before fetch if desired
-    // clearMemberMessages?.();
-    try {
-      const response = await rosterService.getRosterDetails(selectedRoster.id);
-      // Ensure response structure is correct before accessing members
-      const members = response?.data?.data?.members ?? [];
-      setSelectedRosterMembers(Array.isArray(members) ? members : []); // Use local setter, ensure it's an array
-      // Clear action errors on successful fetch
-      // clearMemberMessages?.();
-    } catch (error: any) {
-      console.error('Error fetching roster members:', error);
-      // Use setMemberError from the hook to display fetch errors
-      setMemberError('Failed to load roster members.');
-      setSelectedRosterMembers([]); // Use local setter
-    } finally {
-      setIsLoadingDetails(false);
-    }
-    // Pass setMemberError if you want fetch errors displayed via the hook's error state
-  }, [selectedRoster, setMemberError]); // Add setMemberError dependency if used
-
-  // Hook for roster actions - Pass the refetch function
-  // Remove selectedRosterMembers/setSelectedRosterMembers from destructuring
+  // Hook for roster actions - Pass triggerRefetch as onSuccess
   const {
     isSubmitting: memberSubmitting,
     removingMembers,
@@ -89,7 +66,72 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     handleRemoveMember,
     handleAddMembers,
     clearMessages: clearMemberMessages, // Get clear function
-  } = useRosterActions(selectedRoster, fetchRosterDetails); // Pass fetchRosterDetails as onSuccess
+  } = useRosterActions(selectedRoster, triggerRefetch); // Pass triggerRefetch here
+
+  // Define the fetch function using useCallback
+  // Dependencies: selectedRoster (changes), setMemberError (stable from hook)
+  const fetchRosterDetails = useCallback(async () => {
+    if (!selectedRoster) {
+      setSelectedRosterMembers([]); // Use local setter
+      return;
+    }
+
+    setIsLoadingDetails(true);
+    // Don't clear action messages here, let them persist until next action or roster change
+    try {
+      const response = await rosterService.getRosterDetails(selectedRoster.id);
+      // Ensure response structure is correct before accessing members
+      const members = response?.data?.data?.members ?? [];
+      setSelectedRosterMembers(Array.isArray(members) ? members : []); // Use local setter, ensure it's an array
+      // Optionally clear error *only* on successful fetch if desired
+      // setMemberError(null);
+    } catch (error: any) {
+      console.error('Error fetching roster members:', error);
+      // Use setMemberError from the hook to display fetch errors
+      setMemberError('Failed to load roster members.');
+      setSelectedRosterMembers([]); // Use local setter
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  }, [selectedRoster, setMemberError]); // Dependencies are correct
+
+  // Effect to handle initial fetch when selectedRoster changes
+  // and clear form state/messages
+  useEffect(() => {
+    // Reset refetch counter when roster changes to avoid immediate double fetch
+    setRefetchCounter(0);
+
+    // Clear form state
+    setAddCharSearch('');
+    setSelectedCharToAdd(null);
+    setAddCharRole('');
+    setSelectedRanksToAdd([]);
+    setAddRankRole('');
+    // Clear previous member messages only when roster changes
+    clearMemberMessages?.();
+
+    // Fetch details for the newly selected roster (or clear if null)
+    if (selectedRoster) {
+        fetchRosterDetails();
+    } else {
+        // Clear members if no roster is selected
+        setSelectedRosterMembers([]);
+    }
+    // Dependencies: selectedRoster triggers clearing and initial fetch.
+    // fetchRosterDetails is stable if selectedRoster/setMemberError are stable/handled.
+    // clearMemberMessages is stable.
+  }, [selectedRoster, fetchRosterDetails, clearMemberMessages]);
+
+  // Effect to handle manual refetches triggered by the refetchCounter
+  useEffect(() => {
+    // Only run fetch if counter is > 0 (i.e., triggered by an action)
+    // and a roster is actually selected.
+    if (refetchCounter > 0 && selectedRoster) {
+      fetchRosterDetails();
+    }
+    // This effect only depends on the counter and the fetch function itself
+  }, [refetchCounter, selectedRoster, fetchRosterDetails]);
+
 
   // Form state for add member forms (keep as is)
   const [addCharSearch, setAddCharSearch] = useState('');
@@ -122,21 +164,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guildId]); // Keep guildId dependency
 
-  // When selectedRoster changes, clear member form state and fetch details
-  useEffect(() => {
-    // Clear form state
-    setAddCharSearch('');
-    setSelectedCharToAdd(null);
-    setAddCharRole('');
-    setSelectedRanksToAdd([]);
-    setAddRankRole('');
-    // Clear previous member messages
-    clearMemberMessages?.(); // Clear messages from the action hook
-    // Fetch details for the new roster (or clear if null)
-    fetchRosterDetails();
-    // Add fetchRosterDetails and clearMemberMessages to dependency array
-  }, [selectedRoster, fetchRosterDetails, clearMemberMessages]);
-
   // Confirmation dialog handlers
   const triggerDeleteRoster = (roster: Roster) => {
     clearRosterMessages?.(); // Clear roster messages
@@ -158,7 +185,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
       title: 'Remove Member',
       message: `Are you sure you want to remove ${memberName} from the roster "${selectedRoster?.name}"?`,
       confirmAction: () => {
-        handleRemoveMember(characterId); // This will trigger onSuccess -> fetchRosterDetails
+        handleRemoveMember(characterId); // This will trigger onSuccess -> triggerRefetch
       },
       type: 'remove-member',
       itemId: characterId,
