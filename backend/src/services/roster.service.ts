@@ -134,10 +134,19 @@ export const getRosterMembers = async (rosterId: number): Promise<RosterMember[]
  * Prevents duplicates and returns the updated list of members.
  */
 export const addRosterMembers = async (rosterId: number, additions: RosterMemberAddition[], guildId: number): Promise<RosterMember[]> => {
+  // --- Logging Start ---
+  console.log(`[RosterService.addRosterMembers] Entered function for roster ${rosterId}, guild ${guildId}`);
+  // --- Logging End ---
   let client: PoolClient | null = null;
   try {
     client = await db.getClient();
+    // --- Logging Start ---
+    console.log(`[RosterService.addRosterMembers] Acquired DB client for roster ${rosterId}`);
+    // --- Logging End ---
     await client.query('BEGIN');
+    // --- Logging Start ---
+    console.log(`[RosterService.addRosterMembers] Transaction BEGIN successful for roster ${rosterId}`);
+    // --- Logging End ---
 
     const membersToAdd: { character_id: number; role: string | null }[] = [];
 
