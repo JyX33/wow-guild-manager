@@ -70,31 +70,54 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
 
 
   const handleAddMembers = useCallback(async (additions: RosterMemberAddition[]) => {
-    if (!selectedRoster || additions.length === 0) return Promise.reject(new Error("Invalid input")); // Return rejected promise
+    // --- Logging Start ---
+    console.log('[useRosterActions] handleAddMembers called with additions:', JSON.stringify(additions));
+    // --- Logging End ---
+    if (!selectedRoster || additions.length === 0) {
+      // --- Logging Start ---
+      console.error('[useRosterActions] handleAddMembers aborted: No selected roster or empty additions.');
+      // --- Logging End ---
+      return Promise.reject(new Error("Invalid input")); // Return rejected promise
+    }
     clearMessages();
     setIsSubmitting(true);
     const actionId = Date.now();
     latestActionRef.current = actionId;
 
     try {
-      // The API response for adding members might not return the full list,
-      // so we rely on the onSuccess callback to refetch.
+      // --- Logging Start ---
+      console.log(`[useRosterActions] Calling rosterService.addRosterMembers for roster ${selectedRoster.id} (Action ID: ${actionId})`);
+      // --- Logging End ---
       await rosterServiceApi.rosterService.addRosterMembers(selectedRoster.id, additions);
       if (latestActionRef.current === actionId) {
+        // --- Logging Start ---
+        console.log(`[useRosterActions] addRosterMembers SUCCESS (Action ID: ${actionId}). Triggering onSuccess.`);
+        // --- Logging End ---
         setSuccessMessage('Member(s) added successfully.');
         onSuccess?.(); // Trigger refetch via callback
-        // Resolve the promise on success
-        return Promise.resolve();
+        return Promise.resolve(); // Resolve the promise on success
+      } else {
+        // --- Logging Start ---
+        console.log(`[useRosterActions] addRosterMembers STALE SUCCESS (Action ID: ${actionId}, Latest: ${latestActionRef.current}). No action taken.`);
+        // --- Logging End ---
       }
     } catch (err: any) {
       if (latestActionRef.current === actionId) {
-        console.error('Error adding members:', err);
+        // --- Logging Start ---
+        console.error(`[useRosterActions] addRosterMembers FAILED (Action ID: ${actionId}):`, err);
+        // --- Logging End ---
         setError(err.response?.data?.message || err.message || 'Failed to add members.');
-        // Reject the promise on error
-        return Promise.reject(err);
+        return Promise.reject(err); // Reject the promise on error
+      } else {
+         // --- Logging Start ---
+        console.log(`[useRosterActions] addRosterMembers STALE FAILURE (Action ID: ${actionId}, Latest: ${latestActionRef.current}). Error ignored.`);
+         // --- Logging End ---
       }
     } finally {
       if (latestActionRef.current === actionId) {
+        // --- Logging Start ---
+        console.log(`[useRosterActions] addRosterMembers FINALLY (Action ID: ${actionId}). Setting isSubmitting=false.`);
+        // --- Logging End ---
         setIsSubmitting(false);
       }
     }

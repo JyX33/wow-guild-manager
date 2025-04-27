@@ -207,12 +207,22 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
       characterId: selectedCharToAdd.id,
       role: addCharRole.trim() || null,
     };
+    // --- Logging Start ---
+    console.log('[GuildRosterManager] Calling handleAddMembers for single character:', addition);
+    // --- Logging End ---
     handleAddMembers([addition]).then(() => {
-      // Clear form only after the operation potentially succeeded (refetch is triggered by hook)
+      // --- Logging Start ---
+      console.log('[GuildRosterManager] handleAddMembers (single char) resolved. Clearing form.');
+      // --- Logging End ---
       setAddCharSearch('');
       setSelectedCharToAdd(null);
       setAddCharRole('');
-    }).catch(() => { /* Error handled by hook, no action needed here */ });
+    }).catch((err) => {
+      // --- Logging Start ---
+      console.error('[GuildRosterManager] handleAddMembers (single char) rejected:', err);
+      // --- Logging End ---
+      /* Error handled by hook, no action needed here */
+    });
   };
 
   const handleAddByRank = (e: React.FormEvent) => {
@@ -227,11 +237,21 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
       rankId: parseInt(rankIdStr, 10),
       role: addRankRole.trim() || null,
     }));
+    // --- Logging Start ---
+    console.log('[GuildRosterManager] Calling handleAddMembers for ranks:', additions);
+    // --- Logging End ---
     handleAddMembers(additions).then(() => {
-      // Clear form only after the operation potentially succeeded (refetch is triggered by hook)
+      // --- Logging Start ---
+      console.log('[GuildRosterManager] handleAddMembers (by rank) resolved. Clearing form.');
+      // --- Logging End ---
       setSelectedRanksToAdd([]);
       setAddRankRole('');
-    }).catch(() => { /* Error handled by hook, no action needed here */ });
+    }).catch((err) => {
+      // --- Logging Start ---
+      console.error('[GuildRosterManager] handleAddMembers (by rank) rejected:', err);
+      // --- Logging End ---
+      /* Error handled by hook, no action needed here */
+    });
   };
 
   return (
