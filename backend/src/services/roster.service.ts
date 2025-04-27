@@ -190,12 +190,18 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
 
     // 4. Insert unique new members if any
     if (membersToAdd.length > 0) {
+      // --- Logging Start ---
+      console.log(`[RosterService.addRosterMembers] Attempting to insert ${membersToAdd.length} members for roster ${rosterId}:`, membersToAdd);
+      // --- Logging End ---
       // Build multi-row insert query
       const valuesPlaceholders = membersToAdd.map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`).join(',');
       const valuesParams = membersToAdd.flatMap(member => [member.character_id, member.role]);
       const insertQuery = `INSERT INTO roster_members (roster_id, character_id, role) VALUES ${valuesPlaceholders}`;
 
-      await client.query(insertQuery, [rosterId, ...valuesParams]);
+      const insertResult = await client.query(insertQuery, [rosterId, ...valuesParams]);
+      // --- Logging Start ---
+      console.log(`[RosterService.addRosterMembers] Insert result rowCount for roster ${rosterId}:`, insertResult.rowCount);
+      // --- Logging End ---
     }
 
     await client.query('COMMIT');
