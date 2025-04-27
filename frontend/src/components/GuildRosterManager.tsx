@@ -287,7 +287,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
               loading={isLoadingDetails} // Pass the local loading state
               isSubmitting={memberSubmitting} // Pass submitting state for member actions
               onClose={() => { setSelectedRoster(null); /* Members cleared by useEffect */ }}
-              onUpdateRole={handleUpdateRole} // Pass handler from useRosterActions
+              // onUpdateRole removed as role editing is disabled here
               onRemoveMember={(member) => triggerRemoveMember(member.characterId, member.name)} // Pass local trigger
               removingMembers={removingMembers} // Pass state from useRosterActions
               guildMembers={guildMembers}

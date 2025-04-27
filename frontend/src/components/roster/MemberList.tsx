@@ -3,7 +3,7 @@ import { RosterMember } from '@shared/types/api';
 interface MemberListProps {
   members: RosterMember[];
   isSubmitting: boolean;
-  onUpdateRole: (characterId: number, newRole: string) => void;
+  // onUpdateRole removed as roles are now read-only
   onRemoveMember: (member: RosterMember) => void;
   removingMembers: Set<number>;
 }
@@ -27,36 +27,16 @@ const getClassColor = (className: string): string => {
   return colors[className] || 'text-gray-400';
 };
 
-import React, { useState, useCallback } from 'react';
+import React from 'react'; // Removed useState, useCallback
 
 const MemberList: React.FC<MemberListProps> = React.memo(({
   members,
   isSubmitting,
-  onUpdateRole,
+  // onUpdateRole removed
   onRemoveMember,
   removingMembers,
 }) => {
-  // Local state for controlled role inputs
-  const [roleInputs, setRoleInputs] = useState<Record<number, string>>({});
-
-  // Initialize roleInputs when members change
-  React.useEffect(() => {
-    setRoleInputs(
-      members.reduce((acc, m) => {
-        acc[m.characterId] = m.role || '';
-        return acc;
-      }, {} as Record<number, string>)
-    );
-  }, [members]);
-
-  // Debounced handler for role updates
-  const handleRoleChange = useCallback((characterId: number, value: string) => {
-    setRoleInputs(prev => ({ ...prev, [characterId]: value }));
-  }, []);
-
-  const handleRoleBlur = useCallback((characterId: number) => {
-    onUpdateRole(characterId, roleInputs[characterId]);
-  }, [onUpdateRole, roleInputs]);
+  // Removed roleInputs state and related handlers
 
   return (
     <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-600 rounded">
@@ -78,16 +58,9 @@ const MemberList: React.FC<MemberListProps> = React.memo(({
                 <td className={`px-4 py-2 whitespace-nowrap text-sm font-medium ${getClassColor(member.class)}`}>{member.name}</td>
                 <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">{member.rank}</td>
                 <td className={`px-4 py-2 whitespace-nowrap text-sm ${getClassColor(member.class)}`}>{member.class}</td>
-                <td className="px-4 py-2 whitespace-nowrap text-sm">
-                  <input
-                    type="text"
-                    value={roleInputs[member.characterId] ?? member.role ?? ''}
-                    onChange={e => handleRoleChange(member.characterId, e.target.value)}
-                    onBlur={() => handleRoleBlur(member.characterId)}
-                    placeholder="Assign Role"
-                    disabled={rowIsLoading}
-                    className="w-28 p-1 rounded bg-gray-900 border border-gray-600 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                  />
+                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-300">
+                  {/* Display role as read-only text */}
+                  <span>{member.role || '-'}</span>
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                   <button

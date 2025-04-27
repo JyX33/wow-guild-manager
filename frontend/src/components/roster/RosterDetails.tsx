@@ -11,7 +11,7 @@ interface RosterDetailsProps {
   loading: boolean; // Loading state for fetching members
   isSubmitting: boolean; // Submitting state for member actions (add/update/remove)
   onClose: () => void;
-  onUpdateRole: (characterId: number, newRole: string) => void;
+  // onUpdateRole is removed as roles are now read-only from character data
   onRemoveMember: (member: RosterMember) => void;
   removingMembers: Set<number>; // State for individual member removal loading
   guildMembers: GuildMember[];
@@ -38,7 +38,7 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
   loading, // Use the loading prop passed from parent
   isSubmitting, // Use the isSubmitting prop passed from parent
   onClose,
-  onUpdateRole,
+  // onUpdateRole removed
   onRemoveMember,
   removingMembers,
   guildMembers,
@@ -69,7 +69,7 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
       <MemberList
         members={members}
         isSubmitting={isSubmitting} // Pass member action submitting state
-        onUpdateRole={onUpdateRole}
+        // onUpdateRole removed
         onRemoveMember={onRemoveMember}
         removingMembers={removingMembers} // Pass individual removing state
       />
