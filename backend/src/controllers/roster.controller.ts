@@ -230,6 +230,9 @@ export const updateRosterMember = async (req: Request, res: Response) => {
  * Remove a specific member from the roster. Requires Guild Master auth.
  */
 export const removeRosterMember = async (req: Request, res: Response) => {
+  // --- Logging Start ---
+  logger.info(`[RosterController.removeRosterMember] Received request for rosterId: ${req.params.rosterId}, characterId: ${req.params.characterId}`); // <<< ENSURE LOG EXISTS
+  // --- Logging End ---
   const rosterId = parseInt(req.params.rosterId, 10);
   const characterId = parseInt(req.params.characterId, 10);
 

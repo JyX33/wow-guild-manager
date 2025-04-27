@@ -126,14 +126,24 @@ export function useRosterActions(selectedRoster: Roster | null, onSuccess?: () =
   }, [selectedRoster, clearMessages, onSuccess]);
 
   const handleRemoveMember = useCallback(async (characterId: number) => {
-    if (!selectedRoster) return;
+    // --- Logging Start ---
+    console.log(`[useRosterActions] handleRemoveMember called for characterId: ${characterId}`); // <<< ENSURE LOG EXISTS
+    // --- Logging End ---
+    if (!selectedRoster) {
+      console.error('[useRosterActions] handleRemoveMember aborted: No selected roster.');
+      return;
+    }
     clearMessages();
     // Optimistically update the removing set for UI feedback
     setRemovingMembers(prev => new Set(prev).add(characterId));
     const actionId = Date.now();
     latestActionRef.current = actionId;
 
+    // --- Logging Start ---
+    console.log(`[useRosterActions] Entering try block for removeRosterMember (Action ID: ${actionId})`); // <<< ADD LOG
+    // --- Logging End ---
     try {
+      console.log(`[useRosterActions] Calling rosterService.removeRosterMember for roster ${selectedRoster.id}, character ${characterId}`); // <<< ENSURE LOG EXISTS
       await rosterServiceApi.rosterService.removeRosterMember(selectedRoster.id, characterId);
       if (latestActionRef.current === actionId) {
         setSuccessMessage('Member removed successfully.');

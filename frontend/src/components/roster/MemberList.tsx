@@ -91,7 +91,10 @@ const MemberList: React.FC<MemberListProps> = React.memo(({
                 </td>
                 <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
                   <button
-                    onClick={() => onRemoveMember(member)}
+                    onClick={() => {
+                      console.log(`[MemberList] Remove button clicked for member: ${member.name} (ID: ${member.characterId})`); // <<< ADD LOG
+                      onRemoveMember(member);
+                    }}
                     disabled={rowIsLoading}
                     className="text-red-400 hover:text-red-300 text-xs p-1 rounded bg-gray-800 hover:bg-red-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
                     title={`Remove ${member.name}`}
