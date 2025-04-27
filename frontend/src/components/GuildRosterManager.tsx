@@ -79,15 +79,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     setIsLoadingDetails(true);
     // Don't clear action messages here, let them persist until next action or roster change
     try {
-      // --- Logging Start ---
-      console.log(`[GuildRosterManager] fetchRosterDetails: Fetching details for roster ID ${selectedRoster.id}`);
-      // --- Logging End ---
       const response = await rosterService.getRosterDetails(selectedRoster.id);
       // Ensure response structure is correct before accessing members
       const members = response?.data?.data?.members ?? [];
-      // --- Logging Start ---
-      console.log('[GuildRosterManager] fetchRosterDetails: Received members data:', members);
-      // --- Logging End ---
       setSelectedRosterMembers(Array.isArray(members) ? members : []); // Use local setter, ensure it's an array
       // Optionally clear error *only* on successful fetch if desired
       // setMemberError(null);
@@ -133,9 +127,6 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // Only run fetch if counter is > 0 (i.e., triggered by an action)
     // and a roster is actually selected.
     if (refetchCounter > 0 && selectedRoster) {
-      // --- Logging Start ---
-      console.log(`[GuildRosterManager] useEffect[refetchCounter]: Counter is ${refetchCounter}, triggering fetchRosterDetails.`);
-      // --- Logging End ---
       fetchRosterDetails();
     }
     // This effect only depends on the counter and the fetch function itself
@@ -216,20 +207,11 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
       characterId: selectedCharToAdd.character_id, // Use character_id here
       role: addCharRole.trim() || null,
     };
-    // --- Logging Start ---
-    console.log('[GuildRosterManager] Calling handleAddMembers for single character:', addition);
-    // --- Logging End ---
     handleAddMembers([addition]).then(() => {
-      // --- Logging Start ---
-      console.log('[GuildRosterManager] handleAddMembers (single char) resolved. Clearing form.');
-      // --- Logging End ---
       setAddCharSearch('');
       setSelectedCharToAdd(null);
       setAddCharRole('');
     }).catch((err) => {
-      // --- Logging Start ---
-      console.error('[GuildRosterManager] handleAddMembers (single char) rejected:', err);
-      // --- Logging End ---
       /* Error handled by hook, no action needed here */
     });
   };
@@ -246,19 +228,10 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
       rankId: parseInt(rankIdStr, 10),
       role: addRankRole.trim() || null,
     }));
-    // --- Logging Start ---
-    console.log('[GuildRosterManager] Calling handleAddMembers for ranks:', additions);
-    // --- Logging End ---
     handleAddMembers(additions).then(() => {
-      // --- Logging Start ---
-      console.log('[GuildRosterManager] handleAddMembers (by rank) resolved. Clearing form.');
-      // --- Logging End ---
       setSelectedRanksToAdd([]);
       setAddRankRole('');
     }).catch((err) => {
-      // --- Logging Start ---
-      console.error('[GuildRosterManager] handleAddMembers (by rank) rejected:', err);
-      // --- Logging End ---
       /* Error handled by hook, no action needed here */
     });
   };

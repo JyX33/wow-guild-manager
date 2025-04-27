@@ -152,9 +152,6 @@ export const deleteRoster = async (req: Request, res: Response) => {
  * Body: { additions: RosterMemberAddition[] }
  */
 export const addRosterMembers = async (req: Request, res: Response) => {
-  // --- Logging Start ---
-  console.log(`[RosterController.addRosterMembers] Received request for roster ID: ${req.params.rosterId}`);
-  // --- Logging End ---
   const rosterId = parseInt(req.params.rosterId, 10);
   const { additions } = req.body;
 
@@ -190,9 +187,6 @@ export const addRosterMembers = async (req: Request, res: Response) => {
         return sendError(res, 500, 'Internal configuration error.', ErrorCode.INTERNAL_ERROR);
     }
 
-    // --- Logging Start ---
-    console.log(`[RosterController.addRosterMembers] Calling RosterService.addRosterMembers for roster ${rosterId}, guild ${guildId}`);
-    // --- Logging End ---
     const updatedMembers = await RosterService.addRosterMembers(rosterId, additions as RosterMemberAddition[], guildId);
     res.status(200).json({ success: true, data: updatedMembers });
   } catch (error: any) {

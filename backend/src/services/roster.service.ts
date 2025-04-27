@@ -1,5 +1,6 @@
 import db from '../db/db.js'; // Import the pg wrapper
 import { Roster, RosterMember, RosterMemberAddition } from '../../../shared/types/api.js';
+import logger from '../utils/logger.js'; // Import logger
 import { PoolClient } from 'pg'; // Import PoolClient for transactions
 
 // Helper function to map database row keys (snake_case) to Roster object keys (camelCase)
@@ -89,7 +90,7 @@ export const deleteRoster = async (rosterId: number): Promise<boolean> => {
     if (client) {
       await client.query('ROLLBACK');
     }
-    console.error('Error deleting roster:', error); // Use logger in real app
+    logger.error({ err: error, rosterId }, 'Error deleting roster');
     throw error; // Re-throw the error after rollback
   } finally {
     if (client) {
@@ -134,19 +135,10 @@ export const getRosterMembers = async (rosterId: number): Promise<RosterMember[]
  * Prevents duplicates and returns the updated list of members.
  */
 export const addRosterMembers = async (rosterId: number, additions: RosterMemberAddition[], guildId: number): Promise<RosterMember[]> => {
-  // --- Logging Start ---
-  console.log(`[RosterService.addRosterMembers] Entered function for roster ${rosterId}, guild ${guildId}`);
-  // --- Logging End ---
   let client: PoolClient | null = null;
   try {
     client = await db.getClient();
-    // --- Logging Start ---
-    console.log(`[RosterService.addRosterMembers] Acquired DB client for roster ${rosterId}`);
-    // --- Logging End ---
     await client.query('BEGIN');
-    // --- Logging Start ---
-    console.log(`[RosterService.addRosterMembers] Transaction BEGIN successful for roster ${rosterId}`);
-    // --- Logging End ---
 
     const membersToAdd: { character_id: number; role: string | null }[] = [];
 
@@ -163,9 +155,6 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
     // 2. Fetch existing member IDs for duplicate check
     const existingMembersResult = await client.query('SELECT character_id FROM roster_members WHERE roster_id = $1', [rosterId]);
     const existingMemberIds = new Set(existingMembersResult.rows.map(r => r.character_id));
-    // --- Logging Start ---
-    console.log(`[RosterService.addRosterMembers] Existing member IDs for roster ${rosterId}:`, Array.from(existingMemberIds));
-    // --- Logging End ---
 
 
     // 3. Process additions
@@ -173,9 +162,6 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
       const role = addition.role !== undefined ? addition.role : null;
 
       if (addition.type === 'character') {
-        // --- Logging Start ---
-        console.log(`[RosterService.addRosterMembers] Processing character addition: ID=${addition.characterId}, Role=${role}`);
-        // --- Logging End ---
         // Check if character exists in the guild and is not already in the roster
         const charResult = await client.query(`
           SELECT c.id
@@ -186,46 +172,28 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
 
         const characterExistsInGuild = (charResult.rowCount ?? 0) > 0;
         const characterAlreadyInRoster = existingMemberIds.has(addition.characterId);
-        // --- Logging Start ---
-        console.log(`[RosterService.addRosterMembers] Character ID ${addition.characterId}: ExistsInGuild=${characterExistsInGuild}, AlreadyInRoster=${characterAlreadyInRoster}`);
-        // --- Logging End ---
 
         if (characterExistsInGuild && !characterAlreadyInRoster) {
           membersToAdd.push({ character_id: addition.characterId, role });
           existingMemberIds.add(addition.characterId); // Add to set to prevent duplicates within the same batch
-          console.log(`[RosterService.addRosterMembers] Character ID ${addition.characterId} WILL be added.`); // Log success case
         } else if (!characterAlreadyInRoster) { // Only warn if not already in roster but failed guild check
-           // Log if character exists but validation failed (not in guild_members or wrong guildId used)
-           console.warn(`[RosterService.addRosterMembers] Character ID ${addition.characterId} not found in guild ${guildId} members list or already exists in roster.`);
+           // Consider adding a debug/info log here if needed for troubleshooting failed adds
         }
       } else if (addition.type === 'rank') {
-        // --- Logging Start ---
-        console.log(`[RosterService.addRosterMembers] Processing rank addition: ID=${addition.rankId}, Role=${role}`);
-        // --- Logging End ---
         // Find character IDs belonging to the specified rank within the guild
         // Ensure rankId is treated as integer if it comes from guild_ranks.rank_id
         const rankCharsResult = await client.query('SELECT character_id FROM guild_members WHERE rank = $1 AND guild_id = $2', [addition.rankId, guildId]);
-        // --- Logging Start ---
-        console.log(`[RosterService.addRosterMembers] Found ${rankCharsResult.rowCount} members for rank ID ${addition.rankId} in guild ${guildId}.`);
-        // --- Logging End ---
         rankCharsResult.rows.forEach(memberRow => {
           // Ensure the character_id exists before adding
           if (memberRow.character_id && !existingMemberIds.has(memberRow.character_id)) {
             membersToAdd.push({ character_id: memberRow.character_id, role });
             existingMemberIds.add(memberRow.character_id); // Add to set
-            console.log(`[RosterService.addRosterMembers] Character ID ${memberRow.character_id} from rank ${addition.rankId} WILL be added.`); // Log success case
-          } else if (memberRow.character_id) {
-             console.log(`[RosterService.addRosterMembers] Character ID ${memberRow.character_id} from rank ${addition.rankId} already exists in roster, skipping.`);
           }
         });
       }
     }
-
     // 4. Insert unique new members if any
     if (membersToAdd.length > 0) {
-      // --- Logging Start ---
-      console.log(`[RosterService.addRosterMembers] Attempting to insert ${membersToAdd.length} members for roster ${rosterId}:`, membersToAdd);
-      // --- Logging End ---
       // Build multi-row insert query
       const valuesPlaceholders = membersToAdd.map((_, index) => `($1, $${index * 2 + 2}, $${index * 2 + 3})`).join(',');
       const valuesParams = membersToAdd.flatMap(member => [member.character_id, member.role]);
@@ -234,41 +202,27 @@ export const addRosterMembers = async (rosterId: number, additions: RosterMember
       const insertResult = await client.query(insertQuery, [rosterId, ...valuesParams]);
       // --- Logging Start ---
       console.log(`[RosterService.addRosterMembers] Insert result rowCount for roster ${rosterId}:`, insertResult.rowCount);
-      // --- Logging End ---
-    } else {
-       // --- Logging Start ---
-       console.log(`[RosterService.addRosterMembers] No new members to insert for roster ${rosterId}.`);
-       // --- Logging End ---
+      // --- Logging End --- // TODO: Remove this log after confirming it works
     }
 
-
     await client.query('COMMIT');
-    // --- Logging Start ---
-    console.log(`[RosterService.addRosterMembers] Transaction COMMIT successful for roster ${rosterId}`);
-    // --- Logging End ---
 
   } catch (error) {
     if (client) {
       await client.query('ROLLBACK');
-      // --- Logging Start ---
-      console.log(`[RosterService.addRosterMembers] Transaction ROLLBACK due to error for roster ${rosterId}`);
-      // --- Logging End ---
     }
-    console.error('Error adding roster members:', error);
+    logger.error({ err: error, rosterId, additions, guildId }, 'Error adding roster members');
     throw error;
   } finally {
     if (client) {
       client.release();
-      // --- Logging Start ---
-      console.log(`[RosterService.addRosterMembers] Released DB client for roster ${rosterId}`);
-      // --- Logging End ---
     }
   }
 
   // Return the updated full list of members
   // --- Logging Start ---
   console.log(`[RosterService.addRosterMembers] Fetching and returning updated member list for roster ${rosterId}`);
-  // --- Logging End ---
+  // --- Logging End --- // TODO: Remove this log after confirming it works
   return getRosterMembers(rosterId);
 };
 
