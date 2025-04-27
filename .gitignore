@@ -81,3 +81,4 @@ bun.lock
 tmp/
 temp/
 *.tmp
+.aider*
