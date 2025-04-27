@@ -21,12 +21,12 @@ interface RosterDetailsProps {
   setAddCharSearch: (s: string) => void;
   selectedCharToAdd: GuildMember | null;
   setSelectedCharToAdd: (m: GuildMember | null) => void;
-  addCharRole: string;
-  setAddCharRole: (s: string) => void;
+  // addCharRole: string; // Removed - Role is read-only from character
+  // setAddCharRole: (s: string) => void; // Removed
   selectedRanksToAdd: string[];
   setSelectedRanksToAdd: (ids: string[]) => void;
-  addRankRole: string;
-  setAddRankRole: (s: string) => void;
+  // addRankRole: string; // Removed - Role is read-only from character
+  // setAddRankRole: (s: string) => void; // Removed
   // onAddMembers is removed as the specific handlers are passed down
   onAddSingleCharacter: (e: React.FormEvent) => void;
   onAddByRank: (e: React.FormEvent) => void;
@@ -48,12 +48,12 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
   setAddCharSearch,
   selectedCharToAdd,
   setSelectedCharToAdd,
-  addCharRole,
-  setAddCharRole,
+  // addCharRole, // Removed
+  // setAddCharRole, // Removed
   selectedRanksToAdd,
   setSelectedRanksToAdd,
-  addRankRole,
-  setAddRankRole,
+  // addRankRole, // Removed
+  // setAddRankRole, // Removed
   onAddSingleCharacter,
   onAddByRank,
 }) => (
@@ -86,12 +86,12 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
           setAddCharSearch={setAddCharSearch}
           selectedCharToAdd={selectedCharToAdd}
           setSelectedCharToAdd={setSelectedCharToAdd}
-          addCharRole={addCharRole}
-          setAddCharRole={setAddCharRole}
+          // addCharRole={addCharRole} // Removed
+          // setAddCharRole={setAddCharRole} // Removed
           selectedRanksToAdd={selectedRanksToAdd}
           setSelectedRanksToAdd={setSelectedRanksToAdd}
-          addRankRole={addRankRole}
-          setAddRankRole={setAddRankRole}
+          // addRankRole={addRankRole} // Removed
+          // setAddRankRole={setAddRankRole} // Removed
           isSubmitting={isSubmitting} // Pass member action submitting state
           onAddSingleCharacter={onAddSingleCharacter}
           onAddByRank={onAddByRank}

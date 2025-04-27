@@ -9,12 +9,12 @@ interface AddMemberFormsProps {
   setAddCharSearch: (s: string) => void;
   selectedCharToAdd: GuildMember | null;
   setSelectedCharToAdd: (m: GuildMember | null) => void;
-  addCharRole: string;
-  setAddCharRole: (s: string) => void;
+  // addCharRole: string; // Removed
+  // setAddCharRole: (s: string) => void; // Removed
   selectedRanksToAdd: string[];
   setSelectedRanksToAdd: (ids: string[]) => void;
-  addRankRole: string;
-  setAddRankRole: (s: string) => void;
+  // addRankRole: string; // Removed
+  // setAddRankRole: (s: string) => void; // Removed
   isSubmitting: boolean;
   onAddSingleCharacter: (e: React.FormEvent) => void;
   onAddByRank: (e: React.FormEvent) => void;
@@ -46,12 +46,12 @@ const AddMemberForms: React.FC<AddMemberFormsProps> = ({
   setAddCharSearch,
   selectedCharToAdd,
   setSelectedCharToAdd,
-  addCharRole,
-  setAddCharRole,
+  // addCharRole, // Removed
+  // setAddCharRole, // Removed
   selectedRanksToAdd,
   setSelectedRanksToAdd,
-  addRankRole,
-  setAddRankRole,
+  // addRankRole, // Removed
+  // setAddRankRole, // Removed
   isSubmitting,
   onAddSingleCharacter,
   onAddByRank,
@@ -98,14 +98,7 @@ const AddMemberForms: React.FC<AddMemberFormsProps> = ({
           )}
         </div>
         {selectedCharToAdd && <p className="text-xs text-green-400">Selected: {selectedCharToAdd.character_name}</p>}
-        <input
-          type="text"
-          value={addCharRole}
-          onChange={(e) => setAddCharRole(e.target.value)}
-          placeholder="Optional Role"
-          disabled={isSubmitting}
-          className="w-full p-2 rounded bg-gray-900 border border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-        />
+        {/* Role input removed - Role is read-only from character data */}
         <button type="submit" disabled={!selectedCharToAdd || !selectedCharToAdd.id || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
           {isSubmitting ? 'Adding...' : 'Add Character'}
         </button>
@@ -125,14 +118,7 @@ const AddMemberForms: React.FC<AddMemberFormsProps> = ({
             <option key={rank.rank_id} value={String(rank.rank_id)}>{rank.rank_name} (ID {rank.rank_id})</option>
           ))}
         </select>
-        <input
-          type="text"
-          value={addRankRole}
-          onChange={(e) => setAddRankRole(e.target.value)}
-          placeholder="Optional Role for All"
-          disabled={isSubmitting}
-          className="w-full p-2 rounded bg-gray-900 border border-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-        />
+        {/* Role input removed - Role is read-only from character data */}
         <button type="submit" disabled={selectedRanksToAdd.length === 0 || isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-3 rounded text-sm transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
           {isSubmitting ? 'Adding...' : `Add ${selectedRanksToAdd.length} Rank(s)`}
         </button>

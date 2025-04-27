@@ -104,9 +104,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // Clear form state
     setAddCharSearch('');
     setSelectedCharToAdd(null);
-    setAddCharRole('');
+    // setAddCharRole(''); // Removed
     setSelectedRanksToAdd([]);
-    setAddRankRole('');
+    // setAddRankRole(''); // Removed
     // Clear previous member messages only when roster changes
     clearMemberMessages?.();
 
@@ -136,9 +136,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
   // Form state for add member forms (keep as is)
   const [addCharSearch, setAddCharSearch] = useState('');
   const [selectedCharToAdd, setSelectedCharToAdd] = useState<GuildMember | null>(null);
-  const [addCharRole, setAddCharRole] = useState('');
+  // const [addCharRole, setAddCharRole] = useState(''); // Removed - Role is read-only from character
   const [selectedRanksToAdd, setSelectedRanksToAdd] = useState<string[]>([]);
-  const [addRankRole, setAddRankRole] = useState('');
+  // const [addRankRole, setAddRankRole] = useState(''); // Removed - Role is read-only from character
 
   // Confirmation dialog state (keep as is)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -205,12 +205,12 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     const addition: RosterMemberAddition = {
       type: 'character',
       characterId: selectedCharToAdd.character_id, // Use character_id here
-      role: addCharRole.trim() || null,
+      // role: addCharRole.trim() || null, // Removed - Backend defaults to null if not provided
     };
     handleAddMembers([addition]).then(() => {
       setAddCharSearch('');
       setSelectedCharToAdd(null);
-      setAddCharRole('');
+      // setAddCharRole(''); // Removed
     }).catch((err) => {
       /* Error handled by hook, no action needed here */
     });
@@ -226,11 +226,11 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     const additions: RosterMemberAddition[] = selectedRanksToAdd.map(rankIdStr => ({
       type: 'rank',
       rankId: parseInt(rankIdStr, 10),
-      role: addRankRole.trim() || null,
+      // role: addRankRole.trim() || null, // Removed - Backend defaults to null if not provided
     }));
     handleAddMembers(additions).then(() => {
       setSelectedRanksToAdd([]);
-      setAddRankRole('');
+      // setAddRankRole(''); // Removed
     }).catch((err) => {
       /* Error handled by hook, no action needed here */
     });
@@ -298,12 +298,12 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
               setAddCharSearch={setAddCharSearch}
               selectedCharToAdd={selectedCharToAdd}
               setSelectedCharToAdd={setSelectedCharToAdd}
-              addCharRole={addCharRole}
-              setAddCharRole={setAddCharRole}
+              // addCharRole={addCharRole} // Removed
+              // setAddCharRole={setAddCharRole} // Removed
               selectedRanksToAdd={selectedRanksToAdd}
               setSelectedRanksToAdd={setSelectedRanksToAdd}
-              addRankRole={addRankRole}
-              setAddRankRole={setAddRankRole}
+              // addRankRole={addRankRole} // Removed
+              // setAddRankRole={setAddRankRole} // Removed
               // Pass the specific add handlers from this component
               onAddSingleCharacter={handleAddSingleCharacter}
               onAddByRank={handleAddByRank}
