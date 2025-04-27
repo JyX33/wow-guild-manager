@@ -79,9 +79,15 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     setIsLoadingDetails(true);
     // Don't clear action messages here, let them persist until next action or roster change
     try {
+      // --- Logging Start ---
+      console.log(`[GuildRosterManager] fetchRosterDetails: Fetching details for roster ID ${selectedRoster.id}`);
+      // --- Logging End ---
       const response = await rosterService.getRosterDetails(selectedRoster.id);
       // Ensure response structure is correct before accessing members
       const members = response?.data?.data?.members ?? [];
+      // --- Logging Start ---
+      console.log('[GuildRosterManager] fetchRosterDetails: Received members data:', members);
+      // --- Logging End ---
       setSelectedRosterMembers(Array.isArray(members) ? members : []); // Use local setter, ensure it's an array
       // Optionally clear error *only* on successful fetch if desired
       // setMemberError(null);
@@ -127,6 +133,9 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     // Only run fetch if counter is > 0 (i.e., triggered by an action)
     // and a roster is actually selected.
     if (refetchCounter > 0 && selectedRoster) {
+      // --- Logging Start ---
+      console.log(`[GuildRosterManager] useEffect[refetchCounter]: Counter is ${refetchCounter}, triggering fetchRosterDetails.`);
+      // --- Logging End ---
       fetchRosterDetails();
     }
     // This effect only depends on the counter and the fetch function itself
