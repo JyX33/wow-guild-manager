@@ -9,12 +9,8 @@ interface AddMemberFormsProps {
   setAddCharSearch: (s: string) => void;
   selectedCharToAdd: GuildMember | null;
   setSelectedCharToAdd: (m: GuildMember | null) => void;
-  // addCharRole: string; // Removed
-  // setAddCharRole: (s: string) => void; // Removed
   selectedRanksToAdd: string[];
   setSelectedRanksToAdd: (ids: string[]) => void;
-  // addRankRole: string; // Removed
-  // setAddRankRole: (s: string) => void; // Removed
   isSubmitting: boolean;
   onAddSingleCharacter: (e: React.FormEvent) => void;
   onAddByRank: (e: React.FormEvent) => void;
@@ -46,12 +42,8 @@ const AddMemberForms: React.FC<AddMemberFormsProps> = ({
   setAddCharSearch,
   selectedCharToAdd,
   setSelectedCharToAdd,
-  // addCharRole, // Removed
-  // setAddCharRole, // Removed
   selectedRanksToAdd,
   setSelectedRanksToAdd,
-  // addRankRole, // Removed
-  // setAddRankRole, // Removed
   isSubmitting,
   onAddSingleCharacter,
   onAddByRank,

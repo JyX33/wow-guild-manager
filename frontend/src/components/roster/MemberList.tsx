@@ -3,7 +3,6 @@ import { RosterMember } from '@shared/types/api';
 interface MemberListProps {
   members: RosterMember[];
   isSubmitting: boolean;
-  // onUpdateRole removed as roles are now read-only
   onRemoveMember: (member: RosterMember) => void;
   removingMembers: Set<number>;
 }
@@ -32,11 +31,9 @@ import React from 'react'; // Removed useState, useCallback
 const MemberList: React.FC<MemberListProps> = React.memo(({
   members,
   isSubmitting,
-  // onUpdateRole removed
   onRemoveMember,
   removingMembers,
 }) => {
-  // Removed roleInputs state and related handlers
 
   return (
     <div className="overflow-x-auto max-h-96 overflow-y-auto border border-gray-600 rounded">

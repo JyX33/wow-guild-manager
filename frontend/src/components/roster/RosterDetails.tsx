@@ -38,7 +38,6 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
   loading, // Use the loading prop passed from parent
   isSubmitting, // Use the isSubmitting prop passed from parent
   onClose,
-  // onUpdateRole removed
   onRemoveMember,
   removingMembers,
   guildMembers,
@@ -48,12 +47,8 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
   setAddCharSearch,
   selectedCharToAdd,
   setSelectedCharToAdd,
-  // addCharRole, // Removed
-  // setAddCharRole, // Removed
   selectedRanksToAdd,
   setSelectedRanksToAdd,
-  // addRankRole, // Removed
-  // setAddRankRole, // Removed
   onAddSingleCharacter,
   onAddByRank,
 }) => (
@@ -86,12 +81,8 @@ const RosterDetails: React.FC<RosterDetailsProps> = ({
           setAddCharSearch={setAddCharSearch}
           selectedCharToAdd={selectedCharToAdd}
           setSelectedCharToAdd={setSelectedCharToAdd}
-          // addCharRole={addCharRole} // Removed
-          // setAddCharRole={setAddCharRole} // Removed
           selectedRanksToAdd={selectedRanksToAdd}
           setSelectedRanksToAdd={setSelectedRanksToAdd}
-          // addRankRole={addRankRole} // Removed
-          // setAddRankRole={setAddRankRole} // Removed
           isSubmitting={isSubmitting} // Pass member action submitting state
           onAddSingleCharacter={onAddSingleCharacter}
           onAddByRank={onAddByRank}
