@@ -196,11 +196,11 @@ export function validateGuild(data: unknown): ValidationResult {
     ['id', 'number', true],
     ['name', 'string', true],
     ['faction.type', 'string', true],
-    ['faction.name', 'object', false], // LocalizedString is an object
+    ['faction.name', 'string', false], // LocalizedString is an object
     ['achievement_points', 'number', false],
     ['member_count', 'number', false],
     ['realm.id', 'number', true],
-    ['realm.name', 'object', false], // LocalizedString is an object
+    ['realm.name', 'string', false], // LocalizedString is an object
     ['realm.slug', 'string', true],
     ['created_timestamp', 'number', false]
   ];
@@ -266,10 +266,10 @@ export function validateGuildRoster(data: unknown): ValidationResult {
       ['id', 'number', true],
       ['name', 'string', true],
       ['faction.type', 'string', false],
-      ['faction.name', 'object', false], // LocalizedString is an object
+      ['faction.name', 'string', false], // LocalizedString is an object
       ['realm.id', 'number', false],
       ['realm.slug', 'string', false],
-      ['realm.name', 'object', false] // LocalizedString is an object
+      ['realm.name', 'string', false] // LocalizedString is an object
     ];
     
     for (const [field, expectedType, isCritical] of guildFields) {
@@ -330,17 +330,17 @@ export function validateCharacter(data: unknown): ValidationResult {
     ['id', 'number', true],
     ['name', 'string', true],
     ['gender.type', 'string', false],
-    ['gender.name', 'object', false], // LocalizedString is an object
+    ['gender.name', 'string', false], // LocalizedString is an object
     ['faction.type', 'string', true],
-    ['faction.name', 'object', false], // LocalizedString is an object
+    ['faction.name', 'string', false], // LocalizedString is an object
     ['race.id', 'number', false],
-    ['race.name', 'object', false], // LocalizedString is an object
+    ['race.name', 'string', false], // LocalizedString is an object
     ['character_class.id', 'number', true],
-    ['character_class.name', 'object', false], // LocalizedString is an object
+    ['character_class.name', 'string', false], // LocalizedString is an object
     ['active_spec.id', 'number', false],
-    ['active_spec.name', 'object', false], // LocalizedString is an object
+    ['active_spec.name', 'string', false], // LocalizedString is an object
     ['realm.id', 'number', true],
-    ['realm.name', 'object', false], // LocalizedString is an object
+    ['realm.name', 'string', false], // LocalizedString is an object
     ['realm.slug', 'string', true],
     ['level', 'number', false],
     ['achievement_points', 'number', false],
@@ -405,7 +405,7 @@ export function validateCharacterEquipment(data: unknown): ValidationResult {
       ['name', 'string', true],
       ['realm.id', 'number', false],
       ['realm.slug', 'string', false],
-      ['realm.name', 'object', false] // LocalizedString is an object
+      ['realm.name', 'string', false] // LocalizedString is an object
     ];
     
     for (const [field, expectedType, isCritical] of characterFields) {
@@ -478,7 +478,7 @@ export function validateMythicKeystoneProfile(data: unknown): ValidationResult {
       ['name', 'string', true],
       ['realm.id', 'number', false],
       ['realm.slug', 'string', false],
-      ['realm.name', 'object', false] // LocalizedString is an object
+      ['realm.name', 'string', false] // LocalizedString is an object
     ];
     
     for (const [field, expectedType, isCritical] of characterFields) {
@@ -575,7 +575,7 @@ export function validateProfessions(data: unknown): ValidationResult {
       ['name', 'string', true],
       ['realm.id', 'number', false],
       ['realm.slug', 'string', false],
-      ['realm.name', 'object', false] // LocalizedString is an object
+      ['realm.name', 'string', false] // LocalizedString is an object
     ];
     
     for (const [field, expectedType, isCritical] of characterFields) {
@@ -660,7 +660,7 @@ export function validateCollectionsIndex(data: unknown): ValidationResult {
       ['name', 'string', true],
       ['realm.id', 'number', false],
       ['realm.slug', 'string', false],
-      ['realm.name', 'object', false] // LocalizedString is an object
+      ['realm.name', 'string', false] // LocalizedString is an object
     ];
     
     for (const [field, expectedType, isCritical] of characterFields) {
