@@ -31,11 +31,7 @@ import {
 import { scheduleReminderJob } from "./modules/discord/reminderService.js";
 import { scheduleThreadCleanupJob } from "./modules/discord/threadCleanupService.js";
 
-import authRoutes from "./routes/auth.routes.js";
-import characterRoutes from "./routes/character.routes.js";
-import eventRoutes from "./routes/event.routes.js";
-import guildRoutes from "./routes/guild.routes.js";
-import rosterRoutes from "./routes/roster.routes.js"; // Add roster routes import
+import { registerValidatedRoutes } from "./routes/validated/index.js";
 import {
   errorHandlerMiddleware,
   notFoundHandler,
@@ -101,12 +97,8 @@ app.get("/api/healthcheck", (_req, res) => {
   });
 });
 
-// API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/guilds", guildRoutes);
-app.use("/api/events", eventRoutes);
-app.use("/api/characters", characterRoutes);
-app.use("/api/rosters", rosterRoutes); // Mount roster routes
+// Register all validated routes
+registerValidatedRoutes(app);
 
 // Error handling
 app.use(notFoundHandler);
