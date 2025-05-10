@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { AppConfig } from '../../../shared/types/index.js';
+import process from "node:process";
 
 // extract key NODE_ENV
 let trimmedNodeEnv: string | undefined;

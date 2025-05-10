@@ -10,6 +10,7 @@ import { retrieveTokenDetails } from '../modules/discord/discordTokenStore.js'; 
 import { AppError, asyncHandler } from '../utils/error-handler.js';
 import logger from '../utils/logger.js'; // Import the logger
 import axios from 'axios';
+import process from "node:process";
 
 // Instantiate services (consider dependency injection for better management)
 const apiClient = new BattleNetApiClient();
@@ -59,7 +60,7 @@ const generateToken = (user: UserWithTokens) => { // Ensure UserWithTokens for t
 };
 
 export default {
-  login: asyncHandler(async (req: Request, res: Response) => {
+  login: asyncHandler(async (req: Request, res: Response): Promise<void> => {
     logger.info({ method: req.method, path: req.path, query: req.query }, 'Handling login request');
     const regionQuery = req.query.region;
     let regionString: string;
@@ -90,7 +91,7 @@ const state = generateState();
     req.session.region = validRegion; // Assign the validated BattleNetRegion
 
     // Explicitly save the session before sending the response
-    req.session.save((err) => {
+    return req.session.save((err) => {
       if (err) {
         logger.error({ err }, 'Error saving session before sending auth URL');
         // Handle error appropriately, maybe throw or send an error response
@@ -103,11 +104,11 @@ const state = generateState();
       const encodedRedirectUri = callbackUrl.toString();
       const authUrl = apiClient.getAuthorizationUrl(validRegion, state, encodedRedirectUri);
       logger.info({ authUrl, sessionId: req.sessionID }, 'Session saved, sending auth URL to frontend');
-      res.json({ success: true, data: { authUrl } });
+      return res.json({ success: true, data: { authUrl } });
     });
   }),
 
-  callback: asyncHandler(async (req: Request, res: Response) => {
+  callback: asyncHandler(async (req: Request, res: Response): Promise<void> => {
     // Enhanced logging for debugging state issues
     logger.info(
       {

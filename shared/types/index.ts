@@ -12,3 +12,6 @@ export * from './event';
 export * from './api';
 export * from './config';
 export * from './auth';
+export * from './db'; // Database types
+export * from './db-enhanced'; // Enhanced database types with JSON fields
+export * from './error'; // Error types and factory methods

@@ -1,11 +1,30 @@
-import { Character, DbCharacter } from '../../../shared/types/guild.js';
-import { CharacterRole } from '../../../shared/types/index.js'; // Removed BattleNetCharacter
-import { BattleNetRegion, BattleNetWoWAccount } from '../../../shared/types/user.js'; // Import the correct account type
+import {
+  Character,
+  DbCharacter,
+  BattleNetCharacter,
+  BattleNetCharacterEquipment,
+  BattleNetMythicKeystoneProfile,
+  BattleNetProfessions
+} from '../../../shared/types/guild.js';
+import { CharacterRole } from '../../../shared/types/index.js';
+import { BattleNetRegion, BattleNetWoWAccount } from '../../../shared/types/user.js';
+import { 
+  DbCharacterEnhanced, 
+  isBattleNetCharacter, 
+  isBattleNetCharacterEquipment, 
+  isBattleNetMythicKeystoneProfile, 
+  isBattleNetProfessions 
+} from '../../../shared/types/db-enhanced.js';
 import BaseModel from '../db/BaseModel.js';
 import db from '../db/db.js';
 import { AppError } from '../utils/error-handler.js';
 import logger from '../utils/logger.js';
 import { withTransaction } from '../utils/transaction.js';
+import { DbQueryCondition, DbQueryParam } from '../../../shared/types/db.js';
+import process from "node:process";
+
+// Create type-safe query condition for character
+type CharacterQueryCondition = DbQueryCondition<DbCharacter>;
 
 // Helper function to parse region from URL (can be moved to a util file later)
 const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null => {
@@ -25,55 +44,47 @@ const parseRegionFromHref = (href: string | undefined): BattleNetRegion | null =
 };
 
 
-export class CharacterModel extends BaseModel<DbCharacter> {
+export class CharacterModel extends BaseModel<DbCharacter, DbCharacterEnhanced> {
   constructor() {
     super('characters');
   }
 
   /**
-   * Find characters by user ID (returns DB representation)
+   * Find characters by user ID
    */
-  async findByUserId(userId: number): Promise<DbCharacter[]> {
+  async findByUserId(userId: number): Promise<DbCharacterEnhanced[]> {
     try {
-      // Use findAll which returns DbCharacter[] based on BaseModel<DbCharacter>
-      return await this.findAll({ user_id: userId });
+      // Create a type-safe condition
+      const condition: CharacterQueryCondition = { user_id: userId };
+      return await this.findAll(condition);
     } catch (error) {
       throw new AppError(`Error finding characters by user ID: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 
-  // REMOVED: getMainCharacter - Main character logic is now guild-specific and handled in guild_member.model
-  // REMOVED: setMainCharacter - Main character logic is now guild-specific and handled in guild_member.model
-
   /**
    * Create a character
    */
-  async createCharacter(characterData: Partial<DbCharacter>): Promise<DbCharacter> { // Use DbCharacter, remove setAsMain
+  async createCharacter(characterData: Partial<DbCharacter>): Promise<DbCharacterEnhanced> {
     try {
       return await withTransaction(async (client) => {
-        // REMOVED: Logic for setting/unsetting main character during creation
-
-        // Use profile_json instead of character_data
-        // Use profile_json if available in characterData, otherwise expect it in restData
-        // REMOVED: is_main assignment
         const dataToInsert = {
-          ...characterData, // Use characterData directly as it's Partial<DbCharacter>
+          ...characterData,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
 
         // Filter out undefined values before inserting
-        const filteredData = Object.entries(dataToInsert).reduce((acc, [key, value]) => {
+        const filteredData: Record<string, DbQueryParam> = {};
+        for (const [key, value] of Object.entries(dataToInsert)) {
           if (value !== undefined) {
-            acc[key] = value;
+            filteredData[key] = value;
           }
-          return acc;
-        }, {} as Record<string, any>);
-
+        }
 
         // Insert the new character
         const keys = Object.keys(filteredData);
-        const values = Object.values(filteredData);
+        const values: DbQueryParam[] = Object.values(filteredData);
 
         const columnNames = keys.join(', ');
         const valuePlaceholders = keys.map((_, index) => `$${index + 1}`).join(', ');
@@ -93,30 +104,28 @@ export class CharacterModel extends BaseModel<DbCharacter> {
   /**
    * Update character with validation to ensure it belongs to the user
    */
-  async updateCharacter(characterId: number, userId: number, data: Partial<DbCharacter>): Promise<DbCharacter | null> { // Use DbCharacter
+  async updateCharacter(characterId: number, userId: number, data: Partial<DbCharacter>): Promise<DbCharacterEnhanced | null> {
     try {
       // Make sure this character belongs to the user
-      const character = await this.findOne({ id: characterId, user_id: userId });
+      const condition: CharacterQueryCondition = { id: characterId, user_id: userId };
+      const character = await this.findOne(condition);
 
       if (!character) {
         throw new AppError('Character not found or doesn\'t belong to user', 404);
       }
 
-      // Use profile_json instead of character_data
-      // REMOVED: is_main handling from update
       const updateData = {
-        ...data, // Use data directly as it's Partial<DbCharacter>
+        ...data,
         updated_at: new Date().toISOString()
       };
 
-       // Filter out undefined values before updating
-       const filteredUpdateData = Object.entries(updateData).reduce((acc, [key, value]) => {
+      // Filter out undefined values before updating
+      const filteredUpdateData: Record<string, DbQueryParam> = {};
+      for (const [key, value] of Object.entries(updateData)) {
         if (value !== undefined) {
-          acc[key] = value;
+          filteredUpdateData[key] = value;
         }
-        return acc;
-      }, {} as Record<string, any>);
-
+      }
 
       return await this.update(characterId, filteredUpdateData);
     } catch (error) {
@@ -128,41 +137,74 @@ export class CharacterModel extends BaseModel<DbCharacter> {
   }
 
   /**
+   * Update character profile data with validation
+   */
+  async updateCharacterProfile(
+    id: number, 
+    profileData: BattleNetCharacter,
+    equipmentData?: BattleNetCharacterEquipment | null,
+    mythicData?: BattleNetMythicKeystoneProfile | null,
+    professionsData?: BattleNetProfessions['primaries'] | null
+  ): Promise<DbCharacterEnhanced | null> {
+    try {
+      // Validate input data using type guards
+      if (!isBattleNetCharacter(profileData)) {
+        throw new Error('Invalid character profile format');
+      }
+      
+      if (equipmentData && !isBattleNetCharacterEquipment(equipmentData)) {
+        throw new Error('Invalid character equipment format');
+      }
+      
+      if (mythicData && !isBattleNetMythicKeystoneProfile(mythicData)) {
+        throw new Error('Invalid mythic keystone profile format');
+      }
+      
+      const updateData: Partial<DbCharacterEnhanced> = {
+        profile_json: profileData,
+        last_synced_at: new Date().toISOString(),
+        is_available: true
+      };
+      
+      if (equipmentData) {
+        updateData.equipment_json = equipmentData;
+      }
+      
+      if (mythicData) {
+        updateData.mythic_profile_json = mythicData;
+      }
+      
+      if (professionsData) {
+        updateData.professions_json = professionsData;
+      }
+      
+      return await this.update(id, updateData);
+    } catch (error) {
+      throw new AppError(`Error updating character profile: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+
+  /**
    * Delete character with validation to ensure it belongs to the user
    */
   async deleteUserCharacter(characterId: number, userId: number): Promise<boolean> {
     try {
       // Make sure this character belongs to the user
-      const character = await this.findOne({ id: characterId, user_id: userId });
+      const condition: CharacterQueryCondition = { id: characterId, user_id: userId };
+      const character = await this.findOne(condition);
 
       if (!character) {
         throw new AppError('Character not found or doesn\'t belong to user', 404);
       }
 
-      // Check if this character is referenced in any event subscriptions
-      // TODO: Update this if event_subscriptions table changes
-      // const subscriptionCheck = await db.query(
-      //   'SELECT id FROM event_subscriptions WHERE character_id = $1 LIMIT 1',
-      //   [characterId]
-      // );
-
-      // if (subscriptionCheck.rowCount > 0) {
-      //   throw new AppError('Cannot delete character that is used in event subscriptions', 400);
-      // }
-
-      // If this was the main character and deletion is successful, set another character as main if available
+      // Delete the character
       return await withTransaction(async (client) => {
-        // REMOVED: Logic to handle setting a new main character upon deletion
-
-        // Delete the character
         const result = await client.query(
           `DELETE FROM ${this.tableName} WHERE id = $1 RETURNING id`,
           [characterId]
         );
 
-        const success = result.rowCount > 0;
-
-        return success;
+        return result.rowCount !== null && result.rowCount > 0;
       });
     } catch (error) {
       if (error instanceof AppError) {
@@ -177,8 +219,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
    */
   async syncCharactersFromBattleNet(
     userId: number,
-    wowAccounts: BattleNetWoWAccount[] // Use the imported type
-    // Return added/updated counts and the IDs of processed characters
+    wowAccounts: BattleNetWoWAccount[]
   ): Promise<{added: number, updated: number, total: number, processedIds: number[]}> {
     try {
       return await withTransaction(async (client) => {
@@ -187,7 +228,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
         const processedIds: number[] = []; // Array to store IDs of created/updated characters
 
         // Gather all characters from Battle.net
-        const battleNetCharacters: Partial<DbCharacter>[] = []; // Use DbCharacter
+        const battleNetCharacters: Partial<DbCharacterEnhanced>[] = [];
 
         for (const account of wowAccounts) {
           for (const character of account.characters || []) {
@@ -198,15 +239,12 @@ export class CharacterModel extends BaseModel<DbCharacter> {
               class: character.playable_class?.name || 'Unknown',
               level: character.level || 1,
               role: this.determineDefaultRole(character.playable_class?.id),
-              // Assign the summarized character object from the account profile here.
-              // The full profile will be fetched and stored by the sync service later.
-              profile_json: character as any, // Cast to any to bypass temporary type mismatch
-              // is_main: false // REMOVED - Not stored here anymore
+              profile_json: character,
             });
           }
         }
         logger.info(`Syncing ${battleNetCharacters.length} characters from Battle.net for user ${userId}.`);
-        // Get existing characters for this user that match the incoming Battle.net characters
+        
         // Extract unique name/realm pairs from battleNetCharacters
         const uniqueNameRealmPairs = Array.from(new Set(battleNetCharacters.map(char =>
           `${char.name?.toLowerCase() || ''}:${char.realm?.toLowerCase() || ''}`
@@ -214,33 +252,35 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           const [name, realm] = pair.split(':');
           return { name, realm };
         });
+        
         let existingCharsResult;
         const existingCharsMap = new Map<string, number>();
 
         if (uniqueNameRealmPairs.length > 0) {
-          // Prepare values for the query: [[name1, realm1], [name2, realm2], ...]
-            const queryValues = uniqueNameRealmPairs.map(key => [key.name.toLowerCase(), key.realm.toLowerCase()]);
+          // Prepare values for the query with proper typing
+          const queryValues: DbQueryParam[] = uniqueNameRealmPairs.flatMap(key => 
+            [key.name.toLowerCase(), key.realm.toLowerCase()]
+          );
 
-            // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
-            const placeholders = queryValues.map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`).join(', ');
-            const flatValues = queryValues.flat(); // Flatten the array for query parameters
+          // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
+          const placeholders = uniqueNameRealmPairs.map((_, index) => 
+            `($${index * 2 + 1}, $${index * 2 + 2})`
+          ).join(', ');
 
-            const query = `
-            SELECT id, name, realm
-            FROM ${this.tableName}
-            WHERE (lower(name), lower(realm)) IN (${placeholders})
-            `;
+          const query = `
+          SELECT id, name, realm
+          FROM ${this.tableName}
+          WHERE (lower(name), lower(realm)) IN (${placeholders})
+          `;
 
-            existingCharsResult = await client.query(query, flatValues);
-
-            
-            existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
-              existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
-            });
-            
+          existingCharsResult = await client.query(query, queryValues);
+          
+          existingCharsResult.rows.forEach((row: {id: number, name: string, realm: string}) => {
+            existingCharsMap.set(`${row.name.toLowerCase()}-${row.realm.toLowerCase()}`, row.id);
+          });
         } else {
-           // If no characters from Battle.net, there are no existing characters to match
-           existingCharsResult = { rows: [] };
+          // If no characters from Battle.net, there are no existing characters to match
+          existingCharsResult = { rows: [] };
         }
 
         // Process each character
@@ -248,78 +288,89 @@ export class CharacterModel extends BaseModel<DbCharacter> {
           const charKey = `${character.name?.toLowerCase() || ''}-${character.realm?.toLowerCase() || ''}`;
           const existingId = existingCharsMap.get(charKey);
           logger.debug(`Processing character: ${character.name} (${character.realm}) - Existing ID: ${existingId}`);
-          // --- Add Region Parsing Logic ---
+          
+          // Parse region from profile_json
           let region: BattleNetRegion = 'eu'; // Default to 'eu'
-          const profileData = character.profile_json as any; // Cast for easier access
-          // Check character.key.href first, then character.realm.key.href as potential sources
-          const hrefToCheck = profileData?.key?.href || profileData?.realm?.key?.href;
-          const parsedRegion = parseRegionFromHref(hrefToCheck);
-          if (parsedRegion) {
-            region = parsedRegion;
+          
+          if (character.profile_json) {
+            // Properly access the profile JSON with type safety
+            const profileJson = character.profile_json;
+            const keyHref = profileJson.key?.href;
+            const realmKeyHref = profileJson.realm?.key?.href;
+            const hrefToCheck = keyHref || realmKeyHref;
+            
+            const parsedRegion = parseRegionFromHref(hrefToCheck);
+            if (parsedRegion) {
+              region = parsedRegion;
+            }
           }
-          // --- End Region Parsing Logic ---
 
           if (existingId) {
             // Existing character found, update it
             // Prepare update data, ensuring only defined values are included
-            const updateData: Partial<DbCharacter> = {
-              user_id: userId, // Ensure user_id is included in update payload
+            const updateData: Partial<DbCharacterEnhanced> = {
+              user_id: userId,
               name: character.name,
               realm: character.realm,
               class: character.class,
               level: character.level,
               role: character.role,
               profile_json: character.profile_json,
-              region: region, // Include region in update
-              updated_at: new Date().toISOString() // Update timestamp
+              region: region,
+              updated_at: new Date().toISOString()
             };
 
-            const filteredUpdateData = Object.entries(updateData).reduce((acc, [key, value]) => {
+            // Filter out undefined values
+            const filteredUpdateData: Record<string, DbQueryParam> = {};
+            for (const [key, value] of Object.entries(updateData)) {
               if (value !== undefined) {
-                acc[key] = value;
+                filteredUpdateData[key] = value;
               }
-              return acc;
-            }, {} as Record<string, any>);
+            }
 
             const updateKeys = Object.keys(filteredUpdateData);
-            const updateValues = Object.values(filteredUpdateData);
-            const setClauses = updateKeys.map((key, index) => `${key} = $${index + 1}`).join(', ');
-
+            const updateValues: DbQueryParam[] = Object.values(filteredUpdateData);
+            
             if (updateKeys.length > 0) { // Only update if there's data to update
+              const setClauses = updateKeys.map((key, index) => `${key} = $${index + 1}`).join(', ');
+              
               await client.query(
                 `UPDATE ${this.tableName} SET ${setClauses} WHERE id = $${updateKeys.length + 1}`,
                 [...updateValues, existingId]
               );
             }
+            
             processedIds.push(existingId); // Add existing ID to processed list
             updated++;
           } else {
-            // Insert new character
+            // Insert new character with properly typed values
+            const insertParams: DbQueryParam[] = [
+              character.user_id,
+              character.name,
+              character.realm,
+              character.class,
+              character.level,
+              character.role,
+              character.profile_json,
+              region
+            ];
+            
             const insertResult = await client.query(
               `INSERT INTO ${this.tableName}
               (user_id, name, realm, class, level, role, profile_json, region, created_at, updated_at)
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-              RETURNING id`, // Return the new ID
-              [
-                character.user_id,
-                character.name,
-                character.realm,
-                character.class,
-                character.level,
-                character.role,
-                character.profile_json,
-                region
-              ]
+              RETURNING id`,
+              insertParams
             );
+            
             if (insertResult.rows.length > 0) {
-              processedIds.push(insertResult.rows[0].id); // Add newly inserted ID
+              processedIds.push(insertResult.rows[0].id);
             }
             added++;
           }
         }
 
         // Return counts and the list of processed character IDs
-        // Return counts: 'updated' is always 0 here, 'processedIds' only contains new character IDs.
         return { added, updated, total: battleNetCharacters.length, processedIds };
       });
     } catch (error) {
@@ -362,7 +413,6 @@ export class CharacterModel extends BaseModel<DbCharacter> {
       default:
         return 'DPS';
     }
-    // Note: Duplicate switch removed
   }
 
   /**
@@ -387,7 +437,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
   /**
    * Find a character by name and realm
    */
-  async findByNameRealm(name: string, realm: string): Promise<Character | null> {
+  async findByNameRealm(name: string, realm: string): Promise<DbCharacterEnhanced | null> {
     try {
       // Ensure case-insensitivity if DB collation isn't handling it
       const result = await db.query(
@@ -395,27 +445,20 @@ export class CharacterModel extends BaseModel<DbCharacter> {
         [name.toLowerCase(), realm.toLowerCase()]
       );
       return result.rows[0] || null;
-      // Original findOne might be case-sensitive depending on DB setup
-      // return await this.findOne({
-      //   name: name, // Keep original case for findOne if needed
-      //   realm: realm
-      // });
     } catch (error) {
       throw new AppError(`Error finding character by name and realm: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
 
-  // REMOVED: findByGuildId - Guild relationship is now managed via guild_members table
-
   /**
    * Find multiple characters by their IDs.
    */
-  async findByIds(ids: number[]): Promise<DbCharacter[]> {
+  async findByIds(ids: number[]): Promise<DbCharacterEnhanced[]> {
     if (!ids || ids.length === 0) {
       return [];
     }
     try {
-      // Use the underlying query builder from BaseModel or db directly
+      // Use the underlying query builder with proper type safety
       const result = await db.query(
         `SELECT * FROM ${this.tableName} WHERE id = ANY($1::int[])`,
         [ids]
@@ -426,26 +469,23 @@ export class CharacterModel extends BaseModel<DbCharacter> {
     }
   }
 
-
   /**
    * Find multiple characters by their name and realm slugs.
-   * @param keys An array of objects containing name and realm slug.
-   * @returns A promise that resolves to an array of matching DbCharacter objects.
    */
-  async findByMultipleNameRealm(keys: { name: string; realm: string }[]): Promise<DbCharacter[]> {
+  async findByMultipleNameRealm(keys: { name: string; realm: string }[]): Promise<DbCharacterEnhanced[]> {
     if (!keys || keys.length === 0) {
       return [];
     }
     try {
-      // Prepare values for the query: [[name1, realm1], [name2, realm2], ...]
-      // Ensure case-insensitivity by converting to lowercase.
-      const values = keys.map(key => [key.name.toLowerCase(), key.realm.toLowerCase()]);
+      // Prepare values for the query
+      const queryValues: DbQueryParam[] = keys.flatMap(key => 
+        [key.name.toLowerCase(), key.realm.toLowerCase()]
+      );
 
       // Construct the WHERE clause using tuple comparison (PostgreSQL specific)
-      // This is generally more efficient than multiple OR conditions.
-      // We need to generate placeholders like ($1, $2), ($3, $4), ...
-      const placeholders = values.map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`).join(', ');
-      const flatValues = values.flat(); // Flatten the array for query parameters
+      const placeholders = keys.map((_, index) => 
+        `($${index * 2 + 1}, $${index * 2 + 2})`
+      ).join(', ');
 
       const query = `
         SELECT *
@@ -453,7 +493,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
         WHERE (lower(name), lower(realm)) IN (${placeholders})
       `;
 
-      const result = await db.query(query, flatValues);
+      const result = await db.query(query, queryValues);
       return result.rows;
     } catch (error) {
       throw new AppError(`Error finding characters by multiple name/realm: ${error instanceof Error ? error.message : String(error)}`, 500);
@@ -463,7 +503,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
   /**
    * Find characters that haven't been synced recently.
    */
-  async findOutdatedCharacters(): Promise<DbCharacter[]> {
+  async findOutdatedCharacters(): Promise<DbCharacterEnhanced[]> {
     try {
       // Read limit from environment variable, default to 50
       const syncLimitEnv = process.env.CHARACTER_SYNC_LIMIT;
@@ -490,7 +530,7 @@ export class CharacterModel extends BaseModel<DbCharacter> {
  /**
   * Find characters by guild ID by joining with guild_members table.
   */
- async findAllByGuildId(guildId: number): Promise<DbCharacter[]> {
+ async findAllByGuildId(guildId: number): Promise<DbCharacterEnhanced[]> {
    try {
      const result = await db.query(
        `SELECT c.*
@@ -514,17 +554,17 @@ export const findAll = characterModel.findAll.bind(characterModel);
 export const create = characterModel.create.bind(characterModel);
 export const update = characterModel.update.bind(characterModel);
 export const findByUserId = characterModel.findByUserId.bind(characterModel);
-// Removed exports for getMainCharacter and setMainCharacter as they are no longer part of this model
-export const findByMultipleNameRealm = characterModel.findByMultipleNameRealm.bind(characterModel); // Added export
+export const findByMultipleNameRealm = characterModel.findByMultipleNameRealm.bind(characterModel);
 
 export const createCharacter = characterModel.createCharacter.bind(characterModel);
 export const updateCharacter = characterModel.updateCharacter.bind(characterModel);
+export const updateCharacterProfile = characterModel.updateCharacterProfile.bind(characterModel); // New export
 export const deleteUserCharacter = characterModel.deleteUserCharacter.bind(characterModel);
 export const syncCharactersFromBattleNet = characterModel.syncCharactersFromBattleNet.bind(characterModel);
 export const getHighestLevelCharacter = characterModel.getHighestLevelCharacter.bind(characterModel);
 export const findByNameRealm = characterModel.findByNameRealm.bind(characterModel);
-// Removed export for findByGuildId as it's no longer part of this model
 export const findByIds = characterModel.findByIds.bind(characterModel);
-export const findOutdatedCharacters = characterModel.findOutdatedCharacters.bind(characterModel); // Added export
+export const findOutdatedCharacters = characterModel.findOutdatedCharacters.bind(characterModel);
+export const findAllByGuildId = characterModel.findAllByGuildId.bind(characterModel);
 
 export default characterModel;

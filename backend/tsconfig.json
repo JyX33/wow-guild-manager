@@ -25,6 +25,11 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*", "config/**/*", "../shared/types"],
+  "include": [
+    "src/**/*",
+    "config/**/*",
+    "../shared/types",
+    "tests/battlenet-api.client.test.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

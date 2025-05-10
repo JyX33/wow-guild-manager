@@ -1,28 +1,20 @@
+// Import error types from separate file
+import { ErrorCode, ErrorDetail } from './error';
+
 // Standard API response format
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
   error?: ApiError;
 }
 
-// Error types and structure
+// Error types and structure with stronger typing
 export interface ApiError {
   status: number;
   message: string;
-  details?: any;
-  code?: string;
-}
-
-export enum ErrorCode {
-  VALIDATION_ERROR = 'validation_error',
-  AUTHENTICATION_ERROR = 'authentication_error',
-  AUTHORIZATION_ERROR = 'authorization_error',
-  NOT_FOUND = 'not_found',
-  CONFLICT = 'conflict',
-  INTERNAL_ERROR = 'internal_error',
-  EXTERNAL_API_ERROR = 'external_api_error',
-  RATE_LIMIT = 'rate_limit'
+  details?: ErrorDetail;
+  code: ErrorCode;
 }
 
 // Base pagination types
@@ -77,7 +69,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 export interface ApiRequestConfig {
   method: HttpMethod;
   path: string;
-  data?: any;
+  data?: Record<string, unknown>;
   params?: QueryFilters;
   headers?: Record<string, string>;
   timeout?: number;

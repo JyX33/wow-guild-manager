@@ -31,6 +31,7 @@ import eventRoutes from './routes/event.routes.js';
 import guildRoutes from './routes/guild.routes.js';
 import rosterRoutes from './routes/roster.routes.js'; // Add roster routes import
 import { errorHandlerMiddleware, notFoundHandler } from './utils/error-handler.js';
+import process from "node:process";
 
 const app = express();
 
@@ -49,7 +50,7 @@ app.use(cors({
 }));
 
 // PostgreSQL session store setup
-const PgStore = connectPgSimple(session as any); // Cast to any to resolve type conflict
+const PgStore = connectPgSimple(session); // Let TypeScript handle the proper inference
 const connectionString = `postgresql://${config.database.user}:${config.database.password}@${config.database.host}:${config.database.port}/${config.database.name}`;
 const pgPool = new pg.Pool({ connectionString });
 
@@ -61,6 +62,7 @@ const sessionStore = new PgStore({
 
 const NODE_ENV = config.server.nodeEnv; // Use the corrected value from config
 // Session middleware
+// Cast properly with generics instead of 'any'
 app.use(session({
   store: sessionStore, // Use the PostgreSQL store
   secret: config.auth.jwtSecret,
@@ -73,7 +75,7 @@ app.use(session({
     sameSite: 'none', // <-- Changed to 'none'
     path: '/', // Ensure path is root
   }
-}) as any); // Cast to any to bypass complex type error for now
+}));
 
 // API Health check routes
 app.get('/api/health', (_req, res) => {
@@ -198,7 +200,7 @@ logger.info(`[Scheduler] Next sync job scheduled for: ${syncJob.nextInvocation()
 // Optional: Run sync once on startup after a short delay
 setTimeout(() => {
   logger.info('[Startup] Triggering initial Battle.net sync...');
-  runSync(dependencies).catch((error: any) => {
+  runSync(dependencies).catch((error: unknown) => {
     logger.error({ err: error }, '[Startup] Error during initial sync:');
   });
 }, 10000); // Delay 10 seconds

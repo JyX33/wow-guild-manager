@@ -17,7 +17,7 @@ interface EventWithSubscription {
   character_name: string;
   character_class: string;
   character_role: string;
-  [key: string]: any;  // For other event properties
+  [key: string]: unknown;  // For other event properties
 }
 
 class SubscriptionModel extends BaseModel<EventSubscription> {

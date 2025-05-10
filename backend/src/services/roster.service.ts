@@ -4,7 +4,13 @@ import logger from '../utils/logger.js'; // Import logger
 import { PoolClient } from 'pg'; // Import PoolClient for transactions
 
 // Helper function to map database row keys (snake_case) to Roster object keys (camelCase)
-const mapDbRowToRoster = (row: any): Roster => ({
+const mapDbRowToRoster = (row: {
+  id: number;
+  guild_id: number;
+  name: string;
+  created_at: Date;
+  updated_at: Date
+}): Roster => ({
   id: row.id,
   guildId: row.guild_id,
   name: row.name,
@@ -13,7 +19,7 @@ const mapDbRowToRoster = (row: any): Roster => ({
 });
 
 // Helper function to map database row to RosterMember object, robust against nulls/undefined/casing
-const mapDbRowToRosterMember = (row: any): RosterMember => ({
+const mapDbRowToRosterMember = (row: Record<string, unknown>): RosterMember => ({
   // Use bracket notation and provide default 0 if null/undefined/falsy after Number conversion
   characterId: Number(row["characterId"]) || 0,
   // Use bracket notation and provide default '' if null/undefined/falsy

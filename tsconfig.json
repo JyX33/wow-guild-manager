@@ -28,7 +28,8 @@
   "include": [
     "frontend/src",
     "backend/src",
-    "shared/types"
+    "shared/types",
+    "backend/tests/battlenet-api.client.test.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

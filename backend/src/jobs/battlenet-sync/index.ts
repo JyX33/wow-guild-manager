@@ -15,7 +15,7 @@ import { syncCharacter } from './character-sync.js';
 import pLimit from 'p-limit';
 import { DateTime } from 'luxon'; // Import DateTime for time comparisons
 
-import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember, DbCharacter } from '../../../../shared/types/guild.js'; // Import BattleNetGuildRoster and BattleNetGuildMember
+import { DbGuild, BattleNetGuildMember, DbCharacter } from '../../../../shared/types/guild.js'; // Import guild types
 import { BattleNetRegion } from '../../../../shared/types/user.js';
 
 export interface SyncDependencies {
@@ -47,7 +47,7 @@ export async function orchestrateGuildSync(
     return;
   }
 
-  const { bnetGuildData, bnetGuildRoster } = result;
+  const { bnetGuildRoster } = result;
 
   try {
     // Step 2: Sync members
@@ -194,7 +194,7 @@ async function findOrCreateCharacterForRosterMember(
   const realmSlug = realm.slug;
 
   // Try to find the character by name and realm slug
-  let dbCharacter = await characterModel.findByNameRealm(name, realmSlug);
+  const dbCharacter = await characterModel.findByNameRealm(name, realmSlug);
 
   if (dbCharacter) {
     logger.debug({ charName: name, realm: realmSlug }, '[BattleNetSync] Found existing character in DB.');

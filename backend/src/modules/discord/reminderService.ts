@@ -3,7 +3,8 @@ import logger from '../../utils/logger.js';
 import schedule from 'node-schedule';
 import db from '../../db/db.js'; // Custom PG Pool client
 import { EmbedBuilder, User as DiscordUser } from 'discord.js';
-import { Event } from '../../../../shared/types/event.js'; // Use correct Event type
+import { Event } from '../../../../shared/types/event.js';
+import process from "node:process"; // Use correct Event type
 
 /**
  * Finds upcoming events and sends Discord DM reminders to users

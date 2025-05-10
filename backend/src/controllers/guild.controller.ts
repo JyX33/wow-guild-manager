@@ -1,26 +1,29 @@
 import { Request, Response } from 'express';
 import {
-  BattleNetCharacter, // Added
-  BattleNetCharacterEquipment,
-  BattleNetGuildRoster, // Added
-  BattleNetMythicKeystoneProfile, // Added
-  BattleNetProfessions, // Added
-  CharacterRole, // Added for mapping
-  DbCharacter, // Added
-  DbGuildMember, // Added for DB fetch
-  EnhancedGuildMember, // Keep for parsing roster_json
-  Guild, // Import the application-level Guild type
-  GuildMember, // Added for mapping
+  CharacterRole,
+  EnhancedGuildMember,
+  Guild,
+  GuildMember,
 } from '../../../shared/types/guild.js';
-import * as characterModel from '../models/character.model.js'; // Added
+import {
+  DbCharacterEnhanced,
+  DbGuildMemberEnhanced
+} from '../../../shared/types/db-enhanced.js';
+import * as characterModel from '../models/character.model.js';
 import * as guildModel from '../models/guild.model.js';
-import * as guildMemberModel from '../models/guild_member.model.js'; // Added
+import * as guildMemberModel from '../models/guild_member.model.js';
 import * as rankModel from '../models/rank.model.js';
 import * as userModel from '../models/user.model.js';
-import * as guildService from '../services/guild.service.js'; // Added for member activity
-import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler.js';
-import logger from '../utils/logger.js'; // Import the logger
-import { CharacterClassificationService, ClassifiedMember } from '../services/character-classification.service.js'; // Added for classified roster
+import * as guildService from '../services/guild.service.js';
+import { asyncHandler } from '../utils/error-handler.js';
+import {
+  createNotFoundError,
+  createValidationError,
+  createResourceError
+} from '../utils/error-factory.js';
+import { ErrorCode } from '../../../shared/types/error.js';
+import logger from '../utils/logger.js';
+import { CharacterClassificationService, ClassifiedMember } from '../services/character-classification.service.js';
 // Import the modules themselves, not just the default instance
 import * as characterModelModule from '../models/character.model.js';
 import * as guildMemberModelModule from '../models/guild_member.model.js';
@@ -60,10 +63,7 @@ export default {
     const { region, realm, name } = req.params;
     const guild = await guildModel.findByNameRealmRegion(name, realm, region);
     if (!guild) {
-       throw new AppError('Guild not found in local database', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
-      });
+      throw createNotFoundError('Guild', `${name}-${realm}-${region}`, req);
     }
     res.json({
       success: true,
@@ -78,23 +78,16 @@ export default {
     const guildIdInt = parseInt(guildId);
 
     if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, {
-        code: ERROR_CODES.VALIDATION_ERROR,
-        request: req
-      });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
     const guild = await guildModel.findById(guildIdInt);
 
     if (!guild) {
-      throw new AppError('Guild not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
-      });
+      throw createNotFoundError('Guild', guildIdInt, req);
     }
 
-    // TODO: Ensure the returned guild object structure matches frontend expectations,
-    // potentially parsing from guild_data_json if needed here or in the model.
+    // Guild already has properly typed JSON fields
     res.json({
       success: true,
       data: guild
@@ -102,20 +95,17 @@ export default {
   }),
 
   // --- REFACTORED getGuildMembers ---
-  getGuildMembers: asyncHandler(async (req: Request, res: Response) => {
+  getGuildMembers: asyncHandler(async (req: Request, res: Response): Promise<void> => {
     logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getGuildMembers request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
     if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, {
-        code: ERROR_CODES.VALIDATION_ERROR,
-        request: req
-      });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
     // 1. Fetch Guild Members from DB
-    const dbGuildMembers: DbGuildMember[] = await guildMemberModel.findByGuildAndRanks(guildIdInt);
+    const dbGuildMembers: DbGuildMemberEnhanced[] = await guildMemberModel.findByGuildAndRanks(guildIdInt);
     logger.debug({ guildId: guildIdInt, count: dbGuildMembers.length }, `Found ${dbGuildMembers.length} members in DB for guild ${guildIdInt}`);
 
     // 2. Handle Empty Roster
@@ -131,7 +121,7 @@ export default {
     logger.debug({ guildId: guildIdInt, count: dbCharacters.length }, `Fetched ${dbCharacters.length} character details from DB`);
 
     // 5. Create Character Map
-    const characterMap = new Map<number, DbCharacter>();
+    const characterMap = new Map<number, DbCharacterEnhanced>();
     dbCharacters.forEach(char => characterMap.set(char.id, char));
 
     // 7. Map Members to Response
@@ -149,9 +139,11 @@ export default {
 
         try {
           // Attempt to parse profile_json and determine role from spec
-          const profileData = character.profile_json as BattleNetCharacter | null; // No need for (character as any)
-          const specName = profileData?.active_spec?.name;
-          role = determineRoleFromSpec(specName); // Use helper function
+          const profileData = character.profile_json;
+          if (profileData) {
+            const specName = profileData.active_spec?.name;
+            role = determineRoleFromSpec(specName); // Use helper function
+          }
         } catch (parseError) {
           // Log error if JSON parsing fails, but continue with default role
           logger.warn({ err: parseError, charName: character.name, charId: character.id, guildId: guildIdInt }, `Could not parse profile_json for character ${character.name}`);
@@ -187,10 +179,16 @@ export default {
 
 
   // --- REFACTORED getUserGuilds ---
-  // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
-  getUserGuilds: asyncHandler(async (req: Request, res: Response) => {
+  getUserGuilds: asyncHandler(async (req: Request, res: Response): Promise<void> => {
     logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.user?.id }, 'Handling getUserGuilds request'); // Use req.user?.id for logging
-    if (!req.user) throw new AppError('Authentication required', 401);
+    if (!req.user) {
+      throw createResourceError(
+        'Authentication required',
+        'User',
+        ErrorCode.UNAUTHORIZED,
+        { operation: 'read', request: req }
+      );
+    }
     const userId = req.user.id; // Get user ID from authenticated request
 
     // 1. Get user's characters from the database
@@ -230,7 +228,8 @@ export default {
     // 6. Map DB guilds to the response format, checking leadership
     const responseGuilds: Guild[] = dbGuilds.map(dbGuild => {
       const isGuildMaster = dbGuild.leader_id === userId;
-      const guildData = (dbGuild as any).guild_data_json || {};
+      // Now properly typed with DbGuildEnhanced
+      const guildData = dbGuild.guild_data_json || null;
 
       return {
         id: dbGuild.id,
@@ -254,14 +253,13 @@ export default {
 
 
   // --- REFACTORED getEnhancedGuildMembers ---
-  // @ts-ignore // TODO: Investigate TS7030 with asyncHandler
-  getEnhancedGuildMembers: asyncHandler(async (req: Request, res: Response) => {
+  getEnhancedGuildMembers: asyncHandler(async (req: Request, res: Response): Promise<void> => {
     logger.info({ method: req.method, path: req.path, params: req.params, query: req.query, userId: req.session?.userId }, 'Handling getEnhancedGuildMembers request');
     const { guildId } = req.params;
     const guildIdInt = parseInt(guildId);
 
      if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
     // 1. Fetch relevant guild members from DB
@@ -276,12 +274,12 @@ export default {
     // 2. Extract character IDs
     const characterIds = dbGuildMembers.map(member => member.character_id);
 
-    // 3. Fetch corresponding character details from DB
+    // 3. Fetch corresponding character details from DB with enhanced types
     const dbCharacters = await characterModel.findByIds(characterIds);
     logger.debug({ guildId: guildIdInt, count: dbCharacters.length }, `Fetched ${dbCharacters.length} character details from DB`);
 
     // 4. Create a map for easy lookup
-    const characterMap = new Map<number, DbCharacter>();
+    const characterMap = new Map<number, DbCharacterEnhanced>();
     dbCharacters.forEach(char => characterMap.set(char.id, char));
 
     // 5. Iterate, parse JSONB, and construct response
@@ -302,17 +300,17 @@ export default {
       }
 
       try {
-        // Parse JSONB fields (handle potential nulls)
-        const profileData = (character as any).profile_json as BattleNetCharacter | null;
-        const equipmentData = (character as any).equipment_json as BattleNetCharacterEquipment | null;
-        const mythicData = (character as any).mythic_profile_json as BattleNetMythicKeystoneProfile | null;
-        const professionsData = (character as any).professions_json as BattleNetProfessions | null;
+        // Access JSON fields with proper typing - no need for "as any" casts
+        const profileData = character.profile_json;
+        const equipmentData = character.equipment_json;
+        const mythicData = character.mythic_profile_json;
+        const professionsData = character.professions_json;
 
-        // Determine role (example logic, adjust as needed)
+        // Determine role from profile data
         const specName = profileData?.active_spec?.name;
         const role: CharacterRole = specName?.includes('Protection') || specName?.includes('Guardian') || specName?.includes('Blood') || specName?.includes('Brewmaster') || specName?.includes('Vengeance') ? 'Tank'
-                                   : specName?.includes('Holy') || specName?.includes('Discipline') || specName?.includes('Restoration') || specName?.includes('Preservation') || specName?.includes('Mistweaver') ? 'Healer'
-                                   : 'DPS';
+                                  : specName?.includes('Holy') || specName?.includes('Discipline') || specName?.includes('Restoration') || specName?.includes('Preservation') || specName?.includes('Mistweaver') ? 'Healer'
+                                  : 'DPS';
 
         successCount++;
 
@@ -343,7 +341,7 @@ export default {
             itemLevel: profileData?.equipped_item_level || 0, // Redundant? Keep for compatibility?
             mythicKeystone: mythicData || null, // Assign parsed mythic data
             activeSpec: profileData?.active_spec || null, // Assign parsed spec data
-            professions: professionsData?.primaries || [], // Assign parsed professions
+            professions: professionsData || [], // Assign parsed professions
             // Include other relevant fields from DbCharacter if needed
             character_data: profileData || undefined, // Optional: include parsed profile for flexibility?
             equipment: equipmentData || undefined, // Optional: include parsed equipment
@@ -388,16 +386,13 @@ export default {
     const guildIdInt = parseInt(guildId);
 
      if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
     const guild = await guildModel.findById(guildIdInt);
 
     if (!guild) {
-      throw new AppError('Guild not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
-      });
+      throw createNotFoundError('Guild', guildIdInt, req);
     }
 
     const customRanks = await rankModel.getGuildRanks(guildIdInt);
@@ -407,12 +402,8 @@ export default {
     const rankMap = new Map();
 
     // Get unique ranks from DB roster_json
-    const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null; // Assuming roster_json column exists
-    const uniqueRanks = new Set(rosterData?.members?.map(member => member.rank) || []); // Get ranks from JSONB
-
-    // TODO: Potentially fetch default rank names from guild_data_json if stored there
-    // const guildData = (guild as any).guild_data_json as BattleNetGuild | null;
-    // const defaultRankNames = guildData?.ranks?.reduce(...) // If ranks are in guild data
+    const rosterData = guild.roster_json;
+    const uniqueRanks = new Set(rosterData?.members?.map(member => member.rank) || []);
 
     uniqueRanks.forEach(rankId => {
       // Use default names for now, enhance later if needed by parsing guild_data_json
@@ -458,26 +449,27 @@ export default {
     const { rank_name } = req.body;
 
     if (!rank_name || typeof rank_name !== 'string') {
-      throw new AppError('Rank name is required', 400, {
-        code: ERROR_CODES.VALIDATION_ERROR,
-        request: req
-      });
+      throw createValidationError(
+        'Rank name is required and must be a string',
+        { rank_name: 'Required field of type string' },
+        rank_name,
+        req
+      );
     }
 
     if (rank_name.length > 50) {
-      throw new AppError('Rank name cannot exceed 50 characters', 400, {
-        code: ERROR_CODES.VALIDATION_ERROR,
-        request: req
-      });
+      throw createValidationError(
+        'Rank name cannot exceed 50 characters',
+        { rank_name: 'Must be 50 characters or less' },
+        rank_name,
+        req
+      );
     }
 
     const guild = await guildModel.findById(parseInt(guildId));
 
     if (!guild) {
-      throw new AppError('Guild not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
-      });
+      throw createNotFoundError('Guild', parseInt(guildId), req);
     }
 
     // This interacts only with the DB rankModel, so it should be fine.
@@ -502,30 +494,26 @@ export default {
     const guildIdInt = parseInt(guildId);
 
      if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
-    const guild = await guildModel.findById(guildIdInt); // Cast removed, assuming findById returns correct type
+    const guild = await guildModel.findById(guildIdInt);
 
     if (!guild) {
-      throw new AppError('Guild not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
-        request: req
+      throw createNotFoundError('Guild', guildIdInt, req);
+    }
+
+    const ranks = await rankModel.getGuildRanks(guildIdInt);
+
+    // Get rank counts from parsed roster_json 
+    const rosterData = guild.roster_json;
+    const rankCounts: { [key: number]: number } = {};
+    
+    if (rosterData?.members) {
+      rosterData.members.forEach(member => {
+        rankCounts[member.rank] = (rankCounts[member.rank] || 0) + 1;
       });
     }
-
-    const ranks = await rankModel.getGuildRanks(guildIdInt); // Fetch custom names
-
-    // Get rank counts from parsed roster_json or guild_members table aggregation
-    // Assuming roster_json column exists on the guild object returned by findById
-    const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
-    const rankCounts: { [key: number]: number } = {};
-    if (rosterData?.members) {
-        rosterData.members.forEach(member => {
-            rankCounts[member.rank] = (rankCounts[member.rank] || 0) + 1;
-        });
-    }
-
 
     const enhancedRanks = ranks.map(rank => ({
       ...rank,
@@ -544,7 +532,7 @@ export default {
     const guildIdInt = parseInt(guildId);
 
     if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
     // Call the service function to get member activity
@@ -563,7 +551,7 @@ export default {
     const guildIdInt = parseInt(guildId);
 
     if (isNaN(guildIdInt)) {
-      throw new AppError('Invalid guild ID', 400, { code: ERROR_CODES.VALIDATION_ERROR, request: req });
+      throw createValidationError('Invalid guild ID', { guildId: 'Must be a valid integer' }, guildId, req);
     }
 
     // Use the classification service

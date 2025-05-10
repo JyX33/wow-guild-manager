@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import * as RosterService from '../services/roster.service.js';
 import db from '../db/db.js'; // Import the database wrapper
-import guildMemberModel from '../models/guild_member.model.js'; // Assuming this model can check guild master status
-import { ApiError, ErrorCode } from '../../../shared/types/api.js';
+// Import needed modules
+import { ApiError } from '../../../shared/types/api.js';
+import { ErrorCode } from '../../../shared/types/error.js';
 import logger from '../utils/logger.js';
 
 // Extend Express Request type to include user and potentially guildId
@@ -33,7 +34,7 @@ export const isRosterGuildMaster = async (req: AuthenticatedRequest, res: Respon
 
   if (!userId) {
     // This should technically be caught by authenticateJWT first, but belt and suspenders
-    return sendAuthError(res, 401, 'Authentication required.', ErrorCode.AUTHENTICATION_ERROR);
+    return sendAuthError(res, 401, 'Authentication required.', ErrorCode.UNAUTHORIZED);
   }
 
   try {
@@ -49,9 +50,9 @@ export const isRosterGuildMaster = async (req: AuthenticatedRequest, res: Respon
     // First, get the user's character IDs
     const userCharsResult = await db.query('SELECT id FROM characters WHERE user_id = $1', [userId]);
     if (userCharsResult.rowCount === 0) {
-        return sendAuthError(res, 403, 'Forbidden: User has no characters.', ErrorCode.AUTHORIZATION_ERROR);
+        return sendAuthError(res, 403, 'Forbidden: User has no characters.', ErrorCode.FORBIDDEN);
     }
-    const userCharacterIds = userCharsResult.rows.map((r: any) => r.id);
+    const userCharacterIds = userCharsResult.rows.map((r: { id: number }) => r.id);
 
     // Now check if any of those characters are in the target guild with rank 0
     const gmCheckResult = await db.query(
@@ -66,14 +67,14 @@ export const isRosterGuildMaster = async (req: AuthenticatedRequest, res: Respon
     );
 
     if ((gmCheckResult.rowCount ?? 0) === 0) {
-      return sendAuthError(res, 403, 'Forbidden: Only the Guild Master can perform this action.', ErrorCode.AUTHORIZATION_ERROR);
+      return sendAuthError(res, 403, 'Forbidden: Only the Guild Master can perform this action.', ErrorCode.FORBIDDEN);
     }
 
     // 3. Attach guildId to request for downstream use
     req.guildId = guildId;
 
     next(); // User is authorized
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId, userId }, 'Error checking roster guild master status');
     sendAuthError(res, 500, 'Internal server error during authorization check.', ErrorCode.INTERNAL_ERROR);
   }

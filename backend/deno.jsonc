@@ -1,0 +1,36 @@
+// deno.json
+{
+  // TypeScript compiler options used by `deno check`
+  "compilerOptions": {
+    // enable all strict‐type checking options
+    "strict": true,
+    // treat all files as modules (always emit "use strict")
+    "alwaysStrict": true,
+    // catch more errors around nullable values
+    "strictNullChecks": true,
+    // disallow indexing into object types with unchecked keys
+    "noUncheckedIndexedAccess": true,
+    // catch missing 'this' types and implicit any’s
+    "noImplicitThis": true,
+    "noImplicitAny": true,
+    // include Deno’s runtime libs
+    "lib": ["deno.window"]
+  },
+  "lint": {
+    // Scan all .ts files
+    "include": ["**/*.ts"],
+
+    // Exclude your tests folder
+    "exclude": ["tests/**", "database/**", "migrations/**", "dist/**", "node_modules/**"],
+
+    "rules": {
+      // Enable Deno's recommended linter rules
+      "tags": ["recommended"]
+    }
+  },
+  // skip everything under tests/ for check, lint, fmt, test, etc.
+  "exclude": [
+    "tests/", "database/**", "migrations/**", "dist/**", "node_modules/**", "**/*.js", "**/*.mjs" 
+  ]
+
+}

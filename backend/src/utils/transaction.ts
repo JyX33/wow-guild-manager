@@ -1,5 +1,6 @@
 import db from '../db/db.js';
 import { AppError } from './error-handler.js';
+import { TrackedClient } from '../db/db-types.js';
 
 /**
  * Execute a function within a database transaction
@@ -7,7 +8,7 @@ import { AppError } from './error-handler.js';
  * @param callback Function to execute within transaction
  * @returns Result of the callback function
  */
-export async function withTransaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(callback: (client: TrackedClient) => Promise<T>): Promise<T> {
   const client = await db.getClient();
   
   try {

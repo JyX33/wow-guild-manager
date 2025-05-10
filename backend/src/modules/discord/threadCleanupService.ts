@@ -4,6 +4,7 @@ import logger from '../../utils/logger.js';
 import db from '../../db/db.js';
 import schedule from 'node-schedule';
 import { ChannelType, ThreadChannel } from 'discord.js';
+import process from "node:process";
 
 /**
  * Cleans up Discord threads for events that ended more than 2 hours ago.

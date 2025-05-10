@@ -113,7 +113,7 @@ export interface DbUser {
   updated_at?: string;
   role?: UserRole;
   region?: BattleNetRegion;
-  user_data?: BattleNetUserProfile;
+  user_data?: BattleNetUserProfile | null;
   discord_id?: string | null;
   discord_username?: string | null;
 }
@@ -132,7 +132,7 @@ export interface User {
   updated_at?: string;
   role?: UserRole;
   region?: BattleNetRegion;
-  user_data?: BattleNetUserProfile;
+  user_data?: BattleNetUserProfile | null;
   tokens_valid_since?: string; // Added for token revocation
   discord_id?: string | null;
   // Optionally add these if backend provides them:

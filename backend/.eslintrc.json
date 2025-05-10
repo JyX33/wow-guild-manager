@@ -23,5 +23,6 @@
     "no-duplicate-imports": "error",
     "no-unused-expressions": "error",
     "prefer-const": "error"
-  }
+  },
+  "ignorePatterns": ["tests/**"]
 }

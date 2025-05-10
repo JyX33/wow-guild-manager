@@ -1,38 +1,36 @@
 import { NextFunction, Request, Response } from 'express';
 import logger from './logger.js'; // Import the logger
+import { ErrorCode, ErrorDetail, RequestContext } from '../../../shared/types/error.js';
 
 export class AppError extends Error {
   status: number;
-  details?: any;
-  code?: string;
-  requestContext?: {
-    method: string;
-    path: string;
-    params: any;
-    query: any;
-  };
+  details?: ErrorDetail;
+  code: ErrorCode;
+  requestContext?: RequestContext;
 
   constructor(
     message: string,
     status: number = 500,
     options?: {
-      details?: any;
-      code?: string;
+      details?: ErrorDetail;
+      code?: ErrorCode;
       request?: Request;
     }
   ) {
     super(message);
     this.status = status;
     this.details = options?.details;
-    this.code = options?.code;
+    this.code = options?.code || ErrorCode.INTERNAL_ERROR;
     this.name = this.constructor.name;
 
     if (options?.request) {
       this.requestContext = {
         method: options.request.method,
         path: options.request.path,
-        params: options.request.params,
-        query: options.request.query
+        params: options.request.params as Record<string, unknown>,
+        query: options.request.query as Record<string, unknown>,
+        ip: options.request.ip,
+        userId: options.request.session?.userId
       };
     }
 
@@ -49,7 +47,7 @@ export const errorHandlerMiddleware = (
   const status = 'status' in err ? err.status : 500;
   const message = err.message || 'Something went wrong';
   const details = 'details' in err ? err.details : undefined;
-  const code = 'code' in err ? err.code : 'INTERNAL_ERROR';
+  const code = 'code' in err ? err.code : ErrorCode.INTERNAL_ERROR;
 
   // Enhanced error logging
   // Avoid logging expected errors like 401 Unauthorized unless needed for debugging
@@ -65,8 +63,8 @@ export const errorHandlerMiddleware = (
         request: 'requestContext' in err ? err.requestContext : { // Use context from AppError if available
           method: req.method,
           path: req.path,
-          params: req.params,
-          query: req.query,
+          params: req.params as Record<string, unknown>,
+          query: req.query as Record<string, unknown>,
           ip: req.ip, // Add IP address
           userId: req.session?.userId // Add user ID if available
         }
@@ -87,15 +85,22 @@ export const errorHandlerMiddleware = (
   });
 };
 
-export const asyncHandler = (fn: Function) => {
+export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    Promise.resolve(fn(req, res, next)).catch((err) => {
+    Promise.resolve(fn(req, res, next)).catch((err: unknown) => {
       // Log the original error before wrapping it, if it's not an AppError
       if (!(err instanceof AppError)) {
         logger.warn({ err, path: req.path, method: req.method }, 'Caught non-AppError in asyncHandler, wrapping...');
-        err = new AppError(err.message || 'An unexpected error occurred', 500, {
+        const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+        const errorDetails = {
+          type: 'unexpected',
+          stack: err instanceof Error ? err.stack : undefined
+        };
+
+        err = new AppError(errorMessage, 500, {
           request: req,
-          details: err.stack // Include stack in details for wrapped errors
+          details: errorDetails,
+          code: ErrorCode.INTERNAL_ERROR
         });
       }
       next(err);
@@ -105,21 +110,18 @@ export const asyncHandler = (fn: Function) => {
 };
 
 export const notFoundHandler = (req: Request, _res: Response, next: NextFunction) => { // Prefixed unused parameter
+  const details = {
+    type: 'resource' as const,
+    resourceType: 'endpoint',
+    resourceId: req.originalUrl
+  };
+
   const error = new AppError(`Resource not found - ${req.originalUrl}`, 404, {
     request: req,
-    code: 'RESOURCE_NOT_FOUND'
+    code: ErrorCode.NOT_FOUND,
+    details
   });
   // Optionally log 404s if needed for analytics/debugging, but often they are just noise
   // logger.warn({ path: req.originalUrl, method: req.method, ip: req.ip }, 'Resource not found');
   next(error);
-};
-
-// Common error codes
-export const ERROR_CODES = {
-  VALIDATION_ERROR: 'VALIDATION_ERROR',
-  DATABASE_ERROR: 'DATABASE_ERROR',
-  API_ERROR: 'API_ERROR',
-  AUTH_ERROR: 'AUTH_ERROR',
-  NOT_FOUND: 'NOT_FOUND',
-  RATE_LIMITED: 'RATE_LIMITED'
 };

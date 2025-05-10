@@ -1,5 +1,6 @@
 // backend/src/services/battlenet-api.client.ts
 import { AppError } from '../utils/error-handler.js';
+import { ErrorCode } from '../../../shared/types/error.js';
 import { BattleNetGuild, BattleNetGuildRoster, BattleNetCharacter, BattleNetCharacterEquipment, BattleNetMythicKeystoneProfile, BattleNetProfessions } from '../../../shared/types/guild.js';
 import { TokenResponse } from '../../../shared/types/auth.js';
 import config from '../config/index.js';
@@ -7,6 +8,7 @@ import { BattleNetRegion, BattleNetUserProfile, BattleNetWoWProfile } from '../.
 import Bottleneck from 'bottleneck';
 import logger from '../utils/logger.js';
 import axios, { AxiosBasicCredentials } from 'axios';
+import process from "node:process";
 
 // --- Rate Limiter Configuration ---
 const BNET_MAX_CONCURRENT = parseInt(process.env.BNET_MAX_CONCURRENT || '20', 10);
@@ -175,13 +177,13 @@ export class BattleNetApiClient {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error({ err: error }, `[ApiClient] Failed to obtain/refresh token: ${errorMessage}`);
         throw new AppError(`Failed to get API token: ${errorMessage}`, 500, {
-          code: 'BATTLE_NET_AUTH_ERROR'
+          code: ErrorCode.EXTERNAL_API_ERROR
         });
       }
     }
 
     if (!this.apiClientToken) {
-      throw new AppError('API token is null after fetch attempt', 500, { code: 'BATTLE_NET_AUTH_ERROR' });
+      throw new AppError('API token is null after fetch attempt', 500, { code: ErrorCode.EXTERNAL_API_ERROR });
     }
 
     return this.apiClientToken;
@@ -192,7 +194,7 @@ export class BattleNetApiClient {
   private async _fetchClientCredentialsToken(region: BattleNetRegion): Promise<TokenResponse> {
     const { clientId, clientSecret } = config.battlenet;
     if (!clientId || !clientSecret) {
-      throw new AppError('Battle.net Client ID or Secret is not configured.', 500, { code: 'CONFIG_ERROR' });
+      throw new AppError('Battle.net Client ID or Secret is not configured.', 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     const regionConfig = config.battlenet.regions[region];
@@ -261,7 +263,7 @@ export class BattleNetApiClient {
     } catch (error: any) {
       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
       throw new AppError(`Failed to fetch guild data: ${error.message || String(error)}`, statusCode, {
-        code: 'BATTLE_NET_API_ERROR',
+        code: ErrorCode.EXTERNAL_API_ERROR,
         details: { realmSlug, guildNameSlug, region: validRegion, jobId }
       });
     }
@@ -284,7 +286,7 @@ export class BattleNetApiClient {
     } catch (error: any) {
       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
       throw new AppError(`Failed to fetch guild roster: ${error.message || String(error)}`, statusCode, {
-        code: 'BATTLE_NET_API_ERROR',
+        code: ErrorCode.EXTERNAL_API_ERROR,
         details: { realmSlug, guildNameSlug, region: validRegion, jobId }
       });
     }
@@ -357,7 +359,7 @@ export class BattleNetApiClient {
     } catch (error: any) {
       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
       throw new AppError(`Failed to fetch enhanced character data: ${error.message || String(error)}`, statusCode, {
-        code: 'BATTLE_NET_API_ERROR',
+        code: ErrorCode.EXTERNAL_API_ERROR,
         details: { realmSlug, characterNameLower, region: validRegion, baseJobId }
       });
     }
@@ -378,7 +380,7 @@ export class BattleNetApiClient {
     } catch (error: any) {
       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
       throw new AppError(`Failed to fetch collections index: ${error.message || String(error)}`, statusCode, {
-        code: 'BATTLE_NET_API_ERROR',
+        code: ErrorCode.EXTERNAL_API_ERROR,
         details: { realmSlug, characterNameLower, region: validRegion, jobId }
       });
     }
@@ -392,7 +394,7 @@ export class BattleNetApiClient {
     } catch (error: any) {
       const statusCode = error?.status || error?.response?.status || (error instanceof AppError ? error.status : 500);
       throw new AppError(`Failed to fetch generic data: ${error.message || String(error)}`, statusCode, {
-        code: 'BATTLE_NET_API_ERROR',
+        code: ErrorCode.EXTERNAL_API_ERROR,
         details: { url, jobId }
       });
     }
@@ -406,11 +408,11 @@ export class BattleNetApiClient {
     const regionConfig = config.battlenet.regions[validRegion];
 
     if (!regionConfig || !regionConfig.authBaseUrl) {
-      throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
+      throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     if (!config.battlenet.clientId || !config.battlenet.redirectUri || !config.battlenet.scopes) {
-       throw new AppError('Battle.net client configuration (clientId, redirectUri, or scopes) is incomplete.', 500, { code: 'CONFIG_ERROR' });
+       throw new AppError('Battle.net client configuration (clientId, redirectUri, or scopes) is incomplete.', 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     const authUrl = new URL(`${regionConfig.authBaseUrl}/authorize`);
@@ -431,11 +433,11 @@ export class BattleNetApiClient {
     const regionConfig = config.battlenet.regions[validRegion];
 
     if (!regionConfig || !regionConfig.authBaseUrl) {
-      throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
+      throw new AppError(`Configuration for region ${region} is incomplete or missing authBaseUrl.`, 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     if (!config.battlenet.clientId || !config.battlenet.clientSecret) {
-       throw new AppError('Battle.net client configuration (clientId or clientSecret) is incomplete.', 500, { code: 'CONFIG_ERROR' });
+       throw new AppError('Battle.net client configuration (clientId or clientSecret) is incomplete.', 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     const url = `${regionConfig.authBaseUrl}/token`;
@@ -454,7 +456,7 @@ export class BattleNetApiClient {
        const statusCode = error?.response?.status || 500;
        const errorMessage = error?.response?.data?.error_description || error.message || String(error);
        logger.error({ err: error, region, code, redirectUri }, `[ApiClient] Failed to get access token: ${errorMessage}`);
-       throw new AppError(`Failed to get access token: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_AUTH_ERROR' });
+       throw new AppError(`Failed to get access token: ${errorMessage}`, statusCode, { code: ErrorCode.EXTERNAL_API_ERROR });
     }
   }
 
@@ -466,7 +468,7 @@ export class BattleNetApiClient {
     const regionConfig = config.battlenet.regions[validRegion];
 
     if (!regionConfig || !regionConfig.userInfoUrl) {
-      throw new AppError(`Configuration for region ${region} is incomplete or missing userInfoUrl.`, 500, { code: 'CONFIG_ERROR' });
+      throw new AppError(`Configuration for region ${region} is incomplete or missing userInfoUrl.`, 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     const url = regionConfig.userInfoUrl;
@@ -477,7 +479,7 @@ export class BattleNetApiClient {
       const statusCode = error?.response?.status || 500;
       const errorMessage = error?.response?.data?.error_description || error.message || String(error);
       logger.error({ err: error, region }, `[ApiClient] Failed to get user info: ${errorMessage}`);
-      throw new AppError(`Failed to get user info: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_API_ERROR' });
+      throw new AppError(`Failed to get user info: ${errorMessage}`, statusCode, { code: ErrorCode.EXTERNAL_API_ERROR });
     }
 
   }
@@ -490,7 +492,7 @@ export class BattleNetApiClient {
     const regionConfig = config.battlenet.regions[validRegion];
 
     if (!regionConfig || !regionConfig.apiBaseUrl) {
-      throw new AppError(`Configuration for region ${region} is incomplete or missing apiBaseUrl.`, 500, { code: 'CONFIG_ERROR' });
+      throw new AppError(`Configuration for region ${region} is incomplete or missing apiBaseUrl.`, 500, { code: ErrorCode.NOT_IMPLEMENTED });
     }
 
     const url = `${regionConfig.apiBaseUrl}/profile/user/wow`;
@@ -502,7 +504,7 @@ export class BattleNetApiClient {
       const statusCode = error?.response?.status || 500;
       const errorMessage = error?.response?.data?.error_description || error.message || String(error);
       logger.error({ err: error, region }, `[ApiClient] Failed to fetch WoW profile: ${errorMessage}`);
-      throw new AppError(`Failed to fetch WoW profile: ${errorMessage}`, statusCode, { code: 'BATTLE_NET_API_ERROR', details: { region: validRegion } });
+      throw new AppError(`Failed to fetch WoW profile: ${errorMessage}`, statusCode, { code: ErrorCode.EXTERNAL_API_ERROR, details: { region: validRegion } });
     }
   }
 

@@ -249,31 +249,38 @@ export class OnboardingService {
                  // GM character found, but user_id is missing (should not happen ideally)
                  logger.error({ userId, guildId: localGuild.id, gmLocalId: localGmCharacter.id, gmBnetId }, '[OnboardingService] Found local GM character but user_id is missing. Cannot set leader_id.');
                  // Update only sync time
-                 try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (e) { /* ignore */ }
+                 try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (_e) { /* ignore */ }
               } else {
                 // GM found in roster, but no matching local character record found by bnet_id yet
                 logger.warn({ userId, guildName: guildInfo.name, gmBnetId, gmCharacterName }, '[OnboardingService] GM found in roster, but no corresponding local character record found by bnet_id. Leader ID not set.');
                 // Update only sync time
-                try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (e) { /* ignore */ }
+                try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (_e) { /* ignore */ }
               }
             } catch (lookupError) { // Catch for lookup try block
               logger.error({ err: lookupError, userId, guildName: guildInfo.name, gmBnetId }, '[OnboardingService] Database error looking up local GM by bnet_id.');
               // Attempt to update only last_roster_sync even if lookup failed
               if (localGuild) {
-                try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (e) { /* ignore */ }
+                try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (_e) { /* ignore */ }
               }
             } // End lookup try/catch
           } else if (localGuild) { // Case where no GM (rank 0) was found in roster OR gmBnetId was null/undefined
              logger.info({ userId, guildName: guildInfo.name, guildId: localGuild.id }, '[OnboardingService] No rank 0 member found in roster or GM BNet ID missing. Updating sync time only.');
-             try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (e) { /* ignore */ }
+             try { await guildModel.update(localGuild.id, { last_roster_sync: new Date().toISOString() }); } catch (_e) { /* ignore */ }
           } else {
               // Case where localGuild itself doesn't exist (should be rare)
               logger.warn({ userId, guildName: guildInfo.name, bnetGuildId: guildInfo.bnet_guild_id }, '[OnboardingService] Cannot update sync time as local guild record does not exist.');
           } // End if/else if/else chain for GM processing
 
-        } catch (rosterError: any) { // Catch for the main guild processing try block
+        } catch (rosterError: unknown) { // Catch for the main guild processing try block
           logger.error({ err: rosterError, userId, guildName: guildInfo.name, bnetGuildId: guildInfo.bnet_guild_id }, '[OnboardingService] Error fetching or processing roster for guild leader identification.');
-          const statusCode = rosterError?.status || rosterError?.response?.status;
+          const statusCode = typeof rosterError === 'object' && rosterError !== null
+            ? ('status' in rosterError ? (rosterError as { status?: number }).status : undefined)
+              || ('response' in rosterError && typeof (rosterError as { response?: unknown }).response === 'object'
+                  && (rosterError as { response?: unknown }).response !== null
+                  && 'status' in ((rosterError as { response?: object }).response as object)
+                ? ((rosterError as { response: { status?: number } }).response.status)
+                : undefined)
+            : undefined;
           if (statusCode === 404) {
              logger.warn({ userId, guildName: guildInfo.name }, '[OnboardingService] Roster not found (404) for guild during leader identification.');
           }
@@ -286,7 +293,7 @@ export class OnboardingService {
 
       logger.info({ userId }, '[OnboardingService] Onboarding process completed successfully.');
 
-    } catch (error: any) { // Catch for the main processNewUser try block
+    } catch (error: unknown) { // Catch for the main processNewUser try block
       logger.error({ err: error, userId }, '[OnboardingService] Error during onboarding process:');
     } // End main processNewUser try/catch
   } // End processNewUser method

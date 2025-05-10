@@ -1,11 +1,25 @@
-import { Guild } from '../../../shared/types/index.js'; // Removed unused GuildMember
-import { DbGuild, BattleNetGuildRoster, BattleNetGuildMember } from '../../../shared/types/guild.js'; // Import DbGuild, BattleNetGuildRoster, BattleNetGuildMember from guild.ts
+import { Guild } from '../../../shared/types/index.js';
+import { 
+  DbGuild, 
+  BattleNetGuildRoster, 
+  BattleNetGuildMember,
+  BattleNetGuild 
+} from '../../../shared/types/guild.js';
+import { 
+  DbGuildEnhanced,
+  isBattleNetGuild, 
+  isBattleNetGuildRoster 
+} from '../../../shared/types/db-enhanced.js';
 import BaseModel from '../db/BaseModel.js';
 import { AppError } from '../utils/error-handler.js';
 import db from '../db/db.js';
 import { Guild as GuildType } from '../../../shared/types/guild.js';
+import { DbQueryCondition, DbQueryParam } from '../../../shared/types/db.js';
 
-export class GuildModel extends BaseModel<DbGuild> {
+// Create type-safe query condition for guild
+type GuildQueryCondition = DbQueryCondition<DbGuild>;
+
+export class GuildModel extends BaseModel<DbGuild, DbGuildEnhanced> {
   constructor() {
     super('guilds');
   }
@@ -29,9 +43,11 @@ export class GuildModel extends BaseModel<DbGuild> {
     }
   }
 
-  async findByNameRealmRegion(name: string, realm: string, region: string): Promise<Guild | null> {
+  async findByNameRealmRegion(name: string, realm: string, region: string): Promise<DbGuildEnhanced | null> {
     try {
-      return await this.findOne({ name, realm, region });
+      // Create a type-safe condition object
+      const condition: GuildQueryCondition = { name, realm, region };
+      return await this.findOne(condition);
     } catch (error) {
       throw new AppError(`Error finding guild by name/realm/region: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
@@ -40,12 +56,12 @@ export class GuildModel extends BaseModel<DbGuild> {
   /**
    * Find multiple guilds by their IDs.
    */
-  async findByIds(ids: number[]): Promise<DbGuild[]> {
+  async findByIds(ids: number[]): Promise<DbGuildEnhanced[]> {
     if (!ids || ids.length === 0) {
       return [];
     }
     try {
-      // Use the underlying query builder from BaseModel or db directly
+      // Use the underlying query builder with typed parameters
       const result = await db.query(
         `SELECT * FROM ${this.tableName} WHERE id = ANY($1::int[])`,
         [ids]
@@ -56,22 +72,20 @@ export class GuildModel extends BaseModel<DbGuild> {
     }
   }
 
-
   /**
    * Get a guild with its raw Battle.net members from roster_json
    */
-  async getGuildWithMembers(guildId: number): Promise<{ guild: DbGuild; members: BattleNetGuildMember[] } | null> {
+  async getGuildWithMembers(guildId: number): Promise<{ guild: DbGuildEnhanced; members: BattleNetGuildMember[] } | null> {
     try {
-      // Get the guild first (ensure findById returns DbGuild including roster_json)
+      // Get the guild first with enhanced type
       const guild = await this.findById(guildId);
       
       if (!guild) {
         return null;
       }
       
-      // Get members from roster_json (assuming the column exists on the guild object)
-      const rosterData = (guild as any).roster_json as BattleNetGuildRoster | null;
-      const members: BattleNetGuildMember[] = rosterData?.members || [];
+      // Get members from roster_json - now properly typed
+      const members: BattleNetGuildMember[] = guild.roster_json?.members || [];
       
       return {
         guild,
@@ -85,15 +99,38 @@ export class GuildModel extends BaseModel<DbGuild> {
   /**
    * Update guild data from the API
    */
-  async updateGuildData(id: number, guildDataJson: any): Promise<DbGuild | null> { // Return DbGuild type
+  async updateGuildData(id: number, guildDataJson: BattleNetGuild): Promise<DbGuildEnhanced | null> {
     try {
-      // Use the new column name
+      // Validate the input data using type guard
+      if (!isBattleNetGuild(guildDataJson)) {
+        throw new Error('Invalid guild data format');
+      }
+      
       return await this.update(id, {
         guild_data_json: guildDataJson,
         last_updated: new Date().toISOString()
       });
     } catch (error) {
       throw new AppError(`Error updating guild data: ${error instanceof Error ? error.message : String(error)}`, 500);
+    }
+  }
+  
+  /**
+   * Update guild roster from the API
+   */
+  async updateGuildRoster(id: number, rosterJson: BattleNetGuildRoster): Promise<DbGuildEnhanced | null> {
+    try {
+      // Validate input using type guard
+      if (!isBattleNetGuildRoster(rosterJson)) {
+        throw new Error('Invalid guild roster format');
+      }
+      
+      return await this.update(id, {
+        roster_json: rosterJson,
+        last_roster_sync: new Date().toISOString()
+      });
+    } catch (error) {
+      throw new AppError(`Error updating guild roster: ${error instanceof Error ? error.message : String(error)}`, 500);
     }
   }
   
@@ -129,6 +166,7 @@ export const update = guildModel.update.bind(guildModel);
 export const findByNameRealmRegion = guildModel.findByNameRealmRegion.bind(guildModel);
 export const getGuildWithMembers = guildModel.getGuildWithMembers.bind(guildModel);
 export const updateGuildData = guildModel.updateGuildData.bind(guildModel);
+export const updateGuildRoster = guildModel.updateGuildRoster.bind(guildModel); // New export
 export const needsRefresh = guildModel.needsRefresh.bind(guildModel);
 export const findOutdatedGuilds = guildModel.findOutdatedGuilds.bind(guildModel);
 export const findByIds = guildModel.findByIds.bind(guildModel);

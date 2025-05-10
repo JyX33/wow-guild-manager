@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import * as RosterService from '../services/roster.service.js';
 import { RosterMemberAddition } from '../../../shared/types/api.js';
-import { ApiError, ErrorCode } from '../../../shared/types/api.js'; // Import error types
+import { ApiError } from '../../../shared/types/api.js'; // Import API error type
+import { ErrorCode } from '../../../shared/types/error.js'; // Import error codes
 import logger from '../utils/logger.js'; // Import logger
 
 // Helper to send error responses
-const sendError = (res: Response, status: number, message: string, code: ErrorCode, details?: any) => {
+const sendError = (res: Response, status: number, message: string, code: ErrorCode, details?: Record<string, unknown>) => {
   logger.warn(`Roster API Error: ${message}`, { status, code, details }); // Log the warning
   const error: ApiError = { status, message, code, details };
   res.status(status).json({ success: false, error });
@@ -26,9 +27,11 @@ export const getGuildRosters = async (req: Request, res: Response) => {
   try {
     const rosters = await RosterService.getGuildRosters(guildId);
     res.status(200).json({ success: true, data: rosters });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, guildId }, 'Error fetching guild rosters');
-    sendError(res, 500, 'Failed to fetch guild rosters.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to fetch guild rosters.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -52,9 +55,11 @@ export const createGuildRoster = async (req: Request, res: Response) => {
     // Authorization (isGuildMaster) is handled by middleware in the route definition
     const newRoster = await RosterService.createGuildRoster(guildId, name.trim());
     res.status(201).json({ success: true, data: newRoster });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, guildId, name }, 'Error creating guild roster');
-    sendError(res, 500, 'Failed to create roster.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to create roster.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -83,9 +88,11 @@ export const getRosterDetails = async (req: Request, res: Response) => {
 
     const members = await RosterService.getRosterMembers(rosterId);
     res.status(200).json({ success: true, data: { ...roster, members } });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId }, 'Error fetching roster details');
-    sendError(res, 500, 'Failed to fetch roster details.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to fetch roster details.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -113,9 +120,11 @@ export const updateRosterDetails = async (req: Request, res: Response) => {
       return sendError(res, 404, 'Roster not found or update failed.', ErrorCode.NOT_FOUND);
     }
     res.status(200).json({ success: true, data: updatedRoster });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId, name }, 'Error updating roster');
-    sendError(res, 500, 'Failed to update roster.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to update roster.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -137,9 +146,11 @@ export const deleteRoster = async (req: Request, res: Response) => {
       return sendError(res, 404, 'Roster not found or deletion failed.', ErrorCode.NOT_FOUND);
     }
     res.status(204).send(); // No content on successful deletion
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId }, 'Error deleting roster');
-    sendError(res, 500, 'Failed to delete roster.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to delete roster.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -189,9 +200,11 @@ export const addRosterMembers = async (req: Request, res: Response) => {
 
     const updatedMembers = await RosterService.addRosterMembers(rosterId, additions as RosterMemberAddition[], guildId);
     res.status(200).json({ success: true, data: updatedMembers });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId, additions }, 'Error adding roster members');
-    sendError(res, 500, 'Failed to add roster members.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to add roster members.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -219,9 +232,11 @@ export const updateRosterMember = async (req: Request, res: Response) => {
       return sendError(res, 404, 'Roster member not found or update failed.', ErrorCode.NOT_FOUND);
     }
     res.status(200).json({ success: true, data: updatedMember });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId, characterId, role }, 'Error updating roster member');
-    sendError(res, 500, 'Failed to update roster member.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to update roster member.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };
 
@@ -247,8 +262,10 @@ export const removeRosterMember = async (req: Request, res: Response) => {
       return sendError(res, 404, 'Roster member not found or deletion failed.', ErrorCode.NOT_FOUND);
     }
     res.status(204).send(); // No content on successful deletion
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error({ err: error, rosterId, characterId }, 'Error removing roster member');
-    sendError(res, 500, 'Failed to remove roster member.', ErrorCode.INTERNAL_ERROR, error.message);
+    sendError(res, 500, 'Failed to remove roster member.', ErrorCode.INTERNAL_ERROR, {
+      errorMessage: error instanceof Error ? error.message : String(error)
+    });
   }
 };

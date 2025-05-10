@@ -1,11 +1,11 @@
-import { jest, describe, it, expect, beforeEach, afterEach, afterAll } from '@jest/globals'; // Consolidated imports, Added afterAll
-import { BattleNetApiClient } from './battlenet-api.client.js';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals'; // Consolidated imports, Added afterAll
+import { BattleNetApiClient } from '../src/services/battlenet-api.client.js';
 // Removed import for battleNetService
-import { AppError } from '../utils/error-handler.js';
-import { BattleNetRegion } from '../../../shared/types/user.js';
-import { TokenResponse } from '../../../shared/types/auth.js'; // Added import
-import { BattleNetGuild, BattleNetGuildRoster } from '../../../shared/types/guild.js'; // Added imports
-import config from '../config/index.js'; // Added config import
+import { TokenResponse } from '../../shared/types/auth.js'; // Added import
+import { BattleNetGuild, BattleNetGuildRoster } from '../../shared/types/guild.js'; // Added imports
+import { BattleNetRegion } from '../../shared/types/user.js';
+import config from '../src/config/index.js'; // Added config import
+import { AppError } from '../src/utils/error-handler.js';
 
 // Top-level jest.mock removed. Mocks will be set up in beforeEach.
 

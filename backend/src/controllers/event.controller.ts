@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { AppError, asyncHandler, ERROR_CODES } from '../utils/error-handler.js';
+import { AppError, asyncHandler } from '../utils/error-handler.js';
+import { ErrorCode } from '../../../shared/types/error.js';
 import eventModel from '../models/event.model.js';
 import subscriptionModel from '../models/subscription.model.js';
 import { Event, EventFormValues, EventSubscription } from '../../../shared/types/event.js';
@@ -31,7 +32,7 @@ export default {
     
     if (!event) {
       throw new AppError('Event not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
+        code: ErrorCode.NOT_FOUND,
         request: req
       });
     }
@@ -56,7 +57,7 @@ export default {
   createEvent: asyncHandler(async (req: EventRequest, res: Response<ApiResponse<Event>>) => {
     if (!req.body.guild_id || !req.body.title || !req.body.start_time) {
       throw new AppError('Missing required event fields', 400, {
-        code: ERROR_CODES.VALIDATION_ERROR,
+        code: ErrorCode.VALIDATION_ERROR,
         request: req
       });
     }
@@ -78,7 +79,7 @@ export default {
     
     if (!event) {
       throw new AppError('Failed to create event', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+        code: ErrorCode.DATABASE_ERROR,
         request: req
       });
     }
@@ -96,7 +97,7 @@ export default {
     
     if (!existingEvent) {
       throw new AppError('Event not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
+        code: ErrorCode.NOT_FOUND,
         request: req
       });
     }
@@ -105,7 +106,7 @@ export default {
     if (req.user.role === UserRole.USER) {
       if (existingEvent.created_by !== req.user.id) {
         throw new AppError('Forbidden: You do not have permission to update this event', 403, {
-          code: ERROR_CODES.AUTH_ERROR,
+          code: ErrorCode.FORBIDDEN,
           request: req
         });
       }
@@ -123,7 +124,7 @@ export default {
     
     if (!updatedEvent) {
       throw new AppError('Failed to update event', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+        code: ErrorCode.DATABASE_ERROR,
         request: req
       });
     }
@@ -141,7 +142,7 @@ export default {
     
     if (!existingEvent) {
       throw new AppError('Event not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
+        code: ErrorCode.NOT_FOUND,
         request: req
       });
     }
@@ -150,7 +151,7 @@ export default {
     if (req.user.role === UserRole.USER) {
       if (existingEvent.created_by !== req.user.id) {
         throw new AppError('Forbidden: You do not have permission to delete this event', 403, {
-          code: ERROR_CODES.AUTH_ERROR,
+          code: ErrorCode.FORBIDDEN,
           request: req
         });
       }
@@ -161,7 +162,7 @@ export default {
     
     if (!deletedEvent) {
       throw new AppError('Failed to delete event', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+        code: ErrorCode.DATABASE_ERROR,
         request: req
       });
     }
@@ -182,7 +183,7 @@ export default {
     
     if (existingSubscription) {
       throw new AppError('Already subscribed to this event', 400, {
-        code: ERROR_CODES.VALIDATION_ERROR,
+        code: ErrorCode.VALIDATION_ERROR,
         request: req
       });
     }
@@ -197,7 +198,7 @@ export default {
     
     if (!subscription) {
       throw new AppError('Failed to create subscription', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+        code: ErrorCode.DATABASE_ERROR,
         request: req
       });
     }
@@ -218,7 +219,7 @@ export default {
     
     if (!existingSubscription) {
       throw new AppError('Subscription not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
+        code: ErrorCode.NOT_FOUND,
         request: req
       });
     }
@@ -230,7 +231,7 @@ export default {
     
     if (!updatedSubscription) {
       throw new AppError('Failed to update subscription', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+        code: ErrorCode.DATABASE_ERROR,
         request: req
       });
     }
@@ -263,7 +264,7 @@ export default {
 
     if (!existingSubscription) {
       throw new AppError('Subscription not found', 404, {
-        code: ERROR_CODES.NOT_FOUND,
+        code: ErrorCode.NOT_FOUND,
         request: req
       });
     }
@@ -272,7 +273,7 @@ export default {
 
     if (!deleted) {
       throw new AppError('Failed to delete subscription', 500, {
-        code: ERROR_CODES.DATABASE_ERROR,
+        code: ErrorCode.DATABASE_ERROR,
         request: req
       });
     }

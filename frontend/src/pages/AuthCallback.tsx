@@ -8,7 +8,7 @@ const AuthCallback: React.FC = () => {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const fragment = window.location.hash.substring(1);
+      const fragment = globalThis.location.hash.substring(1);
       const params = new URLSearchParams(fragment);
       const accessToken = params.get('accessToken');
       const refreshToken = params.get('refreshToken');

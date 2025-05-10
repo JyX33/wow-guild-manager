@@ -515,8 +515,8 @@ export interface DbGuild {
     last_roster_sync?: string | null; // Allow null - Added by migration 20240325161500
     bnet_guild_id?: number; // Added by new migration
     member_count?: number; // Added for direct access
-    guild_data_json?: BattleNetGuild; // Renamed and potentially nullable
-    roster_json?: BattleNetGuildRoster; // Added by new migration
+    guild_data_json?: BattleNetGuild | null; // Renamed and potentially nullable
+    roster_json?: BattleNetGuildRoster | null; // Added by new migration
     exclude_from_sync?: boolean; // Permanently exclude guilds from sync
 
 }
@@ -529,7 +529,7 @@ export interface DbGuildMember {
     is_main?: boolean | null; // ADDED - Is this the designated main for the user in this guild?
     character_name?: string; // Added by migration
     character_class?: string; // Added by migration
-    member_data_json?: BattleNetGuildMember; // Added by migration
+    member_data_json?: BattleNetGuildMember | null; // Added by migration
     created_at?: string;
     updated_at?: string;
     joined_at?: string | null; // Added for tracking join date
@@ -551,12 +551,12 @@ export interface DbCharacter {
     region?: string; // Added by migration
     toy_hash?: string | null; // ADDED - For unknown user grouping
     last_synced_at?: string | null; // Added by migration
-    profile_json?: BattleNetCharacter; // Added by migration
-    equipment_json?: BattleNetCharacterEquipment; // Added by migration
+    profile_json?: BattleNetCharacter | null; // Added by migration
+    equipment_json?: BattleNetCharacterEquipment | null; // Added by migration
     mythic_profile_json?: BattleNetMythicKeystoneProfile | null; // Added by migration
     is_available?: boolean; // Added: Flag indicating if the character profile is accessible via Battle.net API (set to false on 404)
     // Store only the primaries array for simplicity
-    professions_json?: BattleNetProfessions['primaries']; // Changed type
+    professions_json?: BattleNetProfessions['primaries'] | null; // Changed type
 }
 
 export interface DbGuildRank {
@@ -590,7 +590,7 @@ export interface Guild {
     region: string;
     last_updated?: string | null; // Allow null
     last_synced_at?: string | null; // Added by migration
-    guild_data_json?: BattleNetGuild; // Renamed property
+    guild_data_json?: BattleNetGuild | null; // Renamed property
     leader_id?: number | null; // Allow null
     is_guild_master?: boolean;
  }

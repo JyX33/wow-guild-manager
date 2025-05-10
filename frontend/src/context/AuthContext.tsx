@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
 
       if (response.success && response.data) {
         // Backend redirects to /auth/callback with tokens in fragment
-        window.location.href = response.data.authUrl;
+        globalThis.location.href = response.data.authUrl;
       } else {
         setError(response.error?.message || 'Login failed');
       }
