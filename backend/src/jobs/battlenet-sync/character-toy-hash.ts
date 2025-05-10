@@ -4,7 +4,8 @@ import { DbCharacter } from "../../../../shared/types/guild.js";
 import { BattleNetRegion } from "../../../../shared/types/user.js";
 import logger from "../../utils/logger.js";
 import { createSlug } from "../../utils/slugify.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
+import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
 
 type ToyCollectionData = {
   toys: { toy: { id: number } }[];
@@ -14,7 +15,7 @@ const NO_TOYS_HASH =
   "a3741d687719e1c015f4f115371c77064771f699817f81f09016350165a19111";
 
 export async function calculateCharacterToyHash(
-  apiClient: BattleNetApiClient,
+  apiClient: BattleNetApiClient | BattleNetApiClientEnhanced,
   character: Pick<DbCharacter, "id" | "name" | "realm" | "region" | "user_id">,
 ): Promise<string | null> {
   if (character.user_id !== null) {

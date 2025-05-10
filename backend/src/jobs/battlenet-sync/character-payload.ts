@@ -9,10 +9,11 @@ import logger from "../../utils/logger.js";
 import { calculateCharacterToyHash } from "./character-toy-hash.js";
 import { EnhancedCharacterData, toSharedEnhancedCharacterData } from "../../types/enhanced-character.js";
 
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
+import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
 
 export async function prepareCharacterUpdatePayload(
-  apiClient: BattleNetApiClient,
+  apiClient: BattleNetApiClient | BattleNetApiClientEnhanced,
   guildModel: GuildModel,
   character: DbCharacter,
   enhancedData: EnhancedCharacterData,

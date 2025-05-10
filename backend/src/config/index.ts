@@ -77,6 +77,8 @@ const config: AppConfig = {
     redirectUri: process.env.BATTLE_NET_REDIRECT_URI ||
       "https://localhost:5000/api/auth/callback",
     scopes: ["openid", "wow.profile"],
+    useEnhancedClient: process.env.USE_ENHANCED_BNET_CLIENT === 'true',
+    useShadowMode: process.env.USE_SHADOW_MODE_BNET_CLIENT === 'true',
     regions: {
       eu: {
         authBaseUrl: "https://eu.battle.net/oauth",
@@ -124,6 +126,8 @@ console.log("Config:", {
     clientId: config.battlenet.clientId,
     clientSecret: config.battlenet.clientSecret,
     redirectUri: config.battlenet.redirectUri,
+    useEnhancedClient: config.battlenet.useEnhancedClient,
+    useShadowMode: config.battlenet.useShadowMode,
     regions: {
       eu: config.battlenet.regions.eu,
       us: config.battlenet.regions.us,

@@ -8,7 +8,8 @@ import { UserModel } from "../../models/user.model.js";
 import { GuildMemberModel } from "../../models/guild_member.model.js";
 import { RankModel } from "../../models/rank.model.js";
 import logger from "../../utils/logger.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
+import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
 import { CharacterModel } from "../../models/character.model.js";
 import { syncCharacter } from "./character-sync.js";
 
@@ -23,7 +24,7 @@ import {
 import { BattleNetRegion } from "../../../../shared/types/user.js";
 
 export interface SyncDependencies {
-  apiClient: BattleNetApiClient;
+  apiClient: BattleNetApiClient | BattleNetApiClientEnhanced;
   guildModel: GuildModel;
   userModel: UserModel;
   guildMemberModel: GuildMemberModel;

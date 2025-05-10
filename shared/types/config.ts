@@ -33,6 +33,8 @@ export interface BattleNetConfig {
   clientSecret: string;
   redirectUri: string;
   scopes: string[];
+  useEnhancedClient?: boolean; // Flag to enable the enhanced Battle.net API client
+  useShadowMode?: boolean; // Flag to enable shadow mode testing
   regions: {
     eu: BattleNetRegionConfig;
     us: BattleNetRegionConfig;

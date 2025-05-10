@@ -1,29 +1,5 @@
 # Battle.net API Response Structures
 
-Generated on: 22/03/2025 11:32:12
-
-## Table of Contents
-
-- [Account Profile Summary](#account-profile-summary)
-- [Character Profile Summary](#character-profile-summary)
-- [Character Achievements Summary](#character-achievements-summary)
-- [Character Achievement Statistics](#character-achievement-statistics)
-- [Character Appearance Summary](#character-appearance-summary)
-- [Character Collections Index](#character-collections-index)
-- [Character Equipment Summary](#character-equipment-summary)
-- [Character Hunter Pets Summary](#character-hunter-pets-summary)
-- [Character Media Summary](#character-media-summary)
-- [Character Mythic Keystone Profile Index](#character-mythic-keystone-profile-index)
-- [Character Professions Summary](#character-professions-summary)
-- [Character PvP Summary](#character-pvp-summary)
-- [Character Quests](#character-quests)
-- [Character Reputations Summary](#character-reputations-summary)
-- [Character Specializations Summary](#character-specializations-summary)
-- [Character Statistics Summary](#character-statistics-summary)
-- [Character Titles Summary](#character-titles-summary)
-- [Guild](#guild)
-- [Guild Roster](#guild-roster)
-
 ## Endpoints
 
 ### Account Profile Summary
