@@ -644,13 +644,53 @@ export class BattleNetApiClientEnhanced {
         throw professionsResult.reason;
       }
 
-      // Use the adapter to convert reference types to EnhancedCharacterData
-      return Adapter.adaptReferenceEnhancedCharacter(
-        profile, 
-        equipment, 
-        mythicKeystone, 
-        professions
-      );
+      try {
+        // Use the adapter to convert reference types to EnhancedCharacterData
+        return Adapter.adaptReferenceEnhancedCharacter(
+          profile,
+          equipment,
+          mythicKeystone,
+          professions
+        );
+      } catch (adapterError) {
+        // If adapter fails, log the error and create a minimal valid structure
+        logger.error({
+          error: adapterError,
+          characterId: profile.id,
+          characterName: profile.name,
+          realm: profile.realm.slug
+        }, '[EnhancedClient] Error in adapter, returning minimal structure');
+
+        // Return minimal valid structure
+        return {
+          _links: profile._links,
+          id: profile.id,
+          name: profile.name,
+          gender: { type: profile.gender.type, name: typeof profile.gender.name === 'string' ? profile.gender.name : 'Unknown' },
+          faction: { type: profile.faction.type, name: typeof profile.faction.name === 'string' ? profile.faction.name : 'Unknown' },
+          race: { key: profile.race.key, id: profile.race.id, name: typeof profile.race.name === 'string' ? profile.race.name : 'Unknown' },
+          character_class: { key: profile.character_class.key, id: profile.character_class.id, name: typeof profile.character_class.name === 'string' ? profile.character_class.name : 'Unknown' },
+          active_spec: { key: profile.active_spec.key, id: profile.active_spec.id, name: typeof profile.active_spec.name === 'string' ? profile.active_spec.name : 'Unknown' },
+          realm: { key: profile.realm.key, id: profile.realm.id, slug: profile.realm.slug, name: typeof profile.realm.name === 'string' ? profile.realm.name : profile.realm.slug },
+          level: profile.level,
+          equipment: equipment,
+          itemLevel: profile.equipped_item_level || 0,
+          mythicKeystone: null,
+          professions: { _links: { self: { href: '' } }, character: { key: { href: '' }, name: profile.name, id: profile.id, realm: profile.realm }, primaries: [], secondaries: [] },
+          experience: profile.experience || 0,
+          achievement_points: profile.achievement_points || 0,
+          equipped_item_level: profile.equipped_item_level || 0,
+          average_item_level: profile.average_item_level || 0,
+          achievements: { total_points: profile.achievement_points || 0, achievements: [] },
+          titles: { active_title: null, titles: [] },
+          pvp_summary: { honor_level: 0, pvp_map_statistics: [] },
+          encounters: { dungeons: [], raids: [] },
+          media: { avatar_url: '', inset_url: '', main_url: '' },
+          last_login_timestamp: profile.last_login_timestamp || 0,
+          last_login_timestamp_ms: profile.last_login_timestamp || 0,
+          specializations: [{ talent_loadouts: [], glyphs: [], pvp_talent_slots: [] }]
+        };
+      }
     } catch (error) {
       // If it's a 404, return null to indicate character not found
       if (axios.isAxiosError(error) && error.response?.status === 404) {

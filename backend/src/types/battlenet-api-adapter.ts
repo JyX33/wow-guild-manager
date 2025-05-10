@@ -16,9 +16,20 @@ import logger from '../utils/logger.js';
  * Extracts English text from a localized string
  * Prioritizes en_US, then en_GB, then the first available
  */
-export function extractEnglishString(localized?: RefTypes.LocalizedString | null): string {
+export function extractEnglishString(localized?: RefTypes.LocalizedString | null | string): string {
+  // Handle string directly
+  if (typeof localized === 'string') return localized;
+
+  // Handle null or undefined
   if (!localized) return '';
-  return localized.en_US || localized.en_GB || '';
+
+  // Handle localized string object
+  if (typeof localized === 'object') {
+    return localized.en_US || localized.en_GB || '';
+  }
+
+  // If none of the above, return empty string
+  return '';
 }
 
 /**
@@ -200,30 +211,42 @@ export function adaptReferenceEnhancedCharacter(
       name: character.name,
       gender: {
         type: character.gender.type,
-        name: extractEnglishString(character.gender.name)
+        name: typeof character.gender.name === 'string'
+          ? character.gender.name
+          : extractEnglishString(character.gender.name)
       },
       faction: {
         type: character.faction.type,
-        name: extractEnglishString(character.faction.name)
+        name: typeof character.faction.name === 'string'
+          ? character.faction.name
+          : extractEnglishString(character.faction.name)
       },
       race: {
         key: character.race.key,
-        name: extractEnglishString(character.race.name),
+        name: typeof character.race.name === 'string'
+          ? character.race.name
+          : extractEnglishString(character.race.name),
         id: character.race.id
       },
       character_class: {
         key: character.character_class.key,
-        name: extractEnglishString(character.character_class.name),
+        name: typeof character.character_class.name === 'string'
+          ? character.character_class.name
+          : extractEnglishString(character.character_class.name),
         id: character.character_class.id
       },
       active_spec: {
         key: character.active_spec.key,
-        name: extractEnglishString(character.active_spec.name),
+        name: typeof character.active_spec.name === 'string'
+          ? character.active_spec.name
+          : extractEnglishString(character.active_spec.name),
         id: character.active_spec.id
       },
       realm: {
         key: character.realm.key,
-        name: extractEnglishString(character.realm.name),
+        name: typeof character.realm.name === 'string'
+          ? character.realm.name
+          : extractEnglishString(character.realm.name),
         id: character.realm.id,
         slug: character.realm.slug
       },
@@ -237,13 +260,17 @@ export function adaptReferenceEnhancedCharacter(
         id: character.guild.id,
         realm: {
           key: character.guild.realm.key,
-          name: extractEnglishString(character.guild.realm.name),
+          name: typeof character.guild.realm.name === 'string'
+            ? character.guild.realm.name
+            : extractEnglishString(character.guild.realm.name),
           id: character.guild.realm.id,
           slug: character.guild.realm.slug
         },
         faction: {
           type: character.guild.faction.type,
-          name: extractEnglishString(character.guild.faction.name)
+          name: typeof character.guild.faction.name === 'string'
+            ? character.guild.faction.name
+            : extractEnglishString(character.guild.faction.name)
         }
       } : undefined,
       
@@ -356,7 +383,9 @@ export function adaptReferenceEnhancedCharacter(
           id: mythicKeystone.character.id,
           realm: {
             key: mythicKeystone.character.realm.key,
-            name: extractEnglishString(mythicKeystone.character.realm.name),
+            name: typeof mythicKeystone.character.realm.name === 'string'
+              ? mythicKeystone.character.realm.name
+              : extractEnglishString(mythicKeystone.character.realm.name),
             id: mythicKeystone.character.realm.id,
             slug: mythicKeystone.character.realm.slug
           }
@@ -366,16 +395,21 @@ export function adaptReferenceEnhancedCharacter(
             key: mythicKeystone.current_period.period.key,
             id: mythicKeystone.current_period.period.id
           },
-          best_runs: mythicKeystone.current_period.best_runs.map(run => ({
+          best_runs: Array.isArray(mythicKeystone.current_period.best_runs)
+            ? mythicKeystone.current_period.best_runs.map(run => ({
             completed_timestamp: run.completed_timestamp,
             duration: run.duration,
             keystone_level: run.keystone_level,
-            keystone_affixes: run.keystone_affixes.map(affix => ({
-              key: affix.key,
-              name: extractEnglishString(affix.name),
-              id: affix.id
-            })),
-            members: run.members.map(member => ({
+            keystone_affixes: Array.isArray(run.keystone_affixes)
+              ? run.keystone_affixes.map(affix => ({
+                key: affix.key,
+                name: typeof affix.name === 'string'
+                  ? affix.name
+                  : extractEnglishString(affix.name),
+                id: affix.id
+              }))
+              : [],
+            members: Array.isArray(run.members) ? run.members.map(member => ({
               character: {
                 name: member.character.name,
                 id: member.character.id,
@@ -392,14 +426,18 @@ export function adaptReferenceEnhancedCharacter(
               },
               race: {
                 key: member.race.key,
-                name: extractEnglishString(member.race.name),
+                name: typeof member.race.name === 'string'
+                  ? member.race.name
+                  : extractEnglishString(member.race.name),
                 id: member.race.id
               },
               equipped_item_level: member.equipped_item_level
-            })),
+            })) : [],
             dungeon: {
               key: run.dungeon.key,
-              name: extractEnglishString(run.dungeon.name),
+              name: typeof run.dungeon.name === 'string'
+                ? run.dungeon.name
+                : extractEnglishString(run.dungeon.name),
               id: run.dungeon.id
             },
             is_completed_within_time: run.is_completed_within_time,
@@ -432,32 +470,38 @@ export function adaptReferenceEnhancedCharacter(
           id: professions.character.id,
           realm: {
             key: professions.character.realm.key,
-            name: extractEnglishString(professions.character.realm.name),
+            name: typeof professions.character.realm.name === 'string'
+              ? professions.character.realm.name
+              : extractEnglishString(professions.character.realm.name),
             id: professions.character.realm.id,
             slug: professions.character.realm.slug
           }
         },
-        primaries: professions.primaries.map(primary => ({
+        primaries: Array.isArray(professions.primaries) ? professions.primaries.map(primary => ({
           profession: {
             key: primary.profession.key,
             name: primary.profession.name,
             id: primary.profession.id
           },
-          tiers: primary.tiers.map(tier => ({
-            skill_points: tier.skill_points,
-            max_skill_points: tier.max_skill_points,
-            tier: {
-              name: tier.tier.name,
-              id: tier.tier.id
-            },
-            known_recipes: tier.known_recipes?.map(recipe => ({
-              key: recipe.key,
-              name: recipe.name,
-              id: recipe.id
+          tiers: Array.isArray(primary.tiers)
+            ? primary.tiers.map(tier => ({
+              skill_points: tier.skill_points,
+              max_skill_points: tier.max_skill_points,
+              tier: {
+                name: tier.tier.name,
+                id: tier.tier.id
+              },
+              known_recipes: Array.isArray(tier.known_recipes)
+                ? tier.known_recipes.map(recipe => ({
+                  key: recipe.key,
+                  name: recipe.name,
+                  id: recipe.id
+                }))
+                : undefined
             }))
-          }))
-        })),
-        secondaries: professions.secondaries.map(secondary => ({
+            : []
+        })) : [],
+        secondaries: Array.isArray(professions.secondaries) ? professions.secondaries.map(secondary => ({
           profession: {
             key: secondary.profession.key,
             name: secondary.profession.name,
@@ -465,7 +509,7 @@ export function adaptReferenceEnhancedCharacter(
           },
           skill_points: secondary.skill_points,
           max_skill_points: secondary.max_skill_points
-        }))
+        })) : []
       },
       
       // Additional properties needed by consumers
