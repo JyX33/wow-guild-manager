@@ -2,13 +2,39 @@
 import { AppError } from "../utils/error-handler.js";
 import { ErrorCode } from "../../../shared/types/error.js";
 import {
-  BattleNetCharacter,
-  BattleNetCharacterEquipment,
+  BattleNetCharacter as ApiBattleNetCharacter,
+  BattleNetCharacterEquipment as ApiBattleNetCharacterEquipment,
+  BattleNetGuild as ApiBattleNetGuild,
+  BattleNetGuildRoster as ApiBattleNetGuildRoster,
+  BattleNetMythicKeystoneProfile as ApiBattleNetMythicKeystoneProfile,
+  BattleNetProfessions as ApiBattleNetProfessions,
+  BattleNetApiErrorContext,
+  HttpClient,
+  createBattleNetErrorDetail,
+  isBattleNetCharacter,
+  isBattleNetCharacterEquipment,
+  isBattleNetGuild,
+  isBattleNetGuildRoster,
+  isBattleNetMythicKeystoneProfile,
+  isBattleNetProfessions,
+  mapHttpStatusToErrorCode,
+} from "../types/battlenet-api.types.js";
+
+// Import shared types
+import {
   BattleNetGuild,
   BattleNetGuildRoster,
-  BattleNetMythicKeystoneProfile,
-  BattleNetProfessions,
 } from "../../../shared/types/guild.js";
+
+// Import type adapters
+import {
+  adaptGuild,
+  adaptRoster,
+  adaptEnhancedCharacter
+} from "../types/battlenet-api-compat.js";
+
+// Import EnhancedCharacterData type
+import { EnhancedCharacterData } from "../types/enhanced-character.js";
 import { TokenResponse } from "../../../shared/types/auth.js";
 import config from "../config/index.js";
 import {
@@ -18,8 +44,9 @@ import {
 } from "../../../shared/types/user.js";
 import Bottleneck from "bottleneck";
 import logger from "../utils/logger.js";
-import axios, { AxiosBasicCredentials } from "axios";
+import axios from "axios";
 import process from "node:process";
+import { AxiosHttpClient } from "./http-client.js";
 
 // --- Rate Limiter Configuration ---
 const BNET_MAX_CONCURRENT = parseInt(
@@ -35,6 +62,7 @@ logger.info(
 export class BattleNetApiClient {
   private apiClientToken: string | null = null;
   private tokenExpiry: Date | null = null;
+  private httpClient: HttpClient;
 
   // Initialize the rate limiter instance
   private limiter = new Bottleneck({
@@ -45,7 +73,9 @@ export class BattleNetApiClient {
     minTime: BNET_MIN_TIME_MS,
   });
 
-  constructor() {
+  constructor(httpClient?: HttpClient) {
+    this.httpClient = httpClient || new AxiosHttpClient();
+
     this.limiter.on("error", (error) => {
       logger.error({ err: error }, "[ApiClient Limiter Error]");
     });
@@ -81,42 +111,6 @@ export class BattleNetApiClient {
       "[ApiClient] Invalid region provided, falling back to EU.",
     );
     return "eu";
-  }
-
-  /**
-   * Performs the actual Axios GET request.
-   */
-  private async _doAxiosGet<T = any>(
-    url: string,
-    accessToken: string,
-    params?: Record<string, any>,
-  ): Promise<T> {
-    const response = await axios.get<T>(url, {
-      params,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Accept-Encoding": "gzip,deflate,compress",
-      },
-      timeout: 15000,
-    });
-    return response.data;
-  }
-
-  /**
-   * Performs the actual Axios POST request.
-   */
-  private async _doAxiosPost<T = any>(
-    url: string,
-    data: any,
-    auth?: { username: string; password?: string | undefined },
-    headers?: Record<string, any>,
-  ): Promise<T> {
-    const response = await axios.post(url, data, {
-      auth: auth as AxiosBasicCredentials | undefined,
-      headers,
-      timeout: 15000,
-    });
-    return response.data;
   }
 
   /**
@@ -199,6 +193,62 @@ export class BattleNetApiClient {
   }
 
   /**
+   * Centralizes error handling for API calls
+   */
+  private handleApiError(error: unknown, context: BattleNetApiErrorContext): never {
+    let statusCode = 500;
+    let errorMessage = 'Unknown error';
+    
+    // Extract error details
+    if (axios.isAxiosError(error)) {
+      statusCode = error.response?.status || 500;
+      errorMessage = error.response?.data?.error_description || 
+                    error.message || 
+                    `${error.code || 'Unknown'} error`;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    
+    const errorCode = mapHttpStatusToErrorCode(statusCode);
+    const errorDetail = createBattleNetErrorDetail(context, statusCode, errorMessage);
+    
+    throw new AppError(
+      `Failed to ${context.operation} ${context.resourceType} (${context.resourceId}): ${errorMessage}`,
+      statusCode,
+      {
+        code: errorCode,
+        details: errorDetail,
+      }
+    );
+  }
+
+  /**
+   * Generic API call wrapper with error handling
+   */
+  private async callApi<T>(
+    jobId: string,
+    apiCall: () => Promise<unknown>,
+    validator: (data: unknown) => data is T,
+    context: BattleNetApiErrorContext
+  ): Promise<T> {
+    try {
+      // Schedule with retry and rate limiting
+      const result = await this.scheduleWithRetry(jobId, apiCall);
+      
+      // Validate response structure
+      if (!validator(result)) {
+        throw new Error('Invalid API response structure');
+      }
+      
+      return result;
+    } catch (error) {
+      this.handleApiError(error, { ...context, jobId });
+    }
+  }
+
+  /**
    * Ensures a valid client credentials token is available and returns it.
    */
   public async ensureClientToken(): Promise<string> {
@@ -269,76 +319,21 @@ export class BattleNetApiClient {
     const regionConfig = config.battlenet.regions[region];
     const url = `${regionConfig.authBaseUrl}/token`;
 
-    return this._doAxiosPost<TokenResponse>(
-      url,
-      new URLSearchParams({ grant_type: "client_credentials" }),
-      { username: clientId, password: clientSecret },
-      { "Content-Type": "application/x-www-form-urlencoded" },
-    );
-  }
-
-  private async _fetchCharacterProfile(
-    region: BattleNetRegion,
-    realmSlug: string,
-    characterNameLower: string,
-    accessToken: string,
-  ): Promise<BattleNetCharacter> {
-    const regionConfig = config.battlenet.regions[region];
-    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${
-      encodeURIComponent(realmSlug)
-    }/${encodeURIComponent(characterNameLower)}`;
-    return this._doAxiosGet<BattleNetCharacter>(url, accessToken, {
-      namespace: `profile-${region}`,
-      locale: "en_US",
-    });
-  }
-
-  private async _fetchCharacterEquipment(
-    region: BattleNetRegion,
-    realmSlug: string,
-    characterNameLower: string,
-    accessToken: string,
-  ): Promise<BattleNetCharacterEquipment> {
-    const regionConfig = config.battlenet.regions[region];
-    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${
-      encodeURIComponent(realmSlug)
-    }/${encodeURIComponent(characterNameLower)}/equipment`;
-    return this._doAxiosGet<BattleNetCharacterEquipment>(url, accessToken, {
-      namespace: `profile-${region}`,
-      locale: "en_US",
-    });
-  }
-
-  private async _fetchCharacterMythicKeystone(
-    region: BattleNetRegion,
-    realmSlug: string,
-    characterNameLower: string,
-    accessToken: string,
-  ): Promise<BattleNetMythicKeystoneProfile | null> {
-    const regionConfig = config.battlenet.regions[region];
-    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${
-      encodeURIComponent(realmSlug)
-    }/${encodeURIComponent(characterNameLower)}/mythic-keystone-profile`;
-    return this._doAxiosGet<BattleNetMythicKeystoneProfile>(url, accessToken, {
-      namespace: `profile-${region}`,
-      locale: "en_US",
-    });
-  }
-
-  private async _fetchCharacterProfessions(
-    region: BattleNetRegion,
-    realmSlug: string,
-    characterNameLower: string,
-    accessToken: string,
-  ): Promise<BattleNetProfessions> {
-    const regionConfig = config.battlenet.regions[region];
-    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${
-      encodeURIComponent(realmSlug)
-    }/${encodeURIComponent(characterNameLower)}/professions`;
-    return this._doAxiosGet<BattleNetProfessions>(url, accessToken, {
-      namespace: `profile-${region}`,
-      locale: "en_US",
-    });
+    try {
+      return await this.httpClient.post<TokenResponse>(
+        url,
+        new URLSearchParams({ grant_type: "client_credentials" }),
+        { username: clientId, password: clientSecret },
+        { "Content-Type": "application/x-www-form-urlencoded" }
+      );
+    } catch (error) {
+      this.handleApiError(error, {
+        operation: 'fetch',
+        resourceType: 'auth_token',
+        resourceId: 'client_credentials', 
+        region
+      });
+    }
   }
 
   // Public API Methods
@@ -352,29 +347,32 @@ export class BattleNetApiClient {
     const token = await this.ensureClientToken();
     const jobId = `guild-${validRegion}-${realmSlug}-${guildNameSlug}`;
 
-    try {
-      return await this.scheduleWithRetry(jobId, () => {
-        const regionConfig = config.battlenet.regions[validRegion];
-        const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${
-          encodeURIComponent(guildNameSlug)
-        }`;
-        return this._doAxiosGet<BattleNetGuild>(url, token, {
+    const regionConfig = config.battlenet.regions[validRegion];
+    const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${
+      encodeURIComponent(guildNameSlug)
+    }`;
+
+    const apiGuild = await this.callApi<ApiBattleNetGuild>(
+      jobId,
+      () => this.httpClient.get(
+        url,
+        {
           namespace: `profile-${validRegion}`,
           locale: "en_US",
-        });
-      });
-    } catch (error: any) {
-      const statusCode = error?.status || error?.response?.status ||
-        (error instanceof AppError ? error.status : 500);
-      throw new AppError(
-        `Failed to fetch guild data: ${error.message || String(error)}`,
-        statusCode,
-        {
-          code: ErrorCode.EXTERNAL_API_ERROR,
-          details: { realmSlug, guildNameSlug, region: validRegion, jobId },
         },
-      );
-    }
+        { Authorization: `Bearer ${token}` }
+      ),
+      isBattleNetGuild,
+      {
+        operation: 'fetch',
+        resourceType: 'guild',
+        resourceId: `${realmSlug}/${guildNameSlug}`,
+        region: validRegion
+      }
+    );
+
+    // Convert API guild to shared guild format
+    return adaptGuild(apiGuild);
   }
 
   async getGuildRoster(
@@ -386,102 +384,159 @@ export class BattleNetApiClient {
     const token = await this.ensureClientToken();
     const jobId = `roster-${validRegion}-${realmSlug}-${guildNameSlug}`;
 
-    try {
-      return await this.scheduleWithRetry(jobId, () => {
-        const regionConfig = config.battlenet.regions[validRegion];
-        const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${
-          encodeURIComponent(guildNameSlug)
-        }/roster`;
-        return this._doAxiosGet<BattleNetGuildRoster>(url, token, {
+    const regionConfig = config.battlenet.regions[validRegion];
+    const url = `${regionConfig.apiBaseUrl}/data/wow/guild/${realmSlug}/${
+      encodeURIComponent(guildNameSlug)
+    }/roster`;
+
+    const apiRoster = await this.callApi<ApiBattleNetGuildRoster>(
+      jobId,
+      () => this.httpClient.get(
+        url,
+        {
           namespace: `profile-${validRegion}`,
           locale: "en_US",
-        });
-      });
-    } catch (error: any) {
-      const statusCode = error?.status || error?.response?.status ||
-        (error instanceof AppError ? error.status : 500);
-      throw new AppError(
-        `Failed to fetch guild roster: ${error.message || String(error)}`,
-        statusCode,
-        {
-          code: ErrorCode.EXTERNAL_API_ERROR,
-          details: { realmSlug, guildNameSlug, region: validRegion, jobId },
         },
-      );
-    }
+        { Authorization: `Bearer ${token}` }
+      ),
+      isBattleNetGuildRoster,
+      {
+        operation: 'fetch',
+        resourceType: 'guild_roster',
+        resourceId: `${realmSlug}/${guildNameSlug}`,
+        region: validRegion
+      }
+    );
+
+    // Convert API roster to shared roster format
+    return adaptRoster(apiRoster);
   }
 
   async getEnhancedCharacterData(
     realmSlug: string,
     characterNameLower: string,
     region: BattleNetRegion,
-  ): Promise<
-    (BattleNetCharacter & {
-      equipment: BattleNetCharacterEquipment;
-      itemLevel: number;
-      mythicKeystone: BattleNetMythicKeystoneProfile | null;
-      professions: BattleNetProfessions;
-    }) | null
-  > {
+  ): Promise<EnhancedCharacterData | null> {
     const validRegion = this._validateRegion(region);
     const token = await this.ensureClientToken();
     const baseJobId = `char-${validRegion}-${realmSlug}-${characterNameLower}`;
 
     // Define default empty professions structure for 404 case
-    const defaultProfessions: BattleNetProfessions = {
+    const defaultProfessions: ApiBattleNetProfessions = {
       _links: { self: { href: "" } },
       character: {
         key: { href: "" },
         name: characterNameLower,
         id: 0,
-        realm: { key: { href: "" }, name: realmSlug, id: 0, slug: realmSlug },
+        realm: { name: realmSlug, id: 0, slug: realmSlug },
       },
       primaries: [],
       secondaries: [],
     };
 
     try {
+      // Prepare the API calls
+      const profileCall = () => this.callApi<ApiBattleNetCharacter>(
+        `${baseJobId}-profile`,
+        () => this.httpClient.get(
+          `${config.battlenet.regions[validRegion].apiBaseUrl}/profile/wow/character/${
+            encodeURIComponent(realmSlug)
+          }/${encodeURIComponent(characterNameLower)}`,
+          {
+            namespace: `profile-${validRegion}`,
+            locale: "en_US",
+          },
+          { Authorization: `Bearer ${token}` }
+        ),
+        isBattleNetCharacter,
+        {
+          operation: 'fetch',
+          resourceType: 'character',
+          resourceId: `${realmSlug}/${characterNameLower}`,
+          region: validRegion
+        }
+      );
+
+      const equipmentCall = () => this.callApi<ApiBattleNetCharacterEquipment>(
+        `${baseJobId}-equipment`,
+        () => this.httpClient.get(
+          `${config.battlenet.regions[validRegion].apiBaseUrl}/profile/wow/character/${
+            encodeURIComponent(realmSlug)
+          }/${encodeURIComponent(characterNameLower)}/equipment`,
+          {
+            namespace: `profile-${validRegion}`,
+            locale: "en_US",
+          },
+          { Authorization: `Bearer ${token}` }
+        ),
+        isBattleNetCharacterEquipment,
+        {
+          operation: 'fetch',
+          resourceType: 'character_equipment',
+          resourceId: `${realmSlug}/${characterNameLower}`,
+          region: validRegion
+        }
+      );
+
+      const mythicKeystoneCall = () => this.callApi<ApiBattleNetMythicKeystoneProfile>(
+        `${baseJobId}-mythic`,
+        () => this.httpClient.get(
+          `${config.battlenet.regions[validRegion].apiBaseUrl}/profile/wow/character/${
+            encodeURIComponent(realmSlug)
+          }/${encodeURIComponent(characterNameLower)}/mythic-keystone-profile`,
+          {
+            namespace: `profile-${validRegion}`,
+            locale: "en_US",
+          },
+          { Authorization: `Bearer ${token}` }
+        ),
+        isBattleNetMythicKeystoneProfile,
+        {
+          operation: 'fetch',
+          resourceType: 'character_mythic_keystone',
+          resourceId: `${realmSlug}/${characterNameLower}`,
+          region: validRegion
+        }
+      ).catch(error => {
+        // Allow 404 for mythic keystones - some characters don't have them
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          return null;
+        }
+        throw error;
+      });
+
+      const professionsCall = () => this.callApi<ApiBattleNetProfessions>(
+        `${baseJobId}-professions`,
+        () => this.httpClient.get(
+          `${config.battlenet.regions[validRegion].apiBaseUrl}/profile/wow/character/${
+            encodeURIComponent(realmSlug)
+          }/${encodeURIComponent(characterNameLower)}/professions`,
+          {
+            namespace: `profile-${validRegion}`,
+            locale: "en_US",
+          },
+          { Authorization: `Bearer ${token}` }
+        ),
+        isBattleNetProfessions,
+        {
+          operation: 'fetch',
+          resourceType: 'character_professions',
+          resourceId: `${realmSlug}/${characterNameLower}`,
+          region: validRegion
+        }
+      ).catch(error => {
+        // Allow 404 for professions - some characters don't have them
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          return defaultProfessions;
+        }
+        throw error;
+      });
+
       const results = await Promise.allSettled([
-        this.scheduleWithRetry(
-          `${baseJobId}-profile`,
-          () =>
-            this._fetchCharacterProfile(
-              validRegion,
-              realmSlug,
-              characterNameLower,
-              token,
-            ),
-        ),
-        this.scheduleWithRetry(
-          `${baseJobId}-equipment`,
-          () =>
-            this._fetchCharacterEquipment(
-              validRegion,
-              realmSlug,
-              characterNameLower,
-              token,
-            ),
-        ),
-        this.scheduleWithRetry(
-          `${baseJobId}-mythic`,
-          () =>
-            this._fetchCharacterMythicKeystone(
-              validRegion,
-              realmSlug,
-              characterNameLower,
-              token,
-            ),
-        ),
-        this.scheduleWithRetry(
-          `${baseJobId}-professions`,
-          () =>
-            this._fetchCharacterProfessions(
-              validRegion,
-              realmSlug,
-              characterNameLower,
-              token,
-            ),
-        ),
+        profileCall(),
+        equipmentCall(),
+        mythicKeystoneCall(),
+        professionsCall(),
       ]);
 
       const [
@@ -508,7 +563,7 @@ export class BattleNetApiClient {
       const profile = profileResult.value;
       const equipment = equipmentResult.value;
 
-      let mythicKeystone: BattleNetMythicKeystoneProfile | null = null;
+      let mythicKeystone: ApiBattleNetMythicKeystoneProfile | null = null;
       if (mythicKeystoneResult.status === "fulfilled") {
         mythicKeystone = mythicKeystoneResult.value;
       } else if (
@@ -528,31 +583,16 @@ export class BattleNetApiClient {
         throw professionsResult.reason;
       }
 
-      return {
-        ...profile,
-        equipment,
-        itemLevel: profile?.equipped_item_level || 0,
-        mythicKeystone,
-        professions,
-      };
-    } catch (error: any) {
-      const statusCode = error?.status || error?.response?.status ||
-        (error instanceof AppError ? error.status : 500);
-      throw new AppError(
-        `Failed to fetch enhanced character data: ${
-          error.message || String(error)
-        }`,
-        statusCode,
-        {
-          code: ErrorCode.EXTERNAL_API_ERROR,
-          details: {
-            realmSlug,
-            characterNameLower,
-            region: validRegion,
-            baseJobId,
-          },
-        },
-      );
+      // Convert API data to shared EnhancedCharacterData format
+      return adaptEnhancedCharacter(profile, equipment, mythicKeystone, professions);
+    } catch (error) {
+      this.handleApiError(error, {
+        operation: 'fetch',
+        resourceType: 'enhanced_character',
+        resourceId: `${realmSlug}/${characterNameLower}`,
+        region: validRegion,
+        jobId: baseJobId
+      });
     }
   }
 
@@ -563,39 +603,32 @@ export class BattleNetApiClient {
   ): Promise<any> {
     const validRegion = this._validateRegion(region);
     const token = await this.ensureClientToken();
-    const jobId =
-      `char-collections-${validRegion}-${realmSlug}-${characterNameLower}`;
+    const jobId = `char-collections-${validRegion}-${realmSlug}-${characterNameLower}`;
 
-    try {
-      const regionConfig = config.battlenet.regions[validRegion];
-      const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${
-        encodeURIComponent(realmSlug)
-      }/${encodeURIComponent(characterNameLower)}/collections`;
-      return await this.scheduleWithRetry(
-        jobId,
-        () =>
-          this._doAxiosGet(url, token, {
-            namespace: `profile-${validRegion}`,
-            locale: "en_US",
-          }),
-      );
-    } catch (error: any) {
-      const statusCode = error?.status || error?.response?.status ||
-        (error instanceof AppError ? error.status : 500);
-      throw new AppError(
-        `Failed to fetch collections index: ${error.message || String(error)}`,
-        statusCode,
+    const regionConfig = config.battlenet.regions[validRegion];
+    const url = `${regionConfig.apiBaseUrl}/profile/wow/character/${
+      encodeURIComponent(realmSlug)
+    }/${encodeURIComponent(characterNameLower)}/collections`;
+    
+    return this.callApi<any>(
+      jobId,
+      () => this.httpClient.get(
+        url,
         {
-          code: ErrorCode.EXTERNAL_API_ERROR,
-          details: {
-            realmSlug,
-            characterNameLower,
-            region: validRegion,
-            jobId,
-          },
+          namespace: `profile-${validRegion}`,
+          locale: "en_US",
         },
-      );
-    }
+        { Authorization: `Bearer ${token}` }
+      ),
+      // Use a simple identity function since we don't have a specific type to validate against
+      (data): data is any => !!data && typeof data === 'object',
+      {
+        operation: 'fetch',
+        resourceType: 'character_collections',
+        resourceId: `${realmSlug}/${characterNameLower}`,
+        region: validRegion
+      }
+    );
   }
 
   async getGenericBattleNetData<T = any>(
@@ -603,24 +636,19 @@ export class BattleNetApiClient {
     jobId: string,
   ): Promise<T> {
     const token = await this.ensureClientToken();
-
-    try {
-      return await this.scheduleWithRetry(
-        jobId,
-        () => this._doAxiosGet(url, token),
-      );
-    } catch (error: any) {
-      const statusCode = error?.status || error?.response?.status ||
-        (error instanceof AppError ? error.status : 500);
-      throw new AppError(
-        `Failed to fetch generic data: ${error.message || String(error)}`,
-        statusCode,
-        {
-          code: ErrorCode.EXTERNAL_API_ERROR,
-          details: { url, jobId },
-        },
-      );
-    }
+    
+    return this.callApi<T>(
+      jobId,
+      () => this.httpClient.get(url, {}, { Authorization: `Bearer ${token}` }),
+      // Use a simple identity function since we don't have a specific type to validate against
+      (data): data is T => !!data,
+      {
+        operation: 'fetch',
+        resourceType: 'generic_data',
+        resourceId: url,
+        jobId
+      }
+    );
   }
 
   /**
@@ -694,34 +722,36 @@ export class BattleNetApiClient {
     }
 
     const url = `${regionConfig.authBaseUrl}/token`;
-    try {
-      return await this._doAxiosPost<TokenResponse>(
+    
+    return this.callApi<TokenResponse>(
+      `token-${validRegion}-${Date.now()}`,
+      () => this.httpClient.post(
         url,
         new URLSearchParams({
           grant_type: "authorization_code",
           code: code,
-          redirect_uri: redirectUri, // Use the provided redirectUri
+          redirect_uri: redirectUri,
         }),
         {
           username: config.battlenet.clientId,
           password: config.battlenet.clientSecret,
         },
-        { "Content-Type": "application/x-www-form-urlencoded" },
-      );
-    } catch (error: any) {
-      const statusCode = error?.response?.status || 500;
-      const errorMessage = error?.response?.data?.error_description ||
-        error.message || String(error);
-      logger.error(
-        { err: error, region, code, redirectUri },
-        `[ApiClient] Failed to get access token: ${errorMessage}`,
-      );
-      throw new AppError(
-        `Failed to get access token: ${errorMessage}`,
-        statusCode,
-        { code: ErrorCode.EXTERNAL_API_ERROR },
-      );
-    }
+        { "Content-Type": "application/x-www-form-urlencoded" }
+      ),
+      // Simple validation for token response
+      (data): data is TokenResponse => {
+        return !!data && 
+               typeof data === 'object' && 
+               typeof (data as TokenResponse).access_token === 'string' &&
+               typeof (data as TokenResponse).expires_in === 'number';
+      },
+      {
+        operation: 'fetch',
+        resourceType: 'auth_token',
+        resourceId: 'access_token',
+        region: validRegion
+      }
+    );
   }
 
   /**
@@ -743,23 +773,28 @@ export class BattleNetApiClient {
     }
 
     const url = regionConfig.userInfoUrl;
-
-    try {
-      return await this._doAxiosGet<BattleNetUserProfile>(url, accessToken);
-    } catch (error: any) {
-      const statusCode = error?.response?.status || 500;
-      const errorMessage = error?.response?.data?.error_description ||
-        error.message || String(error);
-      logger.error(
-        { err: error, region },
-        `[ApiClient] Failed to get user info: ${errorMessage}`,
-      );
-      throw new AppError(
-        `Failed to get user info: ${errorMessage}`,
-        statusCode,
-        { code: ErrorCode.EXTERNAL_API_ERROR },
-      );
-    }
+    
+    return this.callApi<BattleNetUserProfile>(
+      `user-info-${validRegion}-${Date.now()}`,
+      () => this.httpClient.get(
+        url,
+        {},
+        { Authorization: `Bearer ${accessToken}` }
+      ),
+      // Validate basic user profile structure
+      (data): data is BattleNetUserProfile => {
+        return !!data && 
+               typeof data === 'object' && 
+               typeof (data as BattleNetUserProfile).sub === 'string' &&
+               typeof (data as BattleNetUserProfile).id === 'number';
+      },
+      {
+        operation: 'fetch',
+        resourceType: 'user_profile',
+        resourceId: 'current_user',
+        region: validRegion
+      }
+    );
   }
 
   /**
@@ -781,30 +816,29 @@ export class BattleNetApiClient {
     }
 
     const url = `${regionConfig.apiBaseUrl}/profile/user/wow`;
-    const params = { namespace: `profile-${validRegion}`, locale: "en_US" };
-
-    try {
-      return await this._doAxiosGet<BattleNetWoWProfile>(
+    
+    return this.callApi<BattleNetWoWProfile>(
+      `wow-profile-${validRegion}-${Date.now()}`,
+      () => this.httpClient.get(
         url,
-        accessToken,
-        params,
-      );
-    } catch (error: any) {
-      const statusCode = error?.response?.status || 500;
-      const errorMessage = error?.response?.data?.error_description ||
-        error.message || String(error);
-      logger.error(
-        { err: error, region },
-        `[ApiClient] Failed to fetch WoW profile: ${errorMessage}`,
-      );
-      throw new AppError(
-        `Failed to fetch WoW profile: ${errorMessage}`,
-        statusCode,
-        {
-          code: ErrorCode.EXTERNAL_API_ERROR,
-          details: { region: validRegion },
+        { 
+          namespace: `profile-${validRegion}`, 
+          locale: "en_US" 
         },
-      );
-    }
+        { Authorization: `Bearer ${accessToken}` }
+      ),
+      // Validate basic WoW profile structure
+      (data): data is BattleNetWoWProfile => {
+        return !!data && 
+               typeof data === 'object' && 
+               Array.isArray((data as BattleNetWoWProfile).wow_accounts);
+      },
+      {
+        operation: 'fetch',
+        resourceType: 'wow_profile',
+        resourceId: 'current_user',
+        region: validRegion
+      }
+    );
   }
 }

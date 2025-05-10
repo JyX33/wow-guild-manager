@@ -36,7 +36,7 @@ export const commonString = {
 
 // Date validation helpers
 export const dateSchema = {
-  iso: z.string().datetime({ offset: true }, 'Invalid ISO date format'),
+  iso: z.string().datetime('Invalid ISO date format'),
   unix: z.number().int().positive('Invalid UNIX timestamp'),
   future: z.date().refine(date => date > new Date(), {
     message: 'Date must be in the future'

@@ -104,6 +104,14 @@ The codebase has been significantly simplified and improved with the following c
    - Reduced code duplication
    - Better module encapsulation
 
+7. **Database Optimization**
+   - Added strategic indexes on foreign keys (guild_id, character_id, etc.)
+   - Optimized frequently queried fields with appropriate indexes
+   - Improved join performance with multi-column indexes
+   - Added time-based indexes for event and activity queries
+   - Created comprehensive documentation for database optimization
+   - See [Database Index Optimization](docs/database-index-optimization.md) for details
+
 ## Setup Instructions
 
 ### Prerequisites

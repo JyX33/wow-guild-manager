@@ -9,6 +9,7 @@ import {
   updateEventSchema,
   rsvpSchema
 } from "../../schemas/index.js";
+import { unwrapZodSchema } from "../../utils/zod-express.js";
 
 const router = express.Router();
 
@@ -30,18 +31,18 @@ router.get(
 
 // Create a new event
 router.post(
-  "/", 
-  authenticateJWT, 
-  validate(createEventSchema, ValidateTarget.BODY),
+  "/",
+  authenticateJWT,
+  validate(unwrapZodSchema(createEventSchema), ValidateTarget.BODY),
   eventController.createEvent as express.RequestHandler
 );
 
 // Update an event
 router.put(
-  "/:eventId", 
-  authenticateJWT, 
+  "/:eventId",
+  authenticateJWT,
   validate(eventIdParamSchema, ValidateTarget.PARAMS),
-  validate(updateEventSchema, ValidateTarget.BODY),
+  validate(unwrapZodSchema(updateEventSchema), ValidateTarget.BODY),
   eventController.updateEvent as express.RequestHandler
 );
 

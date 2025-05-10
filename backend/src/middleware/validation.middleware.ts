@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import { fromZodError } from 'zod-validation-error';
 import { createValidationError } from '../utils/error-factory.js';
 import logger from '../utils/logger.js';
+
+// Re-export AnyZodObject type for use in other files
+export type AnyZodObject = z.ZodObject<any, any, any, { [k: string]: any }, { [k: string]: any }>;
 
 /**
  * Enum for different parts of the request to validate
@@ -21,7 +24,7 @@ export enum ValidateTarget {
  * @returns Express middleware function
  */
 export const validate = (schema: AnyZodObject, target: ValidateTarget = ValidateTarget.BODY) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       // Get data to validate based on target
       const dataToValidate = req[target as keyof Request];
@@ -76,7 +79,7 @@ export const validate = (schema: AnyZodObject, target: ValidateTarget = Validate
  * @returns Express middleware function 
  */
 export const validateRequest = (schemaMap: Record<ValidateTarget, AnyZodObject>) => {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       // Validate each target against its schema
       for (const [target, schema] of Object.entries(schemaMap)) {

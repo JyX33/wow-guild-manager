@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { validate, ValidateTarget } from '../src/middleware/validation.middleware.js';
 import { createValidationError } from '../src/utils/error-factory.js';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 // Mock dependencies
 jest.mock('../src/utils/error-factory.js', () => ({

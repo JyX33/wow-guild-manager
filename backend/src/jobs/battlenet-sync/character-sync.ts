@@ -6,6 +6,7 @@ import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
 import logger from "../../utils/logger.js";
 import { createSlug } from "../../utils/slugify.js";
 import { prepareCharacterUpdatePayload } from "./character-payload.js";
+import { toSharedEnhancedCharacterData } from "../../types/enhanced-character.js";
 
 export async function syncCharacter(
   apiClient: BattleNetApiClient,
@@ -98,6 +99,7 @@ export async function syncCharacter(
       return;
     }
 
+    // The conversion to shared format is now handled in prepareCharacterUpdatePayload
     const { updatePayload, localGuild } = await prepareCharacterUpdatePayload(
       apiClient,
       guildModel,
