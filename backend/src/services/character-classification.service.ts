@@ -16,15 +16,17 @@ export interface ClassifiedMember extends DbGuildMember {
 }
 
 export class CharacterClassificationService {
-  private characterModel: typeof characterModel;
-  private guildMemberModel: typeof guildMemberModel;
+  // These properties are currently unused but kept for future expansion
+  // private characterModel: typeof characterModel;
+  // private guildMemberModel: typeof guildMemberModel;
 
   constructor(
-    characterModelInj: typeof characterModel,
-    guildMemberModelInj: typeof guildMemberModel,
+    _characterModelInj: typeof characterModel,
+    _guildMemberModelInj: typeof guildMemberModel,
   ) {
-    this.characterModel = characterModelInj;
-    this.guildMemberModel = guildMemberModelInj;
+    // Values no longer assigned to class properties since they're not used
+    // this.characterModel = characterModelInj;
+    // this.guildMemberModel = guildMemberModelInj;
   }
 
   /**

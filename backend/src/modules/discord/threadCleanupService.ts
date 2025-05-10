@@ -3,7 +3,7 @@ import { client as discordClient } from "./discordClient.js";
 import logger from "../../utils/logger.js";
 import db from "../../db/db.js";
 import schedule from "node-schedule";
-import { ChannelType, ThreadChannel } from "discord.js";
+import { ThreadChannel } from "discord.js";
 import process from "node:process";
 
 /**

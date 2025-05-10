@@ -20,7 +20,7 @@ export function compareGuildMembers(
   >,
   existingCharacterMap: Map<string, number>,
   region: string,
-  guildId: number,
+  // guildId: number, // Not used in this function
 ): {
   membersToAdd: { rosterMember: BattleNetGuildMember; characterId: number }[];
   membersToUpdate: {

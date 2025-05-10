@@ -3,10 +3,11 @@ import authController from "../controllers/auth.controller.js";
 import { authenticateJWT, requireRole } from "../middleware/auth.middleware.js"; // Import named exports
 import { UserRole } from "../../../shared/types/user.js";
 
-import { retrieveTokenDetails } from "../modules/discord/discordTokenStore.js";
-import userModelInstance from "../models/user.model.js";
-import { Request, Response } from "express";
-import logger from "../utils/logger.js";
+// Unused imports removed
+// import { retrieveTokenDetails } from "../modules/discord/discordTokenStore.js";
+// import userModelInstance from "../models/user.model.js";
+// import { Request, Response } from "express";
+// import logger from "../utils/logger.js";
 
 const router = express.Router();
 

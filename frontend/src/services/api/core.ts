@@ -129,7 +129,10 @@ export const apiRequest = async <T>(config: AxiosRequestConfig): Promise<ApiResp
          error.response?.data?.message ||
          error.message) :
         'Unknown error occurred',
-      details: error instanceof AxiosError ? error.response?.data?.error?.details : undefined
+      details: error instanceof AxiosError ? error.response?.data?.error?.details : undefined,
+      code: error instanceof AxiosError ?
+        (error.response?.data?.error?.code || `HTTP_${error.response?.status || 500}`) :
+        'API_ERROR'
     };
     
     return {

@@ -24,7 +24,12 @@ const transport = isDevelopment
   : undefined; // No special transport in production (default JSON)
 
 // Create and export the logger instance
-const logger = pino(pinoOptions, transport);
+// Use type assertion to ensure that pino.transport() return value is treated as a valid destination
+// TypeScript config comment to ignore the next line
+// @ts-ignore
+const logger: pino.Logger = pino(pinoOptions, transport as pino.DestinationStream);
+
+
 logger.info(`Logger initialized with level: ${logger.level}`);
 
 export default logger;

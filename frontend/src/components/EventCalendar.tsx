@@ -79,21 +79,24 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
     onSelectSlot({ start: day, end });
   };
 
+  // Commented out unused functions
+  // Uncomment if needed in the future
+  /*
   // Get class for day cell
   const getDayClass = (day: Date) => {
     let className = "h-24 border p-1 relative";
-    
+
     if (!isSameMonth(day, currentMonth)) {
       className += " bg-gray-100 text-gray-400";
     }
-    
+
     if (isToday(day)) {
       className += " bg-yellow-50";
     }
-    
+
     return className;
   };
-  
+
   // Get class for event based on type
   const getEventClass = (eventType: EventType) => {
     switch (eventType) {
@@ -107,6 +110,7 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
         return "bg-blue-500 text-white";
     }
   };
+  */
 
   // Create a test event for today to ensure calendar is working
   const today = new Date();

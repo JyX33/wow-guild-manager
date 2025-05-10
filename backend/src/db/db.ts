@@ -77,10 +77,9 @@ const dbClient: DbClient = {
       // Call the original query method with the right context
       try {
         // Use apply instead of call to handle variable arguments more safely
-        return originalQuery.apply(
-          client,
-          [config, values, callback].filter((arg) => arg !== undefined),
-        );
+        // Handle the args properly with type assertion for correct tuple structure
+      const args = [config, values, callback].filter((arg) => arg !== undefined) as Parameters<typeof originalQuery>;
+      return originalQuery.apply(client, args);
       } catch (error) {
         // Convert any errors to a rejected promise
         return Promise.reject(error);

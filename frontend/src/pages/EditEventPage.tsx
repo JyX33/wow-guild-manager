@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Event } from '../../../shared/types/index';
 import EventForm from '../components/EventForm';
 import { useAuth } from '../context/AuthContext';
 import { eventService } from '../services/api';
@@ -36,7 +35,7 @@ const EditEventPage: React.FC = () => {
     fetchEvent();
   }, [eventId, user?.id, navigate]);
 
-  const handleSubmitSuccess = (updatedEvent: Event) => {
+  const handleSubmitSuccess = () => {
     navigate(`/event/${eventId}`);
   };
 

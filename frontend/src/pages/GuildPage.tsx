@@ -31,7 +31,7 @@ const GuildPage: React.FC = () => {
   const [loadingActivity, setLoadingActivity] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
   // Add a key to force refresh the calendar component when needed
-  const [calendarKey, setCalendarKey] = useState(Date.now());
+  const [calendarKey] = useState(Date.now());
 
   useEffect(() => {
     const fetchGuildData = async () => {

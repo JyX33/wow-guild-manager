@@ -1,5 +1,5 @@
 import React from 'react';
-import { Roster, RosterMember,RosterMemberAddition } from '@shared/types/api';
+import { Roster, RosterMember } from '@shared/types/api';
 import { GuildMember, GuildRank } from '@shared/types/guild';
 import LoadingSpinner from '../LoadingSpinner';
 import MemberList from './MemberList';

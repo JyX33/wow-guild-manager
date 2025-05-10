@@ -15,7 +15,7 @@ import { OnboardingService } from "../services/onboarding.service.js"; // Import
 import { retrieveTokenDetails } from "../modules/discord/discordTokenStore.js"; // Import for Discord link verification
 import { AppError, asyncHandler } from "../utils/error-handler.js";
 import logger from "../utils/logger.js"; // Import the logger
-import axios from "axios";
+// import axios from "axios"; // Not used
 import process from "node:process";
 
 // Instantiate services (consider dependency injection for better management)
@@ -100,7 +100,7 @@ export default {
     req.session.region = validRegion; // Assign the validated BattleNetRegion
 
     // Explicitly save the session before sending the response
-    return req.session.save((err) => {
+    req.session.save((err) => {
       if (err) {
         logger.error({ err }, "Error saving session before sending auth URL");
         // Handle error appropriately, maybe throw or send an error response
@@ -246,9 +246,10 @@ export default {
 
       // Determine the refresh token to use: new one if available, otherwise keep the existing one.
       // user is UserWithTokens here, so user.refresh_token exists
-      const refreshTokenToUpdate = typeof tokenData.refresh_token === "string"
-        ? tokenData.refresh_token
-        : user.refresh_token; // Fallback to existing token from the fetched user
+      // We're not using this variable anymore since we pass null to updateTokens
+      // const refreshTokenToUpdate = typeof tokenData.refresh_token === "string"
+      //  ? tokenData.refresh_token
+      //  : user.refresh_token; // Fallback to existing token from the fetched user
 
       // Refresh token is not reliably provided by Battle.net, update only access token
       user = await userModel.updateTokens(

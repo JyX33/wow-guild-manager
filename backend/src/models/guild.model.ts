@@ -1,4 +1,4 @@
-import { Guild } from "../../../shared/types/index.js";
+// import { Guild } from "../../../shared/types/index.js"; // Removed unused import
 import {
   BattleNetGuild,
   BattleNetGuildMember,
@@ -14,7 +14,7 @@ import BaseModel from "../db/BaseModel.js";
 import { AppError } from "../utils/error-handler.js";
 import db from "../db/db.js";
 import { Guild as GuildType } from "../../../shared/types/guild.js";
-import { DbQueryCondition, DbQueryParam } from "../../../shared/types/db.js";
+import { DbQueryCondition } from "../../../shared/types/db.js"; // Removed unused import
 
 // Create type-safe query condition for guild
 type GuildQueryCondition = DbQueryCondition<DbGuild>;

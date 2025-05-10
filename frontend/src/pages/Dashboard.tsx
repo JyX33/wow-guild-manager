@@ -2,12 +2,9 @@ import React from 'react';
 import withAuth from '../components/withAuth';
 import UserGuilds from '../components/UserGuilds';
 import { useAuth } from '../context/AuthContext';
-import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
-  const { user, logout, refreshUser } = useAuth();
-  const location = useLocation();
+  const { user, logout } = useAuth();
 
 
   return (

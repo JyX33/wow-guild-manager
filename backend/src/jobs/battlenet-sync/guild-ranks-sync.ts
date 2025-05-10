@@ -51,12 +51,18 @@ export async function syncGuildRanks(
             .then(() =>
               rankModel.updateMemberCount(guildId, rankId, currentCount)
             )
-            .catch((err: unknown) =>
+            .then(() => {
+              // Return void explicitly to match Promise<void> expectation
+              return;
+            })
+            .catch((err: unknown) => {
               logger.error(
                 { err, ...rankLogContext },
                 `[SyncService] Failed to create/update rank ${rankId} or its count.`,
-              )
-            ),
+              );
+              // Return void explicitly
+              return;
+            }),
         );
       } else {
         if (rankRecord.member_count !== currentCount) {
@@ -66,12 +72,18 @@ export async function syncGuildRanks(
           );
           updatePromises.push(
             rankModel.updateMemberCount(guildId, rankId, currentCount)
-              .catch((err: unknown) =>
+              .then(() => {
+                // Return void explicitly to match Promise<void> expectation
+                return;
+              })
+              .catch((err: unknown) => {
                 logger.error(
                   { err, ...rankLogContext },
                   `[SyncService] Failed to update member count for rank ${rankId}.`,
-                )
-              ),
+                );
+                // Return void explicitly
+                return;
+              }),
           );
         } else {
           logger.trace(
@@ -92,18 +104,24 @@ export async function syncGuildRanks(
         );
         updatePromises.push(
           rankModel.updateMemberCount(guildId, rankId, 0)
-            .catch((err: unknown) =>
+            .then(() => {
+              // Return void explicitly to match Promise<void> expectation
+              return;
+            })
+            .catch((err: unknown) => {
               logger.error(
                 { err, ...rankLogContext },
                 `[SyncService] Failed to set member count to 0 for rank ${rankId}.`,
-              )
-            ),
+              );
+              // Return void explicitly
+              return;
+            }),
         );
       }
     }
 
     const results = await Promise.allSettled(updatePromises);
-    results.forEach((result, index) => {
+    results.forEach((result) => {
       if (result.status === "rejected") {
         logger.warn(
           { ...logContext, reason: result.reason },

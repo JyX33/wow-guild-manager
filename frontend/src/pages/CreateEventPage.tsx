@@ -1,6 +1,6 @@
 import React from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Event, Guild } from '@shared/types/index';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Guild } from '@shared/types/index';
 import EventForm from '../components/EventForm';
 import withAuth from '../components/withAuth';
 import { useApi } from '../hooks/useApi';
@@ -21,7 +21,7 @@ const CreateEventPage: React.FC = () => {
   const state = location.state as LocationState;
   
   // Get guild details to show guild name in the page
-  const { data: guild, loading: guildLoading } = useApi<Guild>({
+  const { data: guild } = useApi<Guild>({
     apiFn: guildService.getGuildById,
     args: [parseInt(guildId || '0')],
     deps: [guildId]
@@ -35,10 +35,21 @@ const CreateEventPage: React.FC = () => {
     .toISOString().slice(0, 16);
   const endTime = state?.endTime || defaultEndTime;
 
-  const initialValues = {
+  // Make sure we explicitly define this as EventFormValues
+  interface EventFormValues {
+    title: string;
+    description: string;
+    event_type: 'Raid' | 'Dungeon' | 'Social' | 'Special';
+    start_time: string;
+    end_time: string;
+    max_participants: number;
+    guild_id: number;
+  }
+
+  const initialValues: EventFormValues = {
     title: '',
     description: '',
-    event_type: 'Raid' as const,
+    event_type: 'Raid',
     start_time: startTime,
     end_time: endTime,
     max_participants: 25,

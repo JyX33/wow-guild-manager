@@ -40,28 +40,33 @@ const EventDetailsPage: React.FC = () => {
   const [subscribers, setSubscribers] = useState<Subscription[]>([]);
   const [userSubscription, setUserSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingCharacters, setLoadingCharacters] = useState(true);
+  // const [loadingCharacters, setLoadingCharacters] = useState(true); // Removed unused state
   const [formData, setFormData] = useState({
     status: 'Confirmed',
     character_id: 0
   });
-  const [characters, setCharacters] = useState([]);
+  // Define character array type and remove unused state
+  // const [characters, setCharacters] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchEventData = async () => {
       try {
         if (!eventId) return;
-        
+
         // Fetch event details
         const eventResponse = await eventService.getEventById(parseInt(eventId));
-        setEvent(eventResponse.data);
-        
+        if (eventResponse?.data) {
+          setEvent(eventResponse.data);
+        }
+
         // Fetch event subscribers
         const subscribersResponse = await eventService.getEventSubscribers(parseInt(eventId));
-        setSubscribers(subscribersResponse.data);
+        if (subscribersResponse?.data) {
+          setSubscribers(subscribersResponse.data);
+        }
         
         // Check if current user is subscribed
-        const userSub = subscribersResponse.data.find(
+        const userSub = subscribersResponse?.data?.find(
           (sub: Subscription) => sub.user_id === user?.id
         );
         
@@ -86,11 +91,12 @@ const EventDetailsPage: React.FC = () => {
   useEffect(() => {
     const fetchCharacters = async () => {
       try {
-        setLoadingCharacters(true);
+        // setLoadingCharacters(true); // Removed unused state
         const response = await characterService.getUserCharacters();
         
+        // No need to set characters as the state is unused
         if (response.success && response.data) {
-          setCharacters(response.data);
+          // setCharacters(response.data);
           
           // If we have characters but no character_id is set yet, select the main character or first character
           if (response.data.length > 0 && !formData.character_id) {
@@ -105,7 +111,7 @@ const EventDetailsPage: React.FC = () => {
       } catch (error) {
         console.error('Failed to fetch characters:', error);
       } finally {
-        setLoadingCharacters(false);
+        // setLoadingCharacters(false); // Removed unused state
       }
     };
     
@@ -137,13 +143,17 @@ const EventDetailsPage: React.FC = () => {
       
       // Refresh event subscribers
       const subscribersResponse = await eventService.getEventSubscribers(parseInt(eventId));
+      if (!subscribersResponse?.data) return;
+
       setSubscribers(subscribersResponse.data);
-      
+
       // Update user subscription status
       const userSub = subscribersResponse.data.find(
         (sub: Subscription) => sub.user_id === user?.id
       );
-      setUserSubscription(userSub);
+      if (userSub) {
+        setUserSubscription(userSub);
+      }
     } catch (error) {
       console.error('Failed to subscribe to event:', error);
     }

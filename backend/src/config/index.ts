@@ -5,8 +5,8 @@ import process from "node:process";
 // extract key NODE_ENV
 let trimmedNodeEnv: string | undefined;
 Object.entries(process.env)
-  .filter(([key]) => key === "NODE_ENV")
-  .forEach(([key, value]) => {
+  .filter(([envKey]) => envKey === "NODE_ENV")
+  .forEach(([, value]) => {
     trimmedNodeEnv = value?.trim();
   });
 

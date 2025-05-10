@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { AppError, asyncHandler } from "../utils/error-handler.js";
 import { ErrorCode } from "../../../shared/types/error.js";
 import eventModel from "../models/event.model.js";
@@ -33,6 +33,7 @@ export default {
     async (
       req: Request<{ eventId: string }>,
       res: Response<ApiResponse<Event>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
 
@@ -56,6 +57,7 @@ export default {
     async (
       req: Request<{ guildId: string }>,
       res: Response<ApiResponse<Event[]>>,
+      _next: NextFunction,
     ) => {
       const { guildId } = req.params;
 
@@ -69,7 +71,7 @@ export default {
   ),
 
   createEvent: asyncHandler(
-    async (req: EventRequest, res: Response<ApiResponse<Event>>) => {
+    async (req: EventRequest, res: Response<ApiResponse<Event>>, _next: NextFunction) => {
       if (!req.body.guild_id || !req.body.title || !req.body.start_time) {
         throw new AppError("Missing required event fields", 400, {
           code: ErrorCode.VALIDATION_ERROR,
@@ -113,6 +115,7 @@ export default {
     async (
       req: EventRequest & { params: { eventId: string } },
       res: Response<ApiResponse<Event>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
 
@@ -172,6 +175,7 @@ export default {
     async (
       req: Request<{ eventId: string }> & { user: { id: number } },
       res: Response<ApiResponse<Event>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
 
@@ -219,6 +223,7 @@ export default {
     async (
       req: SubscriptionRequest & { params: { eventId: string } },
       res: Response<ApiResponse<EventSubscription>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
 
@@ -260,6 +265,7 @@ export default {
     async (
       req: SubscriptionRequest & { params: { eventId: string } },
       res: Response<ApiResponse<EventSubscription>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
 
@@ -298,6 +304,7 @@ export default {
     async (
       req: Request<{ eventId: string }>,
       res: Response<ApiResponse<EventSubscription[]>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
 
@@ -316,6 +323,7 @@ export default {
     async (
       req: Request<{ eventId: string }> & { user: { id: number } },
       res: Response<ApiResponse<{ message: string }>>,
+      _next: NextFunction,
     ) => {
       const { eventId } = req.params;
       const userId = req.user.id;

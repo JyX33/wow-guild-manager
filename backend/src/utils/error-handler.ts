@@ -89,10 +89,13 @@ export const errorHandlerMiddleware = (
   });
 };
 
-export const asyncHandler = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>,
+// More flexible type for asyncHandler to accept any kind of Express request
+export const asyncHandler = <
+  ReqType extends Request = Request
+>(
+  fn: (req: ReqType, res: Response, _next: NextFunction) => Promise<unknown>,
 ) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: ReqType, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch((err: unknown) => {
       // Log the original error before wrapping it, if it's not an AppError
       if (!(err instanceof AppError)) {
@@ -108,8 +111,9 @@ export const asyncHandler = (
           stack: err instanceof Error ? err.stack : undefined,
         };
 
+        // Cast req to generic Request to avoid type issues with custom request types
         err = new AppError(errorMessage, 500, {
-          request: req,
+          request: req as Request,
           details: errorDetails,
           code: ErrorCode.INTERNAL_ERROR,
         });

@@ -134,7 +134,6 @@ export async function syncGuildMembersTable(
         existingMembersMap,
         existingCharacterMap,
         region,
-        guildId,
       );
 
       logger.info(

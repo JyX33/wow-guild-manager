@@ -6,8 +6,9 @@ import { ApiError } from "../../../shared/types/api.js";
 import { ErrorCode } from "../../../shared/types/error.js";
 import logger from "../utils/logger.js";
 
-// Extend Express Request type to include user and potentially guildId
-interface AuthenticatedRequest extends Request {
+// Define our own custom request type with user and guildId
+interface AuthenticatedRequest {
+  params: { rosterId: string; };
   user?: { id: number /* other user props */ };
   guildId?: number; // To attach the guildId found from the roster
 }
@@ -30,7 +31,7 @@ const sendAuthError = (
  * Attaches `guildId` to the request object if successful.
  */
 export const isRosterGuildMaster = async (
-  req: AuthenticatedRequest,
+  req: Request & AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ) => {

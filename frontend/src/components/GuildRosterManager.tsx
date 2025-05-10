@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Roster, RosterMember, RosterMemberAddition } from '@shared/types/api'; // Ensure RosterMember is imported
-import { GuildMember, GuildRank } from '@shared/types/guild';
+import { GuildMember } from '@shared/types/guild';
 import RosterList from './roster/RosterList';
 import RosterDetails from './roster/RosterDetails';
 import ConfirmationDialog from './ConfirmationDialog';
@@ -28,8 +28,8 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     handleSelectRoster,
     handleCreateRoster,
     handleDeleteRoster,
-    setError: setRosterError,
-    setSuccessMessage: setRosterSuccess,
+    // setError: setRosterError, // Unused
+    // setSuccessMessage: setRosterSuccess, // Unused
     clearMessages: clearRosterMessages,
     setSelectedRoster,
   } = useGuildRosters(guildId);
@@ -40,7 +40,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     loadingGuildData,
     error: guildError,
     fetchGuildData,
-    setError: setGuildError,
+    // setError: setGuildError, // Unused
   } = useGuildData(guildId);
 
   // --- State Management Changes ---
@@ -61,8 +61,8 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     error: memberError,
     successMessage: memberSuccess,
     setError: setMemberError, // Keep using this for action errors
-    setSuccessMessage: setMemberSuccess,
-    handleUpdateRole,
+    // setSuccessMessage: setMemberSuccess, // Unused
+    // handleUpdateRole, // Unused
     handleRemoveMember,
     handleAddMembers,
     clearMessages: clearMemberMessages, // Get clear function
@@ -151,7 +151,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
   } | null>(null);
 
   // Robust global loading state
-  const globalLoading = loadingRosters || loadingGuildData || rosterSubmitting || memberSubmitting || isLoadingDetails;
+  // const globalLoading = loadingRosters || loadingGuildData || rosterSubmitting || memberSubmitting || isLoadingDetails; // Unused
 
   // Collect all non-null error/success messages
   const errorMessages = [rosterError, guildError, memberError].filter(Boolean);
@@ -211,7 +211,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
       setAddCharSearch('');
       setSelectedCharToAdd(null);
       // setAddCharRole(''); // Removed
-    }).catch((err) => {
+    }).catch(() => {
       /* Error handled by hook, no action needed here */
     });
   };
@@ -231,7 +231,7 @@ const GuildRosterManager: React.FC<GuildRosterManagerProps> = ({ guildId }) => {
     handleAddMembers(additions).then(() => {
       setSelectedRanksToAdd([]);
       // setAddRankRole(''); // Removed
-    }).catch((err) => {
+    }).catch(() => {
       /* Error handled by hook, no action needed here */
     });
   };

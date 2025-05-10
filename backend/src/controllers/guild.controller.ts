@@ -156,7 +156,8 @@ export default {
 
       // 2. Handle Empty Roster
       if (dbGuildMembers.length === 0) {
-        return res.json({ success: true, data: [] });
+        res.json({ success: true, data: [] });
+        return;
       }
 
       // 3. Extract Character IDs
@@ -268,7 +269,8 @@ export default {
 
       if (userCharacters.length === 0) {
         logger.debug({ userId }, `User ${userId} has no characters.`);
-        return res.json({ success: true, data: [] });
+        res.json({ success: true, data: [] });
+        return;
       }
 
       // 2. Extract character IDs
@@ -298,7 +300,8 @@ export default {
           { userId },
           `User ${userId}'s characters have no associated guilds in guild_members.`,
         );
-        return res.json({ success: true, data: [] });
+        res.json({ success: true, data: [] });
+        return;
       }
 
       // 5. Fetch the corresponding guild records from the database
@@ -368,11 +371,12 @@ export default {
       );
 
       if (dbGuildMembers.length === 0) {
-        return res.json({
+        res.json({
           success: true,
           data: [],
           stats: { total: 0, successful: 0, failed: 0, errors: [] },
         });
+        return;
       }
 
       // 2. Extract character IDs

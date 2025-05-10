@@ -16,7 +16,7 @@ import {
   isBattleNetCharacter,
   isBattleNetCharacterEquipment,
   isBattleNetMythicKeystoneProfile,
-  isBattleNetProfessions,
+  // isBattleNetProfessions, // Not used
 } from "../../../shared/types/db-enhanced.js";
 import BaseModel from "../db/BaseModel.js";
 import db from "../db/db.js";
@@ -294,7 +294,7 @@ export class CharacterModel
               class: character.playable_class?.name || "Unknown",
               level: character.level || 1,
               role: this.determineDefaultRole(character.playable_class?.id),
-              profile_json: character,
+              profile_json: JSON.stringify(character) as unknown as BattleNetCharacter,
             });
           }
         }
@@ -366,9 +366,14 @@ export class CharacterModel
 
           if (character.profile_json) {
             // Properly access the profile JSON with type safety
-            const profileJson = character.profile_json;
-            const keyHref = profileJson.key?.href;
-            const realmKeyHref = profileJson.realm?.key?.href;
+            // The field might be a string if it was JSON.stringified
+            const profileJson = typeof character.profile_json === 'string'
+              ? JSON.parse(character.profile_json as string)
+              : character.profile_json;
+
+            // Access with optional chaining since structure might vary
+            const keyHref = profileJson?.key?.href;
+            const realmKeyHref = profileJson?.realm?.key?.href;
             const hrefToCheck = keyHref || realmKeyHref;
 
             const parsedRegion = parseRegionFromHref(hrefToCheck);

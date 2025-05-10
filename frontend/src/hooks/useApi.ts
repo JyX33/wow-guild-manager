@@ -60,7 +60,8 @@ export function useApi<T, P extends any[] = any[]>(
       setError(null);
 
       // Use the provided arguments or fall back to the initial args
-      const finalArgs = args.length > 0 ? args : options.args || [] as unknown as P;
+      // This ensures we always have a valid array of arguments even if none were provided
+      const finalArgs = args.length > 0 ? args : (options.args || [] as unknown as P);
       
       // Call the API function with the arguments
       let apiPromise = options.apiFn(...finalArgs);
@@ -98,7 +99,8 @@ export function useApi<T, P extends any[] = any[]>(
       
       const apiError: ApiError = {
         status: 500,
-        message: err instanceof Error ? err.message : 'Unknown error occurred'
+        message: err instanceof Error ? err.message : 'Unknown error occurred',
+        code: 'API_ERROR'
       };
       
       setError(apiError);

@@ -1,6 +1,6 @@
 import { client as discordClient } from "./discordClient.js";
 import logger from "../../utils/logger.js";
-import { ChannelType, EmbedBuilder, TextChannel } from "discord.js";
+import { EmbedBuilder, TextChannel } from "discord.js";
 import eventModelInstance from "../../models/event.model.js";
 import { Event } from "../../../../shared/types/event.js";
 import process from "node:process";

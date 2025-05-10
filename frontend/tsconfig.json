@@ -32,7 +32,7 @@
       "@/*": ["src/*"],
       "@shared/*": ["../shared/*"]
     },
-    "types": ["vite/client"] // Add Vite client types here
+    "types": ["vite/client", "node"] // Add Vite client and Node types here
   },
   "include": ["src", "../shared/types"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -125,10 +125,10 @@ export const CharacterForm: React.FC<CharacterFormProps> = ({
             />
           </div>
           
-          <FormStatus 
-            loading={loading || isSubmitting} 
-            error={error} 
-            success={null} 
+          <FormStatus
+            loading={loading || isSubmitting}
+            error={error}
+            success={false}
           />
           
           <div className="flex justify-end gap-2 pt-4">
