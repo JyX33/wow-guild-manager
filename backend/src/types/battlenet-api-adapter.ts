@@ -450,7 +450,7 @@ export function adaptReferenceEnhancedCharacter(
               rating: run.map_rating.rating
             } : undefined
           }))
-        },
+        :
         seasons: mythicKeystone.seasons?.map(season => ({
           key: season.key,
           id: season.id
