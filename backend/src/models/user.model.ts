@@ -1,19 +1,28 @@
-import { UserRole, UserWithTokens, DbUser } from '../../../shared/types/user.js';
-import BaseModel from '../db/BaseModel.js';
-import { AppError } from '../utils/error-handler.js';
-import db from '../db/db.js';
-import { Character } from '../../../shared/types/guild.js'; // Removed unused DbCharacter
+import {
+  DbUser,
+  UserRole,
+  UserWithTokens,
+} from "../../../shared/types/user.js";
+import BaseModel from "../db/BaseModel.js";
+import { AppError } from "../utils/error-handler.js";
+import db from "../db/db.js";
+import { Character } from "../../../shared/types/guild.js"; // Removed unused DbCharacter
 
 export class UserModel extends BaseModel<DbUser> {
   constructor() {
-    super('users');
+    super("users");
   }
 
   async findByBattleNetId(battleNetId: string): Promise<UserWithTokens | null> {
     try {
       return await this.findOne({ battle_net_id: battleNetId });
     } catch (error) {
-      throw new AppError(`Error finding user by Battle.net ID: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error finding user by Battle.net ID: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
@@ -26,7 +35,12 @@ export class UserModel extends BaseModel<DbUser> {
     try {
       return await this.create(userData);
     } catch (error) {
-      throw new AppError(`Error creating user: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error creating user: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
@@ -37,7 +51,12 @@ export class UserModel extends BaseModel<DbUser> {
     try {
       return await this.findById(id);
     } catch (error) {
-      throw new AppError(`Error getting user with tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error getting user with tokens: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
@@ -48,54 +67,78 @@ export class UserModel extends BaseModel<DbUser> {
     id: number,
     accessToken: string,
     refreshToken: string | null, // Allow null for refresh token
-    expiresAt: Date
+    expiresAt: Date,
   ): Promise<UserWithTokens | null> {
     try {
       // Prepare update payload, handling null refresh token
       const updateData: Partial<DbUser> = {
         access_token: accessToken,
         token_expires_at: expiresAt.toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
       // Only include refresh_token in the update if it's not null
       // If it is null, the database column should ideally allow NULLs
       // or be handled appropriately by the underlying update logic.
       // Convert null to undefined to match the expected type 'string | undefined'.
-      updateData.refresh_token = refreshToken === null ? undefined : refreshToken;
+      updateData.refresh_token = refreshToken === null
+        ? undefined
+        : refreshToken;
 
       return await this.update(id, updateData);
     } catch (error) {
-      throw new AppError(`Error updating user tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error updating user tokens: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
   /**
    * Validate tokens and check if token is expired
    */
-  async validateUserToken(id: number): Promise<{ valid: boolean; expired: boolean }> {
+  async validateUserToken(
+    id: number,
+  ): Promise<{ valid: boolean; expired: boolean }> {
     try {
       const user = await this.getUserWithTokens(id);
-      
+
       if (!user || !user.access_token) {
         return { valid: false, expired: false };
       }
-      
-      const expired = user.token_expires_at ? new Date(user.token_expires_at) < new Date() : true;
-      
+
+      const expired = user.token_expires_at
+        ? new Date(user.token_expires_at) < new Date()
+        : true;
+
       return {
         valid: !!user.access_token,
-        expired
+        expired,
       };
     } catch (error) {
-      throw new AppError(`Error validating user token: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error validating user token: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
   async updateRole(id: number, role: UserRole): Promise<UserWithTokens | null> {
     try {
-      return await this.update(id, { role, updated_at: new Date().toISOString() });
+      return await this.update(id, {
+        role,
+        updated_at: new Date().toISOString(),
+      });
     } catch (error) {
-      throw new AppError(`Error updating user role: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error updating user role: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
@@ -106,18 +149,23 @@ export class UserModel extends BaseModel<DbUser> {
     id: number,
     accessToken: string,
     refreshToken: string, // Refresh token is expected here
-    expiresAt: Date
+    expiresAt: Date,
   ): Promise<UserWithTokens | null> {
     try {
       const updateData: Partial<DbUser> = {
         access_token: accessToken,
         refresh_token: refreshToken, // Always update refresh token
         token_expires_at: expiresAt.toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
       return await this.update(id, updateData);
     } catch (error) {
-      throw new AppError(`Error updating tokens during refresh: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error updating tokens during refresh: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
@@ -128,50 +176,71 @@ export class UserModel extends BaseModel<DbUser> {
     try {
       const updateData: Partial<DbUser> = {
         tokens_valid_since: new Date().toISOString(), // Set to current time
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
       // Use knex instance directly for db functions like now()
       // updateData.tokens_valid_since = db.fn.now(); // Alternative if direct DB function needed
       return await this.update(id, updateData);
     } catch (error) {
-      throw new AppError(`Error invalidating user tokens: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error invalidating user tokens: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
-
 
   async getUsersWithRole(role: UserRole): Promise<UserWithTokens[]> {
     try {
       return await this.findAll({ role });
     } catch (error) {
-      throw new AppError(`Error getting users with role: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error getting users with role: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
-
 
   async getUserCharacters(userId: number): Promise<Character[]> {
     try {
       const result = await db.query(
-        'SELECT * FROM characters WHERE user_id = $1',
-        [userId]
+        "SELECT * FROM characters WHERE user_id = $1",
+        [userId],
       );
       return result.rows;
     } catch (error) {
-      throw new AppError(`Error getting user characters: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error getting user characters: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
-  async findByCharacterName(characterName: string, realm: string): Promise<UserWithTokens | null> {
+  async findByCharacterName(
+    characterName: string,
+    realm: string,
+  ): Promise<UserWithTokens | null> {
     try {
       const result = await db.query(
         `SELECT u.* FROM users u
          JOIN characters c ON c.user_id = u.id
          WHERE LOWER(c.name) = LOWER($1) AND LOWER(c.realm) = LOWER($2)
          LIMIT 1`,
-        [characterName, realm]
+        [characterName, realm],
       );
       return result.rows.length > 0 ? result.rows[0] : null;
     } catch (error) {
-      throw new AppError(`Error finding user by character: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error finding user by character: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
 
@@ -181,11 +250,16 @@ export class UserModel extends BaseModel<DbUser> {
         `SELECT DISTINCT u.* FROM users u
          JOIN characters c ON c.user_id = u.id
          WHERE c.guild_id = $1`,
-        [guildId]
+        [guildId],
       );
       return result.rows;
     } catch (error) {
-      throw new AppError(`Error finding guild members: ${error instanceof Error ? error.message : String(error)}`, 500);
+      throw new AppError(
+        `Error finding guild members: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
   /**
@@ -199,16 +273,27 @@ export class UserModel extends BaseModel<DbUser> {
       // If this update fails due to column not found, schema/migrations need verification.
       // Wrap the timestamp in an array to match the expected DB column type
       // Explicitly format as PostgreSQL array literal '{timestamp}'
-      await this.update(userId, { last_character_sync_at: `{${new Date().toISOString()}}` } as Partial<DbUser>);
+      await this.update(
+        userId,
+        { last_character_sync_at: `{${new Date().toISOString()}}` } as Partial<
+          DbUser
+        >,
+      );
 
       // Optional: Add logging for successful update or no-op if user not found
-
     } catch (error) {
-      console.error(`Error updating character sync timestamp for user ${userId}:`, error);
-      throw new AppError(`Failed to update character sync timestamp for user ${userId}: ${error instanceof Error ? error.message : String(error)}`, 500);
+      console.error(
+        `Error updating character sync timestamp for user ${userId}:`,
+        error,
+      );
+      throw new AppError(
+        `Failed to update character sync timestamp for user ${userId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
+      );
     }
   }
-
 }
 
 const userModel = new UserModel();
@@ -226,9 +311,15 @@ export const validateUserToken = userModel.validateUserToken.bind(userModel);
 export const updateRole = userModel.updateRole.bind(userModel);
 export const getUsersWithRole = userModel.getUsersWithRole.bind(userModel);
 export const getUserCharacters = userModel.getUserCharacters.bind(userModel);
-export const findByCharacterName = userModel.findByCharacterName.bind(userModel);
+export const findByCharacterName = userModel.findByCharacterName.bind(
+  userModel,
+);
 export const findGuildMembers = userModel.findGuildMembers.bind(userModel);
-export const updateTokensForRefresh = userModel.updateTokensForRefresh.bind(userModel);
-export const invalidateUserTokens = userModel.invalidateUserTokens.bind(userModel);
+export const updateTokensForRefresh = userModel.updateTokensForRefresh.bind(
+  userModel,
+);
+export const invalidateUserTokens = userModel.invalidateUserTokens.bind(
+  userModel,
+);
 
 export default userModel;

@@ -21,7 +21,13 @@
     "include": ["**/*.ts"],
 
     // Exclude your tests folder
-    "exclude": ["tests/**", "database/**", "migrations/**", "dist/**", "node_modules/**"],
+    "exclude": [
+      "tests/**",
+      "database/**",
+      "migrations/**",
+      "dist/**",
+      "node_modules/**"
+    ],
 
     "rules": {
       // Enable Deno's recommended linter rules
@@ -30,7 +36,12 @@
   },
   // skip everything under tests/ for check, lint, fmt, test, etc.
   "exclude": [
-    "tests/", "database/**", "migrations/**", "dist/**", "node_modules/**", "**/*.js", "**/*.mjs" 
+    "tests/",
+    "database/**",
+    "migrations/**",
+    "dist/**",
+    "node_modules/**",
+    "**/*.js",
+    "**/*.mjs"
   ]
-
 }

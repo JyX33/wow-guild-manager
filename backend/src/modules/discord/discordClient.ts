@@ -1,26 +1,26 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits } from "discord.js";
 import process from "node:process";
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.DirectMessages,
-    ],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
+  ],
 });
 
 export async function initializeDiscordClient(): Promise<void> {
-    const token = process.env.DISCORD_BOT_TOKEN;
+  const token = process.env.DISCORD_BOT_TOKEN;
 
-    if (!token) {
-        throw new Error('Missing DISCORD_BOT_TOKEN environment variable');
-    }
+  if (!token) {
+    throw new Error("Missing DISCORD_BOT_TOKEN environment variable");
+  }
 
-    client.once('ready', () => {
-        console.log(`Logged in as ${client.user?.tag}!`);
-    });
+  client.once("ready", () => {
+    console.log(`Logged in as ${client.user?.tag}!`);
+  });
 
-    await client.login(token);
+  await client.login(token);
 }
 
 export { client };

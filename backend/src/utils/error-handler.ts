@@ -1,6 +1,10 @@
-import { NextFunction, Request, Response } from 'express';
-import logger from './logger.js'; // Import the logger
-import { ErrorCode, ErrorDetail, RequestContext } from '../../../shared/types/error.js';
+import { NextFunction, Request, Response } from "express";
+import logger from "./logger.js"; // Import the logger
+import {
+  ErrorCode,
+  ErrorDetail,
+  RequestContext,
+} from "../../../shared/types/error.js";
 
 export class AppError extends Error {
   status: number;
@@ -15,7 +19,7 @@ export class AppError extends Error {
       details?: ErrorDetail;
       code?: ErrorCode;
       request?: Request;
-    }
+    },
   ) {
     super(message);
     this.status = status;
@@ -30,7 +34,7 @@ export class AppError extends Error {
         params: options.request.params as Record<string, unknown>,
         query: options.request.query as Record<string, unknown>,
         ip: options.request.ip,
-        userId: options.request.session?.userId
+        userId: options.request.session?.userId,
       };
     }
 
@@ -42,12 +46,12 @@ export const errorHandlerMiddleware = (
   err: Error | AppError,
   req: Request,
   res: Response,
-  _next: NextFunction // Prefixed unused parameter
+  _next: NextFunction, // Prefixed unused parameter
 ) => {
-  const status = 'status' in err ? err.status : 500;
-  const message = err.message || 'Something went wrong';
-  const details = 'details' in err ? err.details : undefined;
-  const code = 'code' in err ? err.code : ErrorCode.INTERNAL_ERROR;
+  const status = "status" in err ? err.status : 500;
+  const message = err.message || "Something went wrong";
+  const details = "details" in err ? err.details : undefined;
+  const code = "code" in err ? err.code : ErrorCode.INTERNAL_ERROR;
 
   // Enhanced error logging
   // Avoid logging expected errors like 401 Unauthorized unless needed for debugging
@@ -60,15 +64,15 @@ export const errorHandlerMiddleware = (
         status,
         stack: err.stack, // Include stack trace
         details,
-        request: 'requestContext' in err ? err.requestContext : { // Use context from AppError if available
+        request: "requestContext" in err ? err.requestContext : { // Use context from AppError if available
           method: req.method,
           path: req.path,
           params: req.params as Record<string, unknown>,
           query: req.query as Record<string, unknown>,
           ip: req.ip, // Add IP address
-          userId: req.session?.userId // Add user ID if available
-        }
-      }
+          userId: req.session?.userId, // Add user ID if available
+        },
+      },
     };
     // Use logger.error, passing the structured payload as the first argument
     logger.error(logPayload, `Error handled by middleware: ${message}`);
@@ -80,27 +84,34 @@ export const errorHandlerMiddleware = (
       message,
       code,
       details, // Only include details in response if safe/necessary
-      status
-    }
+      status,
+    },
   });
 };
 
-export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>) => {
+export const asyncHandler = (
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<unknown>,
+) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch((err: unknown) => {
       // Log the original error before wrapping it, if it's not an AppError
       if (!(err instanceof AppError)) {
-        logger.warn({ err, path: req.path, method: req.method }, 'Caught non-AppError in asyncHandler, wrapping...');
-        const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+        logger.warn(
+          { err, path: req.path, method: req.method },
+          "Caught non-AppError in asyncHandler, wrapping...",
+        );
+        const errorMessage = err instanceof Error
+          ? err.message
+          : "An unexpected error occurred";
         const errorDetails = {
-          type: 'unexpected',
-          stack: err instanceof Error ? err.stack : undefined
+          type: "unexpected",
+          stack: err instanceof Error ? err.stack : undefined,
         };
 
         err = new AppError(errorMessage, 500, {
           request: req,
           details: errorDetails,
-          code: ErrorCode.INTERNAL_ERROR
+          code: ErrorCode.INTERNAL_ERROR,
         });
       }
       next(err);
@@ -109,17 +120,21 @@ export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunctio
   };
 };
 
-export const notFoundHandler = (req: Request, _res: Response, next: NextFunction) => { // Prefixed unused parameter
+export const notFoundHandler = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => { // Prefixed unused parameter
   const details = {
-    type: 'resource' as const,
-    resourceType: 'endpoint',
-    resourceId: req.originalUrl
+    type: "resource" as const,
+    resourceType: "endpoint",
+    resourceId: req.originalUrl,
   };
 
   const error = new AppError(`Resource not found - ${req.originalUrl}`, 404, {
     request: req,
     code: ErrorCode.NOT_FOUND,
-    details
+    details,
   });
   // Optionally log 404s if needed for analytics/debugging, but often they are just noise
   // logger.warn({ path: req.originalUrl, method: req.method, ip: req.ip }, 'Resource not found');

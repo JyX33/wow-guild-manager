@@ -1,4 +1,7 @@
-import { BattleNetGuildMember, DbCharacter } from '../../../../shared/types/guild.js';
+import {
+  BattleNetGuildMember,
+  DbCharacter,
+} from "../../../../shared/types/guild.js";
 
 export type GuildMemberComparisonRow = {
   id: number;
@@ -11,18 +14,34 @@ export type GuildMemberComparisonRow = {
 
 export function compareGuildMembers(
   rosterMembersMap: Map<string, BattleNetGuildMember>,
-  existingMembersMap: Map<string, { id: number; character_id: number | null; rank: number }>,
+  existingMembersMap: Map<
+    string,
+    { id: number; character_id: number | null; rank: number }
+  >,
   existingCharacterMap: Map<string, number>,
   region: string,
-  guildId: number
+  guildId: number,
 ): {
   membersToAdd: { rosterMember: BattleNetGuildMember; characterId: number }[];
-  membersToUpdate: { memberId: number; rank?: number; characterId?: number; bnetMemberData?: BattleNetGuildMember }[];
+  membersToUpdate: {
+    memberId: number;
+    rank?: number;
+    characterId?: number;
+    bnetMemberData?: BattleNetGuildMember;
+  }[];
   memberIdsToDeactivate: number[];
   charactersToCreate: Partial<DbCharacter>[];
 } {
-  const membersToAdd: { rosterMember: BattleNetGuildMember; characterId: number }[] = [];
-  const membersToUpdate: { memberId: number; rank?: number; characterId?: number; bnetMemberData?: BattleNetGuildMember }[] = [];
+  const membersToAdd: {
+    rosterMember: BattleNetGuildMember;
+    characterId: number;
+  }[] = [];
+  const membersToUpdate: {
+    memberId: number;
+    rank?: number;
+    characterId?: number;
+    bnetMemberData?: BattleNetGuildMember;
+  }[] = [];
   const memberIdsToDeactivate: number[] = [];
   const charactersToCreate: Partial<DbCharacter>[] = [];
   const processedExistingMemberKeys = new Set(existingMembersMap.keys());
@@ -33,7 +52,11 @@ export function compareGuildMembers(
 
     if (existingMember) {
       processedExistingMemberKeys.delete(key);
-      const memberUpdatePayload: { rank?: number; characterId?: number; bnetMemberData?: BattleNetGuildMember } = {};
+      const memberUpdatePayload: {
+        rank?: number;
+        characterId?: number;
+        bnetMemberData?: BattleNetGuildMember;
+      } = {};
       let needsUpdate = false;
 
       if (existingMember.rank !== rosterMember.rank) {
@@ -45,10 +68,13 @@ export function compareGuildMembers(
         memberUpdatePayload.characterId = existingCharacterId;
         needsUpdate = true;
       }
-if (needsUpdate) {
-  memberUpdatePayload.bnetMemberData = rosterMember; // Include latest BNet data in the update
-  membersToUpdate.push({ memberId: existingMember.id, ...memberUpdatePayload });
-}
+      if (needsUpdate) {
+        memberUpdatePayload.bnetMemberData = rosterMember; // Include latest BNet data in the update
+        membersToUpdate.push({
+          memberId: existingMember.id,
+          ...memberUpdatePayload,
+        });
+      }
     } else {
       if (existingCharacterId) {
         membersToAdd.push({ rosterMember, characterId: existingCharacterId });
@@ -56,9 +82,9 @@ if (needsUpdate) {
         charactersToCreate.push({
           name: rosterMember.character.name,
           realm: rosterMember.character.realm.slug,
-          class: rosterMember.character.playable_class?.name || 'Unknown',
+          class: rosterMember.character.playable_class?.name || "Unknown",
           level: rosterMember.character.level,
-          role: 'DPS',
+          role: "DPS",
           region: region,
         });
       }
@@ -72,5 +98,10 @@ if (needsUpdate) {
     }
   }
 
-  return { membersToAdd, membersToUpdate, memberIdsToDeactivate: memberIdsToDeactivate, charactersToCreate };
+  return {
+    membersToAdd,
+    membersToUpdate,
+    memberIdsToDeactivate: memberIdsToDeactivate,
+    charactersToCreate,
+  };
 }

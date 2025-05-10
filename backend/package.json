@@ -12,7 +12,8 @@
     "test": "bunx jest",
     "migrate": "node database/migrate.js",
     "backfill:chars": "ts-node -P tsconfig.json src/scripts/backfill-character-data.ts",
-    "type-check": "tsc --noEmit -p tsconfig.json"
+    "type-check": "tsc --noEmit -p tsconfig.json",
+    "find-unused-exports": "node scripts/find-unused-exports.js"
   },
   "dependencies": {
     "@types/connect-pg-simple": "^7.0.3",
@@ -51,6 +52,7 @@
     "knex": "^3.1.0",
     "knex-cli": "^1.0.2",
     "ts-jest": "^29.3.0",
+    "ts-prune": "^0.10.3",
     "typescript": "^5.8.2"
   }
 }

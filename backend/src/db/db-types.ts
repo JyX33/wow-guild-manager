@@ -1,5 +1,5 @@
-import { PoolClient, QueryResult, QueryConfig } from 'pg';
-import { DbQueryParam } from '../../../shared/types/db.js';
+import { PoolClient, QueryConfig, QueryResult } from "pg";
+import { DbQueryParam } from "../../../shared/types/db.js";
 
 /**
  * Interface for a database client with query tracking
@@ -12,10 +12,10 @@ export interface TrackedClient extends PoolClient {
 /**
  * QueryFn type definition for various query function signatures
  */
-export type QueryFn = 
-  ((text: string) => Promise<QueryResult>) & 
-  ((text: string, values: DbQueryParam[]) => Promise<QueryResult>) &
-  ((config: QueryConfig) => Promise<QueryResult>);
+export type QueryFn =
+  & ((text: string) => Promise<QueryResult>)
+  & ((text: string, values: DbQueryParam[]) => Promise<QueryResult>)
+  & ((config: QueryConfig) => Promise<QueryResult>);
 
 /**
  * Database client interface with typed query methods

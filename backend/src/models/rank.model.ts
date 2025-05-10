@@ -1,10 +1,10 @@
-import BaseModel from '../db/BaseModel.js';
-import { AppError } from '../utils/error-handler.js';
-import { DbGuildRank, GuildRank } from '../../../shared/types/guild.js';
+import BaseModel from "../db/BaseModel.js";
+import { AppError } from "../utils/error-handler.js";
+import { DbGuildRank, GuildRank } from "../../../shared/types/guild.js";
 
 export class RankModel extends BaseModel<DbGuildRank> {
   constructor() {
-    super('guild_ranks');
+    super("guild_ranks");
   }
 
   async getGuildRanks(guildId: number): Promise<GuildRank[]> {
@@ -12,26 +12,35 @@ export class RankModel extends BaseModel<DbGuildRank> {
       return this.findAll({ guild_id: guildId });
     } catch (error) {
       throw new AppError(
-        `Error getting guild ranks: ${error instanceof Error ? error.message : String(error)}`,
-        500
+        `Error getting guild ranks: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
       );
     }
   }
 
-  async setGuildRank(guildId: number, rankId: number, rankName: string): Promise<GuildRank> {
+  async setGuildRank(
+    guildId: number,
+    rankId: number,
+    rankName: string,
+  ): Promise<GuildRank> {
     try {
       // Check if rank exists
-      const existingRank = await this.findOne({ guild_id: guildId, rank_id: rankId });
-      
+      const existingRank = await this.findOne({
+        guild_id: guildId,
+        rank_id: rankId,
+      });
+
       if (existingRank !== null) {
         // Update existing rank
         const updatedRank = await this.update(existingRank.id!, { // Assert id is non-null
           rank_name: rankName,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
         if (updatedRank === null) {
           // This shouldn't happen if findOne succeeded, but handle defensively
-          throw new AppError('Failed to update rank after finding it', 500);
+          throw new AppError("Failed to update rank after finding it", 500);
         }
         return updatedRank; // Return the non-null updated rank
       }
@@ -41,34 +50,42 @@ export class RankModel extends BaseModel<DbGuildRank> {
         guild_id: guildId,
         rank_id: rankId,
         rank_name: rankName,
-        member_count: 0
+        member_count: 0,
       });
     } catch (error) {
       throw new AppError(
-        `Error setting guild rank: ${error instanceof Error ? error.message : String(error)}`,
-        500
+        `Error setting guild rank: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
       );
     }
   }
-  
-  async updateMemberCount(guildId: number, rankId: number, count: number): Promise<GuildRank | null> {
+
+  async updateMemberCount(
+    guildId: number,
+    rankId: number,
+    count: number,
+  ): Promise<GuildRank | null> {
     try {
       // Find the rank
       const rank = await this.findOne({ guild_id: guildId, rank_id: rankId });
-      
+
       if (!rank) {
         return null;
       }
-      
+
       // Update the member count
       return await this.update(rank.id!, { // Assert id is non-null
         member_count: count,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       });
     } catch (error) {
       throw new AppError(
-        `Error updating rank member count: ${error instanceof Error ? error.message : String(error)}`,
-        500
+        `Error updating rank member count: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        500,
       );
     }
   }

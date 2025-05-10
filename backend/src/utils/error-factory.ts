@@ -1,13 +1,13 @@
-import { Request } from 'express';
-import { AppError } from './error-handler.js';
+import { Request } from "express";
+import { AppError } from "./error-handler.js";
 import {
-  ErrorCode,
-  ERROR_STATUS_MAPPING,
-  ValidationErrorDetail,
   DatabaseErrorDetail,
+  ERROR_STATUS_MAPPING,
+  ErrorCode,
   ExternalApiErrorDetail,
-  ResourceErrorDetail
-} from '../../../shared/types/error.js';
+  ResourceErrorDetail,
+  ValidationErrorDetail,
+} from "../../../shared/types/error.js";
 
 /**
  * Creates a validation error with typed details
@@ -16,18 +16,18 @@ export function createValidationError(
   message: string,
   fields: Record<string, string>,
   invalidValue?: unknown,
-  request?: Request
+  request?: Request,
 ): AppError {
   const details: ValidationErrorDetail = {
-    type: 'validation',
+    type: "validation",
     fields,
-    invalidValue
+    invalidValue,
   };
-  
+
   return new AppError(message, 400, {
     details,
     code: ErrorCode.VALIDATION_ERROR,
-    request
+    request,
   });
 }
 
@@ -42,20 +42,20 @@ export function createDatabaseError(
     table?: string;
     column?: string;
     request?: Request;
-  }
+  },
 ): AppError {
   const details: DatabaseErrorDetail = {
-    type: 'database',
+    type: "database",
     code: options?.code,
     constraint: options?.constraint,
     table: options?.table,
-    column: options?.column
+    column: options?.column,
   };
-  
+
   return new AppError(message, 500, {
     details,
     code: ErrorCode.DATABASE_ERROR,
-    request: options?.request
+    request: options?.request,
   });
 }
 
@@ -72,22 +72,22 @@ export function createExternalApiError(
     requestId?: string;
     endpoint?: string;
     request?: Request;
-  }
+  },
 ): AppError {
   const details: ExternalApiErrorDetail = {
-    type: 'external_api',
+    type: "external_api",
     provider,
     statusCode: options?.statusCode,
     errorCode: options?.errorCode,
     originalMessage: options?.originalMessage,
     requestId: options?.requestId,
-    endpoint: options?.endpoint
+    endpoint: options?.endpoint,
   };
-  
+
   return new AppError(message, 502, {
     details,
     code: ErrorCode.EXTERNAL_API_ERROR,
-    request: options?.request
+    request: options?.request,
   });
 }
 
@@ -100,23 +100,23 @@ export function createResourceError(
   errorCode: ErrorCode,
   options?: {
     resourceId?: string | number;
-    operation?: 'create' | 'read' | 'update' | 'delete';
+    operation?: "create" | "read" | "update" | "delete";
     request?: Request;
-  }
+  },
 ): AppError {
   const details: ResourceErrorDetail = {
-    type: 'resource',
+    type: "resource",
     resourceType,
     resourceId: options?.resourceId,
-    operation: options?.operation
+    operation: options?.operation,
   };
-  
+
   const status = ERROR_STATUS_MAPPING[errorCode] || 500;
-  
+
   return new AppError(message, status, {
     details,
     code: errorCode,
-    request: options?.request
+    request: options?.request,
   });
 }
 
@@ -126,13 +126,13 @@ export function createResourceError(
 export function createNotFoundError(
   resourceType: string,
   resourceId?: string | number,
-  request?: Request
+  request?: Request,
 ): AppError {
   return createResourceError(
-    `${resourceType}${resourceId ? ` with ID ${resourceId}` : ''} not found`,
+    `${resourceType}${resourceId ? ` with ID ${resourceId}` : ""} not found`,
     resourceType,
     ErrorCode.NOT_FOUND,
-    { resourceId, operation: 'read', request }
+    { resourceId, operation: "read", request },
   );
 }
 
@@ -140,12 +140,12 @@ export function createNotFoundError(
  * Creates an unauthorized error
  */
 export function createUnauthorizedError(
-  message = 'Unauthorized access',
-  request?: Request
+  message = "Unauthorized access",
+  request?: Request,
 ): AppError {
   return new AppError(message, 401, {
     code: ErrorCode.UNAUTHORIZED,
-    request
+    request,
   });
 }
 
@@ -153,12 +153,12 @@ export function createUnauthorizedError(
  * Creates a forbidden error
  */
 export function createForbiddenError(
-  message = 'Forbidden access',
-  request?: Request
+  message = "Forbidden access",
+  request?: Request,
 ): AppError {
   return new AppError(message, 403, {
     code: ErrorCode.FORBIDDEN,
-    request
+    request,
   });
 }
 
@@ -166,14 +166,14 @@ export function createForbiddenError(
  * Creates a rate limit error
  */
 export function createRateLimitError(
-  message = 'Rate limit exceeded',
+  message = "Rate limit exceeded",
   details?: Record<string, unknown>,
-  request?: Request
+  request?: Request,
 ): AppError {
   return new AppError(message, 429, {
-    details: { type: 'resource', ...details },
+    details: { type: "resource", ...details },
     code: ErrorCode.RATE_LIMITED,
-    request
+    request,
   });
 }
 
@@ -184,13 +184,13 @@ export function createAppError(
   message: string,
   errorCode: ErrorCode,
   details?: Record<string, unknown>,
-  request?: Request
+  request?: Request,
 ): AppError {
   const status = ERROR_STATUS_MAPPING[errorCode] || 500;
-  
+
   return new AppError(message, status, {
     details,
     code: errorCode,
-    request
+    request,
   });
 }
