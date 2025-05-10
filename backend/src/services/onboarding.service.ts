@@ -3,15 +3,13 @@ import logger from "../utils/logger.js";
 import characterModel from "../models/character.model.js";
 import guildModel from "../models/guild.model.js";
 import userModel from "../models/user.model.js";
-import { BattleNetApiClient } from "./battlenet-api.client.js"; // Type only
-import { BattleNetApiClientEnhanced } from "./battlenet-api-client-enhanced.js"; // Type only
+import { BattleNetApiClient } from "./battlenet-api.client.js";
 import { BattleNetRegion } from "../../../shared/types/user.js";
 import {
   BattleNetCharacter,
   BattleNetGuildRoster,
   DbCharacter,
   DbGuild,
-  EnhancedCharacterData as SharedEnhancedCharacterData,
 } from "../../../shared/types/guild.js"; // Import necessary types & DbGuild
 import { EnhancedCharacterData, toSharedEnhancedCharacterData } from "../types/enhanced-character.js";
 import { createSlug } from "../utils/slugify.js"; // Import the slugify function
@@ -25,10 +23,10 @@ type CharacterGuildInfo = {
 };
 
 export class OnboardingService {
-  private battleNetApiClient: BattleNetApiClient | BattleNetApiClientEnhanced;
+  private battleNetApiClient: BattleNetApiClient;
 
-  // Inject dependencies - accepts either client type
-  constructor(apiClient: BattleNetApiClient | BattleNetApiClientEnhanced) {
+  // Inject dependencies - accepts client type
+  constructor(apiClient: BattleNetApiClient) {
     this.battleNetApiClient = apiClient;
   }
 

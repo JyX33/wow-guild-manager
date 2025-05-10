@@ -1,19 +1,17 @@
 import {
   DbCharacter,
   DbGuild,
-  EnhancedCharacterData as SharedEnhancedCharacterData,
 } from "../../../../shared/types/guild.js";
 import { BattleNetRegion } from "../../../../shared/types/user.js";
+import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
 import { GuildModel } from "../../models/guild.model.js";
 import logger from "../../utils/logger.js";
 import { calculateCharacterToyHash } from "./character-toy-hash.js";
 import { EnhancedCharacterData, toSharedEnhancedCharacterData } from "../../types/enhanced-character.js";
 
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
-import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
 
 export async function prepareCharacterUpdatePayload(
-  apiClient: BattleNetApiClient | BattleNetApiClientEnhanced,
+  apiClient: BattleNetApiClient,
   guildModel: GuildModel,
   character: DbCharacter,
   enhancedData: EnhancedCharacterData,

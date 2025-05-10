@@ -57,21 +57,42 @@ export function createShadowTestClient(): BattleNetApiClient {
       return async function(...args: any[]) {
         try {
           // Start the enhanced client call but don't wait for it
-          const enhancedPromise = enhancedClient[prop as keyof BattleNetApiClientEnhanced]?.(...args)
-            .catch(enhancedError => {
+          let enhancedPromise = Promise.resolve(null);
+          const enhancedMethod = enhancedClient[prop as keyof BattleNetApiClientEnhanced];
+
+          if (typeof enhancedMethod === 'function') {
+            try {
+              // Function to log enhanced client errors but continue
+              const handleEnhancedResult = async () => {
+                try {
+                  // Cast to any to avoid TypeScript errors with method signatures
+                  return await (enhancedMethod as any).apply(enhancedClient, args);
+                } catch (enhancedError) {
+                  logger.warn({
+                    method: String(prop),
+                    error: enhancedError,
+                    args: JSON.stringify(args)
+                  }, '[BattleNetApiClientFactory] Enhanced client error in shadow mode');
+                  return null; // Suppress errors in shadow mode
+                }
+              };
+              
+              // Run the enhanced method but don't wait for it
+              enhancedPromise = handleEnhancedResult();
+            } catch (error) {
               logger.warn({
                 method: String(prop),
-                error: enhancedError,
+                error,
                 args: JSON.stringify(args)
-              }, '[BattleNetApiClientFactory] Enhanced client error in shadow mode');
-              return null; // Suppress errors in shadow mode
-            });
+              }, '[BattleNetApiClientFactory] Enhanced client threw error in shadow mode');
+            }
+          }
           
           // Continue with the original call
           const originalResult = await originalMethod.apply(target, args);
           
           // Log the comparison asynchronously
-          Promise.resolve(enhancedPromise).then(enhancedResult => {
+          enhancedPromise.then(enhancedResult => {
             // Only log if both succeeded
             if (enhancedResult) {
               try {
@@ -97,6 +118,11 @@ export function createShadowTestClient(): BattleNetApiClient {
                 }, '[BattleNetApiClientFactory] Error comparing results in shadow mode');
               }
             }
+          }).catch(error => {
+            logger.error({
+              error,
+              method: String(prop)
+            }, '[BattleNetApiClientFactory] Unhandled error in shadow mode promise');
           });
           
           // Always return the original result

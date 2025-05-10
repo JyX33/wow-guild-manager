@@ -22,7 +22,6 @@ import * as RefTypes from '../types/battlenet-api-reference.js';
 
 // Import validators
 import {
-  ValidationResult,
   validators
 } from '../types/battlenet-api-validator.js';
 
@@ -673,10 +672,51 @@ export class BattleNetApiClientEnhanced {
           active_spec: { key: profile.active_spec.key, id: profile.active_spec.id, name: typeof profile.active_spec.name === 'string' ? profile.active_spec.name : 'Unknown' },
           realm: { key: profile.realm.key, id: profile.realm.id, slug: profile.realm.slug, name: typeof profile.realm.name === 'string' ? profile.realm.name : profile.realm.slug },
           level: profile.level,
-          equipment: equipment,
+          equipment: {
+            _links: equipment._links,
+            character: {
+              id: equipment.character.id,
+              name: equipment.character.name,
+              realm: {
+                id: equipment.character.realm.id,
+                slug: equipment.character.realm.slug,
+                name: typeof equipment.character.realm.name === 'string' ? equipment.character.realm.name : ''
+              }
+            },
+            equipped_items: equipment.equipped_items.map(item => ({
+              slot: {
+                type: item.slot.type,
+                name: typeof item.slot.name === 'string' ? item.slot.name : ''
+              },
+              item: {
+                id: item.item.id,
+                name: typeof item.name === 'string' ? item.name : ''
+              },
+              quality: {
+                type: item.quality.type,
+                name: typeof item.quality.name === 'string' ? item.quality.name : ''
+              },
+              level: {
+                value: item.level?.value || 0
+              }
+            }))
+          },
           itemLevel: profile.equipped_item_level || 0,
           mythicKeystone: null,
-          professions: { _links: { self: { href: '' } }, character: { key: { href: '' }, name: profile.name, id: profile.id, realm: profile.realm }, primaries: [], secondaries: [] },
+          professions: {
+            _links: { self: { href: '' } },
+            character: {
+              id: profile.id,
+              name: profile.name,
+              realm: {
+                id: profile.realm.id,
+                slug: profile.realm.slug,
+                name: typeof profile.realm.name === 'string' ? profile.realm.name : profile.realm.slug
+              }
+            },
+            primaries: [],
+            secondaries: []
+          },
           experience: profile.experience || 0,
           achievement_points: profile.achievement_points || 0,
           equipped_item_level: profile.equipped_item_level || 0,

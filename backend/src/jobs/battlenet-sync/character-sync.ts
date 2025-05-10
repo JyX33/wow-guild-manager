@@ -2,12 +2,10 @@ import { DbCharacter, DbGuildMember } from "../../../../shared/types/guild.js";
 import { BattleNetRegion } from "../../../../shared/types/user.js";
 import { CharacterModel } from "../../models/character.model.js";
 import { GuildMemberModel } from "../../models/guild_member.model.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
-import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
+import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
 import logger from "../../utils/logger.js";
 import { createSlug } from "../../utils/slugify.js";
 import { prepareCharacterUpdatePayload } from "./character-payload.js";
-import { toSharedEnhancedCharacterData } from "../../types/enhanced-character.js";
 
 export async function syncCharacter(
   apiClient: BattleNetApiClient,

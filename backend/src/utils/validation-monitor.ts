@@ -8,7 +8,7 @@
  */
 
 import logger from './logger.js';
-import { ValidationResult, FieldValidationResult } from '../types/battlenet-api-validator.js';
+import { ValidationResult } from '../types/battlenet-api-validator.js';
 
 /**
  * Interface for validation failure statistics

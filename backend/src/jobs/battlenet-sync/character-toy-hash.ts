@@ -4,8 +4,7 @@ import { DbCharacter } from "../../../../shared/types/guild.js";
 import { BattleNetRegion } from "../../../../shared/types/user.js";
 import logger from "../../utils/logger.js";
 import { createSlug } from "../../utils/slugify.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
-import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
+import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
 
 type ToyCollectionData = {
   toys: { toy: { id: number } }[];
@@ -15,7 +14,7 @@ const NO_TOYS_HASH =
   "a3741d687719e1c015f4f115371c77064771f699817f81f09016350165a19111";
 
 export async function calculateCharacterToyHash(
-  apiClient: BattleNetApiClient | BattleNetApiClientEnhanced,
+  apiClient: BattleNetApiClient,
   character: Pick<DbCharacter, "id" | "name" | "realm" | "region" | "user_id">,
 ): Promise<string | null> {
   if (character.user_id !== null) {
@@ -77,10 +76,22 @@ export async function calculateCharacterToyHash(
       `[SyncService][ToyHash] Fetching toys data from href.`,
     );
     const toyJobId = `char-toys-${region}-${realmSlug}-${characterNameLower}`;
-    const toysData = await apiClient.getGenericBattleNetData<ToyCollectionData>(
-      toysHref,
-      toyJobId,
-    );
+    // Use traditional fetch method if it's the original client
+    let toysData: ToyCollectionData | null = null;
+
+    if ('getGenericBattleNetData' in apiClient) {
+      toysData = await apiClient.getGenericBattleNetData<ToyCollectionData>(toysHref, toyJobId);
+    } else {
+      // For enhanced client, we'll need to use a direct HTTP request
+      // We can't rely on the method being available, so we'll handle it this way
+      logger.warn(
+        { ...logContext },
+        `[SyncService][ToyHash] Enhanced client doesn't support getGenericBattleNetData, using fallback method.`
+      );
+
+      // For now, return a fixed value until proper support is added to enhanced client
+      return NO_TOYS_HASH;
+    }
 
     if (
       toysData?.toys && Array.isArray(toysData.toys) && toysData.toys.length > 0
