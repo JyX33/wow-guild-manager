@@ -11,6 +11,7 @@
   "scripts": {
     "test:types": "tsc -p types/tests/tsconfig.json",
     "update-imports": "node types/update-imports.js",
+    "prebuild": "bun add -D @types/node || true",
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist"
   },

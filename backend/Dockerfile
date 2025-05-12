@@ -8,12 +8,15 @@ WORKDIR /app
 
 # Copy package.json files and lockfiles first for better caching
 COPY backend/package.json backend/bun.lockb* ./backend/
-# If shared has its own package.json and needs installing:
-# COPY shared/package.json shared/bun.lockb* ./shared/
-# RUN cd shared && bun install --frozen-lockfile
+COPY shared/package.json shared/bun.lockb* ./shared/
 
 # Copy the shared directory content
 COPY shared/ ./shared/
+
+# Install dependencies for shared
+WORKDIR /app/shared
+RUN bun install --frozen-lockfile
+RUN bun add -D @types/node
 
 # Install backend dependencies
 WORKDIR /app/backend
