@@ -1,6 +1,7 @@
 # Shared Types Restructuring Plan
 
 ## Current Structure Issues
+
 - Types are organized by domain (guild, user, event) but mix different concerns (API, DB, application)
 - Many large files with hundreds of lines
 - Some type dependencies create circular references
