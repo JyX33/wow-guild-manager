@@ -954,4 +954,38 @@ export class BattleNetApiClientEnhanced {
       });
     }
   }
+
+  /**
+   * Generic method to fetch Battle.net data from any API endpoint using the URL directly.
+   * @param url The full URL to fetch data from
+   * @param jobId A unique identifier for this job (for logging and rate limiting)
+   * @returns The API response data
+   */
+  public async getGenericBattleNetData<T = any>(
+    url: string,
+    jobId: string,
+  ): Promise<T> {
+    try {
+      const token = await this.ensureClientToken();
+
+      return this.callApi<T>(
+        jobId,
+        () => this.httpClient.get(url, {}, { Authorization: `Bearer ${token}` }),
+        'genericData',
+        {
+          operation: 'fetch',
+          resourceType: 'generic_data',
+          resourceId: url,
+          jobId
+        }
+      );
+    } catch (error) {
+      this.handleApiError(error, {
+        operation: 'fetch',
+        resourceType: 'generic_data',
+        resourceId: url,
+        jobId
+      });
+    }
+  }
 }

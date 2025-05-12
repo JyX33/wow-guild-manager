@@ -76,20 +76,16 @@ export async function calculateCharacterToyHash(
       `[SyncService][ToyHash] Fetching toys data from href.`,
     );
     const toyJobId = `char-toys-${region}-${realmSlug}-${characterNameLower}`;
-    // Use traditional fetch method if it's the original client
+    // Fetch toys data using the getGenericBattleNetData method
     let toysData: ToyCollectionData | null = null;
 
-    if ('getGenericBattleNetData' in apiClient) {
+    try {
       toysData = await apiClient.getGenericBattleNetData<ToyCollectionData>(toysHref, toyJobId);
-    } else {
-      // For enhanced client, we'll need to use a direct HTTP request
-      // We can't rely on the method being available, so we'll handle it this way
-      logger.warn(
-        { ...logContext },
-        `[SyncService][ToyHash] Enhanced client doesn't support getGenericBattleNetData, using fallback method.`
+    } catch (error) {
+      logger.error(
+        { ...logContext, error },
+        `[SyncService][ToyHash] Error fetching toys data: ${error}`
       );
-
-      // For now, return a fixed value until proper support is added to enhanced client
       return NO_TOYS_HASH;
     }
 

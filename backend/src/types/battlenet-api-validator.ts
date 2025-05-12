@@ -34,7 +34,8 @@ const CRITICAL_FIELDS = {
   characterEquipment: ['character.id', 'character.name', 'equipped_items'],
   mythicKeystone: ['character.id', 'character.name'],
   professions: ['character.id', 'character.name'],
-  collections: ['character.id', 'character.name']
+  collections: ['character.id', 'character.name'],
+  genericData: [] // No critical fields for generic data
 };
 
 /**
@@ -702,6 +703,27 @@ export function validateCollectionsIndex(data: unknown): ValidationResult {
 /**
  * Maps type names to validator functions
  */
+/**
+ * Generic validator that accepts any data
+ * Used for endpoints without a specific schema
+ */
+function validateGenericData(data: unknown): ValidationResult {
+  // For generic data, we accept anything that's not null or undefined
+  const isValid = data !== null && data !== undefined;
+
+  return {
+    isValid,
+    hasCriticalFields: isValid, // If it exists, it has critical fields
+    failures: isValid ? [] : [{
+      path: 'data',
+      expected: 'any non-null value',
+      received: data === null ? 'null' : 'undefined',
+      isValid: false,
+      isCritical: true
+    }]
+  };
+}
+
 export const validators = {
   guild: validateGuild,
   guildRoster: validateGuildRoster,
@@ -709,7 +731,8 @@ export const validators = {
   characterEquipment: validateCharacterEquipment,
   mythicKeystone: validateMythicKeystoneProfile,
   professions: validateProfessions,
-  collections: validateCollectionsIndex
+  collections: validateCollectionsIndex,
+  genericData: validateGenericData
 };
 
 /**
@@ -765,5 +788,14 @@ export function isBattleNetProfessions(data: unknown): data is RefTypes.BattleNe
  */
 export function isBattleNetCollectionsIndex(data: unknown): data is RefTypes.BattleNetCollectionsIndexRef {
   const result = validateCollectionsIndex(data);
+  return result.isValid || result.hasCriticalFields;
+}
+
+/**
+ * Type guard for generic Battle.net data
+ * Accepts any non-null data
+ */
+export function isBattleNetGenericData<T = any>(data: unknown): data is T {
+  const result = validateGenericData(data);
   return result.isValid || result.hasCriticalFields;
 }
