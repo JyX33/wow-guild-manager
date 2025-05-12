@@ -1,9 +1,14 @@
 import { Request, Response } from "express";
-import { AppError, asyncHandler } from "../utils/error-handler.js";
+import { asyncHandler } from "../utils/error-handler.js";
 import * as characterModel from "../models/character.model.js";
-import logger from "../utils/logger.js"; // Import the logger
+import logger from "../utils/logger.js";
 import { success } from "../utils/response.js";
-import { ensureExists, ensureOwnership } from "../utils/controller.helpers.js";
+import { 
+  createValidationError, 
+  createNotFoundError, 
+  createUnauthorizedError,
+  createForbiddenError 
+} from "../utils/error-factory.js";
 
 export default {
   /**
@@ -17,7 +22,11 @@ export default {
       query: req.query,
       userId: req.session?.userId,
     }, "Handling getUserCharacters request");
-    if (!req.user) throw new AppError("Authentication required", 401);
+    
+    if (!req.user) {
+      throw createUnauthorizedError("Authentication required", req);
+    }
+    
     const userId = req.user.id;
     const characters = await characterModel.findByUserId(userId as number);
 
@@ -35,14 +44,29 @@ export default {
       userId: req.session?.userId,
     }, "Handling getCharacterById request");
 
-    if (!req.user) throw new AppError("Authentication required", 401);
+    if (!req.user) {
+      throw createUnauthorizedError("Authentication required", req);
+    }
+    
     const characterId = parseInt(req.params.characterId);
+    if (isNaN(characterId)) {
+      throw createValidationError(
+        "Invalid character ID", 
+        { characterId: "Must be a valid integer" },
+        characterId,
+        req
+      );
+    }
+    
     const character = await characterModel.findById(characterId);
-
-    ensureExists(character, "Character");
+    if (!character) {
+      throw createNotFoundError("Character", characterId, req);
+    }
 
     // Check if character belongs to the logged-in user
-    ensureOwnership(character, req.user?.id, "Character");
+    if (character.user_id !== req.user.id) {
+      throw createForbiddenError(`Unauthorized access to character ${characterId}`, req);
+    }
 
     success(res, character);
   }),
@@ -58,13 +82,28 @@ export default {
       userId: req.session?.userId,
     }, "Handling getCharacterByNameRealmRegion request");
 
-    if (!req.user) throw new AppError("Authentication required", 401);
+    if (!req.user) {
+      throw createUnauthorizedError("Authentication required", req);
+    }
 
     const { name, realm } = req.params; // region param not needed for findByNameRealm
+    if (!name || !realm) {
+      throw createValidationError(
+        "Missing required parameters", 
+        { 
+          name: !name ? "Character name is required" : undefined,
+          realm: !realm ? "Realm name is required" : undefined,
+        },
+        { name, realm },
+        req
+      );
+    }
+    
     // Use findByNameRealm instead of the non-existent findByNameRealmRegion
     const character = await characterModel.findByNameRealm(name, realm);
-
-    ensureExists(character, "Character");
+    if (!character) {
+      throw createNotFoundError("Character", `${name}-${realm}`, req);
+    }
 
     success(res, character);
   }),
@@ -80,16 +119,33 @@ export default {
       userId: req.session?.userId,
     }, "Handling syncCharacter request");
 
-    if (!req.user) throw new AppError("Authentication required", 401);
+    if (!req.user) {
+      throw createUnauthorizedError("Authentication required", req);
+    }
 
     // This is a stub implementation - in a real implementation,
     // this would call the Battle.net sync service
     const { characterId } = req.body;
+    
+    if (!characterId || isNaN(parseInt(characterId))) {
+      throw createValidationError(
+        "Invalid character ID", 
+        { characterId: "Must provide a valid character ID" },
+        characterId,
+        req
+      );
+    }
 
     // For now, just return the character
     const character = await characterModel.findById(characterId);
+    if (!character) {
+      throw createNotFoundError("Character", characterId, req);
+    }
 
-    ensureExists(character, "Character");
+    // Check if character belongs to the logged-in user
+    if (character.user_id !== req.user.id) {
+      throw createForbiddenError(`Unauthorized access to character ${characterId}`, req);
+    }
 
     success(res, character, 200);
   }),
@@ -105,7 +161,26 @@ export default {
       userId: req.session?.userId,
     }, "Handling createCharacter request");
 
-    if (!req.user) throw new AppError("Authentication required", 401);
+    if (!req.user) {
+      throw createUnauthorizedError("Authentication required", req);
+    }
+
+    // Validate required fields
+    const { name, realm, class: characterClass } = req.body;
+    const validationErrors: Record<string, string> = {};
+    
+    if (!name) validationErrors.name = "Character name is required";
+    if (!realm) validationErrors.realm = "Realm is required";
+    if (!characterClass) validationErrors.class = "Character class is required";
+    
+    if (Object.keys(validationErrors).length > 0) {
+      throw createValidationError(
+        "Missing required character fields", 
+        validationErrors,
+        req.body,
+        req
+      );
+    }
 
     const userId = req.user.id;
     const characterData = { ...req.body, user_id: userId };
@@ -127,15 +202,29 @@ export default {
       userId: req.session?.userId,
     }, "Handling updateCharacter request");
 
-    if (!req.user) throw new AppError("Authentication required", 401);
+    if (!req.user) {
+      throw createUnauthorizedError("Authentication required", req);
+    }
 
     const characterId = parseInt(req.params.characterId);
+    if (isNaN(characterId)) {
+      throw createValidationError(
+        "Invalid character ID", 
+        { characterId: "Must be a valid integer" },
+        characterId,
+        req
+      );
+    }
+    
     const character = await characterModel.findById(characterId);
-
-    ensureExists(character, "Character");
+    if (!character) {
+      throw createNotFoundError("Character", characterId, req);
+    }
 
     // Check if character belongs to the logged-in user
-    ensureOwnership(character, req.user?.id, "Character");
+    if (character.user_id !== req.user.id) {
+      throw createForbiddenError(`Unauthorized access to character ${characterId}`, req);
+    }
 
     const updatedCharacter = await characterModel.update(characterId, req.body);
 

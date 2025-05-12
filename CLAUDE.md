@@ -47,7 +47,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 2. **Controller Layer**:
    - Controllers handle specific domain entities (auth, guild, character, event, roster)
-   - Implement try/catch for consistent error handling
+   - Use asyncHandler wrapper for all controller methods
+   - Throw appropriate errors using error-factory utilities
 
 3. **Service Layer**:
    - Battle.net API integration with rate limiting and caching
@@ -95,7 +96,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Imports**: Group imports by external libraries, then internal modules with absolute paths
 - **TypeScript**: Use strict typing - all parameters, return values, and variables must be typed
 - **Naming**: camelCase for variables/functions, PascalCase for classes/interfaces/components
-- **Error Handling**: Use try/catch with detailed error messages in controllers, implement transaction.rollback pattern
+- **Error Handling**: Use asyncHandler wrapper and error factory utilities, not direct try/catch
 - **Components**: Functional components with React hooks, proper prop typing with interfaces
 - **Routing**: RESTful endpoints, controller separation, middleware for auth
 - **Models**: Extend BaseModel, implement consistent CRUD operations
@@ -109,13 +110,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Ensure proper JSON field handling for database types
 
 2. **Error Handling**:
-   - Controllers should use try/catch for all database operations
-   - Propagate errors with proper status codes and messages
+   - Controllers must use asyncHandler wrapper from error-handler.js
+   - Use error factory utilities for all error creation:
+     - createValidationError - For invalid input data
+     - createNotFoundError - When resource doesn't exist
+     - createUnauthorizedError - For authentication errors
+     - createForbiddenError - For permission issues
+     - createDatabaseError - For database operation failures
+     - createExternalApiError - For Battle.net API errors
+     - createAppError - For general application errors
+   - Always include request context when creating errors
    - Log errors with appropriate severity
 
 3. **API Responses**:
    - Use standardized ApiResponse interface for consistency
    - Include proper typing for success and error cases
+   - All error responses should follow structure in docs/api-error-responses.md
 
 4. **Authentication**:
    - Check user authentication with auth middleware
@@ -131,3 +141,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Implement differential sync to minimize API calls
    - Handle character classification (main/alt relationships)
    - Process guild ranks and member changes correctly
+
+## Error Handling Standards
+
+See the comprehensive guide at `docs/error-handling-standards.md`. Key points:
+
+1. All controllers must use the `asyncHandler` wrapper from error-handler.js
+2. Error creation must use utilities from error-factory.js
+3. Standard error structure must be followed for frontend interoperability
+4. Include appropriate error codes from the ErrorCode enum
+5. Error responses must include helpful validation details when applicable
+6. Log all errors with appropriate context before throwing
