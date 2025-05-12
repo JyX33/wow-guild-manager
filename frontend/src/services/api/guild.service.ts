@@ -6,7 +6,7 @@ import {
   GuildRank,
   ClassifiedMember, // Added for classified roster
   GuildMemberActivity // Added for member activity
-} from '../../../../shared/types/guild';
+} from '../../../../shared/types/models/guild';
 export const guildService = {
   /**
    * Get guild by ID

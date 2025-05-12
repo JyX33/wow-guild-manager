@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AppError, asyncHandler } from "../utils/error-handler.js";
 import * as characterModel from "../models/character.model.js";
 import logger from "../utils/logger.js"; // Import the logger
-import { success, failure } from "../utils/response.js";
+import { success } from "../utils/response.js";
 import { ensureExists, ensureOwnership } from "../utils/controller.helpers.js";
 
 export default {

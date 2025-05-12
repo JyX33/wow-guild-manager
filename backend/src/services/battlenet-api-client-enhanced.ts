@@ -9,7 +9,7 @@
  */
 
 import { AppError } from "../utils/error-handler.js";
-import { ErrorCode } from "../../../shared/types/error.js";
+import { ErrorCode } from "../../../shared/types/utils/errors.js";
 import {
   BattleNetApiErrorContext,
   HttpClient,
@@ -40,7 +40,7 @@ import {
 import Bottleneck from "bottleneck";
 import logger from "../utils/logger.js";
 import axios from "axios";
-import process from "node:process";
+import { process } from "../utils/import-fixes.js";
 import { AxiosHttpClient } from "./http-client.js";
 
 // --- Rate Limiter Configuration ---

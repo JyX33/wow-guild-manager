@@ -1,20 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError, asyncHandler } from "../utils/error-handler.js";
-import { ErrorCode } from "../../../shared/types/error.js";
 import eventModel from "../models/event.model.js";
 import subscriptionModel from "../models/subscription.model.js";
-import {
-  Event,
-  EventFormValues,
-  EventSubscription,
-} from "../../../shared/types/event.js";
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-}
-
-import { UserRole, UserWithTokens } from "../../../shared/types/user.js"; // Ensure UserWithTokens and UserRole are imported
+// Import specific types for better type references
+import { ErrorCode } from "../../../shared/types/utils/errors.js";
+import type { Event, EventFormValues, EventSubscription } from "../../../shared/types/models/event.js";
+import type { ApiResponse } from "../../../shared/types/api/responses.js";
+import { UserRole } from "../../../shared/types/enums/user.js";
+import type { UserWithTokens } from "../../../shared/types/models/user.js";
 import { postEventToDiscord } from "../modules/discord/eventIntegration.js";
 import logger from "../utils/logger.js";
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { FormField } from './FormField';
-import { EventType } from '../../../../shared/types/event';
+import { EventType } from '../../../../shared/types/enums/event';
 
 export const EventBasicFields: React.FC = () => {
   return (

@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'; // Import useRef
-import { ClassifiedMember } from '../../../shared/types/guild';
+import type { ClassifiedMember } from '../../../shared/types/models/guild';
 import { useClassBackgroundImage } from '../hooks/useClassBackgroundImage'; // Import the hook
 
 // Helper functions (can be shared or defined locally)

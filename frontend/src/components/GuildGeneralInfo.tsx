@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Guild } from '../../../shared/types/guild';
-import { GuildMember } from '../../../shared/types/guild';
+import type { Guild, GuildMember } from '../../../shared/types/models/guild';
 import { guildService } from '../services/api/guild.service';
 import LoadingSpinner from './LoadingSpinner';
 

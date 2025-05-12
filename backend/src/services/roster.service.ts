@@ -3,7 +3,7 @@ import {
   Roster,
   RosterMember,
   RosterMemberAddition,
-} from "../../../shared/types/api.js";
+} from "../../../shared/types/api/roster.js";
 import logger from "../utils/logger.js"; // Import logger
 import { PoolClient } from "pg"; // Import PoolClient for transactions
 

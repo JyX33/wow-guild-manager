@@ -310,7 +310,7 @@ export class OnboardingService {
         { userId },
         "[OnboardingService] Starting guild leader identification process...",
       );
-      for (const guildInfo of uniqueGuilds.values()) {
+      for (const guildInfo of Array.from(uniqueGuilds.values())) {
         let localGuild: DbGuild | null = null;
         try { // Try block for processing a single guild
           // Ensure guild exists locally

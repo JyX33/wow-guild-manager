@@ -24,7 +24,7 @@ import { AppError } from "../utils/error-handler.js";
 import logger from "../utils/logger.js";
 import { withTransaction } from "../utils/transaction.js";
 import { DbQueryCondition, DbQueryParam } from "../../../shared/types/db.js";
-import process from "node:process";
+import { process } from "../utils/import-fixes.js";
 
 // Create type-safe query condition for character
 type CharacterQueryCondition = DbQueryCondition<DbCharacter>;

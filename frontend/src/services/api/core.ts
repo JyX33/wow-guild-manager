@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { ApiError, ApiResponse } from '@shared/types';
+import { ApiError, ApiResponse } from '@shared/types/api/responses';
 
 // Use environment variable with fallback
 const API_URL = import.meta.env.VITE_API_URL || '/api';

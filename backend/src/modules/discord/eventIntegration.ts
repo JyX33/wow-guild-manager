@@ -3,7 +3,7 @@ import logger from "../../utils/logger.js";
 import { EmbedBuilder, TextChannel } from "discord.js";
 import eventModelInstance from "../../models/event.model.js";
 import { Event } from "../../../../shared/types/event.js";
-import process from "node:process";
+import { process } from "../../utils/import-fixes.js";
 
 /**
  * Posts event details to Discord by creating a thread in the configured channel,

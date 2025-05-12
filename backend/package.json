@@ -8,12 +8,13 @@
     "start": "bun src/index.ts",
     "start:dev": "bun --watch src/index.ts",
     "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --target=node --outdir=dist",
+    "build": "cd ../shared && bun run build && cd ../backend && bun build src/index.ts --target=node --outdir=dist",
     "test": "jest",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules jest --detectOpenHandles",
     "migrate": "node database/migrate.js",
     "backfill:chars": "ts-node -P tsconfig.json src/scripts/backfill-character-data.ts",
-    "type-check": "tsc --noEmit -p tsconfig.json",
+    "type-check": "cd ../shared && bun run build && cd ../backend && tsc --noEmit -p tsconfig.json",
+    "type-check:src": "tsc --noEmit --skipLibCheck -p tsconfig.json",
     "find-unused-exports": "node scripts/find-unused-exports.js"
   },
   "dependencies": {

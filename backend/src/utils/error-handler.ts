@@ -1,3 +1,4 @@
+/// <reference path="../types/express-session.d.ts" />
 import { NextFunction, Request, Response } from "express";
 import logger from "./logger.js"; // Import the logger
 import {

@@ -112,7 +112,7 @@ export function getValidationStats(): Record<string, Omit<ValidationStats, 'fiel
 }> {
   const result: Record<string, any> = {};
   
-  for (const [type, stats] of validationStatsByType.entries()) {
+  for (const [type, stats] of Array.from(validationStatsByType.entries())) {
     // Convert field failures to a sorted array of top failures
     const topFailures = Array.from(stats.fieldFailures.entries())
       .sort((a, b) => b[1] - a[1])

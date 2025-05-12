@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApi } from '../hooks/useApi';
 import { guildService } from '../services/api/guild.service';
-import { ClassifiedMember, GuildRank } from '../../../shared/types/guild'; // Keep this
+import type { ClassifiedMember, GuildRank } from '../../../shared/types/models/guild';
 import LoadingSpinner from './LoadingSpinner'; // Keep this
 import { ErrorBoundary } from './ErrorBoundary'; // Keep this
 import { GuildMemberCard } from './GuildMemberCard'; // Import the new card component

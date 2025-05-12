@@ -1,8 +1,11 @@
-import {
-  DbCharacter,
-  DbGuildMember,
-  GuildMemberActivity,
-} from "../../../shared/types/guild.js";
+// Import namespaces
+// import * as DB from "../../../shared/types/db";
+// import * as Models from "../../../shared/types/models";
+
+// Import specific types for better type references
+import type { DbCharacter } from "../../../shared/types/db/models/character.js";
+import type { DbGuildMember } from "../../../shared/types/db/models/member.js";
+import type { GuildMemberActivity } from "../../../shared/types/models/guild.js";
 import * as guildMemberModel from "../models/guild_member.model.js";
 import * as characterModel from "../models/character.model.js";
 import logger from "../utils/logger.js";

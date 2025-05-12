@@ -1,6 +1,6 @@
 // backend/src/utils/logger.ts
 import pino from "pino";
-import process from "node:process"; // Import pino directly
+import { process } from "./import-fixes.js"; // Import process from our utility
 
 // Determine if running in development mode for pretty printing
 const isDevelopment = process.env.NODE_ENV !== "production";

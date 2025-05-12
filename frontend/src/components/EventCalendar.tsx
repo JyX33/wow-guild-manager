@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
-import { Event, EventType } from '@shared/types/index';
+import * as Enums from '../../../shared/types/enums';
+import type { Event } from '../../../shared/types/models/event';
 import { useApi } from '../hooks/useApi';
 import { eventService } from '../services/api';
 
@@ -118,7 +119,7 @@ const EventCalendar: React.FC<EventCalendarProps> = ({
     id: 9999,
     title: 'Test Event',
     description: 'Test event to verify calendar functionality',
-    event_type: EventType.SPECIAL,
+    event_type: Enums.EventType.SPECIAL,
     start_time: today.toISOString(),
     end_time: new Date(today.getTime() + 60 * 60 * 1000).toISOString(),
     created_by: 1,

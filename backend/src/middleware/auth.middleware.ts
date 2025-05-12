@@ -1,8 +1,8 @@
+/// <reference path="../types/express.d.ts" />
 import { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
+import { jwt, process } from "../utils/import-fixes.js"; // Use our utility imports
 import { AppError } from "../utils/error-handler.js";
 import logger from "../utils/logger.js";
-import process from "node:process";
 
 import { UserRole, UserWithTokens } from "../../../shared/types/user.js";
 

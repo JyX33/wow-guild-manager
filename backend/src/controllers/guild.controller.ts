@@ -1,14 +1,9 @@
 import { Request, Response } from "express";
-import {
-  CharacterRole,
-  EnhancedGuildMember,
-  Guild,
-  GuildMember,
-} from "../../../shared/types/guild.js";
-import {
-  DbCharacterEnhanced,
-  DbGuildMemberEnhanced,
-} from "../../../shared/types/db-enhanced.js";
+
+// Import specific types for better type references
+import type { CharacterRole } from "../../../shared/types/enums/guild.js";
+import type { EnhancedGuildMember, Guild, GuildMember } from "../../../shared/types/models/guild.js";
+import type { DbCharacterEnhanced, DbGuildMemberEnhanced } from "../../../shared/types/db/enhanced/index.js";
 import * as characterModel from "../models/character.model.js";
 import * as guildModel from "../models/guild.model.js";
 import * as guildMemberModel from "../models/guild_member.model.js";
@@ -21,7 +16,7 @@ import {
   createResourceError,
   createValidationError,
 } from "../utils/error-factory.js";
-import { ErrorCode } from "../../../shared/types/error.js";
+import { ErrorCode } from "../../../shared/types/utils/errors.js";
 import logger from "../utils/logger.js";
 import {
   CharacterClassificationService,

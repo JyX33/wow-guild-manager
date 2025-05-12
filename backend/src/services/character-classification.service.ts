@@ -1,4 +1,9 @@
-import { DbCharacter, DbGuildMember } from "../../../shared/types/guild.js";
+// Import namespaces
+// Import specific types directly instead of using the namespace
+
+// Import specific types for better type references
+import type { DbCharacter } from "../../../shared/types/db/models/character.js";
+import type { DbGuildMember } from "../../../shared/types/db/models/member.js";
 import * as characterModel from "../models/character.model.js";
 import * as guildMemberModel from "../models/guild_member.model.js";
 import db from "../db/db.js"; // For potential direct DB query
@@ -102,7 +107,7 @@ export class CharacterClassificationService {
       const classifiedResults: ClassifiedMember[] = [];
 
       // 3. Process Known Users
-      for (const userGroup of knownMembersMap.values()) {
+      for (const userGroup of Array.from(knownMembersMap.values())) {
         classifiedResults.push(...this._classifyKnownUserGroup(userGroup));
       }
 
@@ -125,7 +130,7 @@ export class CharacterClassificationService {
         }
       }
 
-      for (const hashGroup of hashableUnknownsMap.values()) {
+      for (const hashGroup of Array.from(hashableUnknownsMap.values())) {
         classifiedResults.push(
           ...this._classifyUnknownHashableGroup(hashGroup),
         );

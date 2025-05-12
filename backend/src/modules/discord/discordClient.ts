@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits } from "discord.js";
-import process from "node:process";
+import { process } from "../../utils/import-fixes.js";
 
 const client = new Client({
   intents: [

@@ -1,13 +1,16 @@
-import crypto from "crypto";
+/// <reference path="../types/express.d.ts" />
+/// <reference path="../types/express-session.d.ts" />
 import { Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import {
-  BattleNetRegion,
-  BattleNetUserProfile,
-  User,
-  UserRole,
-  UserWithTokens,
-} from "../../../shared/types/user.js"; // Import BattleNetRegion
+
+// Import modules from our utility file
+import { crypto, jwt, process } from "../utils/import-fixes.js";
+
+// Import specific types for better type references
+import type { BattleNetRegion } from "../../../shared/types/enums/user.js";
+// Import UserRole as a value since we're using it in code
+import { UserRole } from "../../../shared/types/enums/user.js";
+import type { BattleNetUserProfile } from "../../../shared/types/battlenet/profile.js";
+import type { User, UserWithTokens } from "../../../shared/types/models/user.js";
 import config from "../config/index.js"; // Assuming index.js is the entry point
 import userModel from "../models/user.model.js";
 import { BattleNetApiClientEnhanced } from "../services/battlenet-api-client-enhanced.js";
@@ -16,7 +19,6 @@ import { retrieveTokenDetails } from "../modules/discord/discordTokenStore.js"; 
 import { AppError, asyncHandler } from "../utils/error-handler.js";
 import logger from "../utils/logger.js"; // Import the logger
 // import axios from "axios"; // Not used
-import process from "node:process";
 
 // Instantiate services
 const apiClient = new BattleNetApiClientEnhanced();

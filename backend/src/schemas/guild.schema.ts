@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, regionSchema, slugSchema, rankSchema, rankIdSchema } from './common.schema.js';
+import { idSchema, regionSchema, slugSchema, rankIdSchema } from './common.schema.js';
 
 /**
  * Guild-related validation schemas

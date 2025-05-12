@@ -5,7 +5,7 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
@@ -32,8 +32,12 @@
       "@/*": ["src/*"],
       "@shared/*": ["../shared/*"]
     },
-    "types": ["vite/client", "node"] // Add Vite client and Node types here
+    "types": ["vite/client", "node"],
+    "downlevelIteration": true
   },
   "include": ["src", "../shared/types"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [
+    { "path": "./tsconfig.node.json" },
+    { "path": "../shared" }
+  ]
 }

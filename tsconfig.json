@@ -23,13 +23,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "downlevelIteration": true,
+    "composite": true
   },
-  "include": [
-    "frontend/src",
-    "backend/src",
-    "shared/types",
-    "backend/tests/battlenet-api.client.test.ts"
-  ],
-  "exclude": ["node_modules", "dist"]
+  "files": [],
+  "references": [
+    { "path": "./frontend" },
+    { "path": "./backend" },
+    { "path": "./shared" }
+  ]
 }

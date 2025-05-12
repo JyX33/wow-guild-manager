@@ -1,8 +1,11 @@
 import { Request, Response } from "express";
 import * as RosterService from "../services/roster.service.js";
-import { RosterMemberAddition } from "../../../shared/types/api.js";
-import { ApiError } from "../../../shared/types/api.js"; // Import API error type
-import { ErrorCode } from "../../../shared/types/error.js"; // Import error codes
+
+// Import specific types for better type references
+import type { RosterMemberAddition } from "../../../shared/types/api/roster.js";
+import type { ApiError } from "../../../shared/types/api/responses.js";
+// Import ErrorCode as a value since we're using it in code
+import { ErrorCode } from "../../../shared/types/utils/errors.js";
 import logger from "../utils/logger.js"; // Import logger
 
 // Helper to send error responses

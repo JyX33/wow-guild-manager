@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApi } from '../hooks/useApi';
 import { guildService } from '../services/api/guild.service';
-import { GuildRank } from '../../../shared/types/guild';
+import type { GuildRank } from '../../../shared/types/models/guild';
 import LoadingSpinner from './LoadingSpinner';
 
 interface Props {
