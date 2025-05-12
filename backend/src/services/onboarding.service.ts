@@ -3,7 +3,7 @@ import logger from "../utils/logger.js";
 import characterModel from "../models/character.model.js";
 import guildModel from "../models/guild.model.js";
 import userModel from "../models/user.model.js";
-import { BattleNetApiClient } from "./battlenet-api.client.js";
+import { BattleNetApiClientEnhanced } from "./battlenet-api-client-enhanced.js";
 import { BattleNetRegion } from "../../../shared/types/user.js";
 import {
   BattleNetCharacter,
@@ -23,10 +23,10 @@ type CharacterGuildInfo = {
 };
 
 export class OnboardingService {
-  private battleNetApiClient: BattleNetApiClient;
+  private battleNetApiClient: BattleNetApiClientEnhanced;
 
-  // Inject dependencies - accepts client type
-  constructor(apiClient: BattleNetApiClient) {
+  // Inject dependencies - accepts enhanced client type
+  constructor(apiClient: BattleNetApiClientEnhanced) {
     this.battleNetApiClient = apiClient;
   }
 

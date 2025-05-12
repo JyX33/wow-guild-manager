@@ -16,8 +16,7 @@ import guildModelInstance from "./models/guild.model.js";
 import guildMemberModelInstance from "./models/guild_member.model.js";
 import rankModelInstance from "./models/rank.model.js";
 import userModelInstance from "./models/user.model.js";
-import { createBattleNetApiClient } from "./services/battlenet-api-client-factory.js";
-import { BattleNetApiClient } from "./services/battlenet-api.client.js";
+import { BattleNetApiClientEnhanced } from "./services/battlenet-api-client-enhanced.js";
 import logger from "./utils/logger.js"; // Import the logger
 
 import {
@@ -186,7 +185,7 @@ logger.info(
 
 // Instantiate dependencies for the sync job
 const dependencies: SyncDependencies = {
-  apiClient: createBattleNetApiClient() as BattleNetApiClient,
+  apiClient: new BattleNetApiClientEnhanced(),
   guildModel: guildModelInstance,
   userModel: userModelInstance,
   guildMemberModel: guildMemberModelInstance,

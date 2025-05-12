@@ -2,13 +2,13 @@ import { DbCharacter, DbGuildMember } from "../../../../shared/types/guild.js";
 import { BattleNetRegion } from "../../../../shared/types/user.js";
 import { CharacterModel } from "../../models/character.model.js";
 import { GuildMemberModel } from "../../models/guild_member.model.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js";
 import logger from "../../utils/logger.js";
 import { createSlug } from "../../utils/slugify.js";
 import { prepareCharacterUpdatePayload } from "./character-payload.js";
 
 export async function syncCharacter(
-  apiClient: BattleNetApiClient,
+  apiClient: BattleNetApiClientEnhanced,
   characterModel: CharacterModel,
   guildMemberModel: GuildMemberModel,
   guildModel: any,

@@ -10,8 +10,7 @@ import {
 } from "../../../shared/types/user.js"; // Import BattleNetRegion
 import config from "../config/index.js"; // Assuming index.js is the entry point
 import userModel from "../models/user.model.js";
-import { createBattleNetApiClient } from "../services/battlenet-api-client-factory.js";
-import { BattleNetApiClient } from "../services/battlenet-api.client.js";
+import { BattleNetApiClientEnhanced } from "../services/battlenet-api-client-enhanced.js";
 import { OnboardingService } from "../services/onboarding.service.js"; // Import OnboardingService
 import { retrieveTokenDetails } from "../modules/discord/discordTokenStore.js"; // Import for Discord link verification
 import { AppError, asyncHandler } from "../utils/error-handler.js";
@@ -19,8 +18,8 @@ import logger from "../utils/logger.js"; // Import the logger
 // import axios from "axios"; // Not used
 import process from "node:process";
 
-// Instantiate services (consider dependency injection for better management)
-const apiClient = createBattleNetApiClient() as BattleNetApiClient;
+// Instantiate services
+const apiClient = new BattleNetApiClientEnhanced();
 const onboardingService = new OnboardingService(apiClient);
 
 const generateState = () => {

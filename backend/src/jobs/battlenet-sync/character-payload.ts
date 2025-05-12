@@ -3,7 +3,7 @@ import {
   DbGuild,
 } from "../../../../shared/types/guild.js";
 import { BattleNetRegion } from "../../../../shared/types/user.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js";
 import { GuildModel } from "../../models/guild.model.js";
 import logger from "../../utils/logger.js";
 import { calculateCharacterToyHash } from "./character-toy-hash.js";
@@ -11,7 +11,7 @@ import { EnhancedCharacterData, toSharedEnhancedCharacterData } from "../../type
 
 
 export async function prepareCharacterUpdatePayload(
-  apiClient: BattleNetApiClient,
+  apiClient: BattleNetApiClientEnhanced,
   guildModel: GuildModel,
   character: DbCharacter,
   enhancedData: EnhancedCharacterData,

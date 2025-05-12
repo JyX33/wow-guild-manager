@@ -1,5 +1,4 @@
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js"; // Type only
-import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js"; // Type only
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js";
 import {
   BattleNetGuild,
   BattleNetGuildMember,
@@ -110,7 +109,7 @@ export async function updateCoreGuildData(
  * @returns An object indicating success and containing fetched data, or failure and error info
  */
 export async function syncGuild(
-  apiClient: BattleNetApiClient | BattleNetApiClientEnhanced,
+  apiClient: BattleNetApiClientEnhanced,
   guildModel: GuildModel,
   userModel: UserModel,
   guild: DbGuild,

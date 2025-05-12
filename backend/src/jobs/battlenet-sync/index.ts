@@ -8,7 +8,7 @@ import { UserModel } from "../../models/user.model.js";
 import { GuildMemberModel } from "../../models/guild_member.model.js";
 import { RankModel } from "../../models/rank.model.js";
 import logger from "../../utils/logger.js";
-import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
+import { BattleNetApiClientEnhanced } from "../../services/battlenet-api-client-enhanced.js";
 import { CharacterModel, parseRegionFromHref } from "../../models/character.model.js"; // Import parseRegionFromHref
 import { syncCharacter } from "./character-sync.js";
 
@@ -23,7 +23,7 @@ import {
 import { BattleNetRegion } from "../../../../shared/types/user.js";
 
 export interface SyncDependencies {
-  apiClient: BattleNetApiClient;
+  apiClient: BattleNetApiClientEnhanced;
   guildModel: GuildModel;
   userModel: UserModel;
   guildMemberModel: GuildMemberModel;
@@ -135,14 +135,13 @@ export async function orchestrateGuildSync(
 
       const characterSyncPromises = charactersToSync.map((character) =>
         characterSyncLimit(() =>
-          // Wrap the async function call - casting apiClient to BattleNetApiClient
           // The enhanced client implements all methods of the standard client
           syncCharacter(
-            dependencies.apiClient as BattleNetApiClient,
+            dependencies.apiClient,
             dependencies.characterModel,
             dependencies.guildMemberModel,
             dependencies.guildModel,
-            character, // Pass the DbCharacter object
+            character // Pass the DbCharacter object
           )
         ).catch((charErr) => {
           logger.error(
