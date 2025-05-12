@@ -52,8 +52,16 @@ export const getRecentMemberActivity = async (
     leftMemberCharacters.map((char) => [char.id, char]),
   );
 
-  const newMembersWithDetails = newMembers.map((member) => {
-    const character = newMemberCharacterMap.get(member.character_id);
+  /**
+   * Merges guild member data with character details.
+   * @param member The guild member object.
+   * @param character The character object, or undefined if not found.
+   * @returns A new object with merged data.
+   */
+  const mergeMemberWithCharacter = (
+    member: DbGuildMember,
+    character: DbCharacter | undefined,
+  ) => {
     return {
       ...member,
       character_name: character?.name || member.character_name,
@@ -61,17 +69,16 @@ export const getRecentMemberActivity = async (
       character_class: character?.class || "Unknown",
       character_level: character?.level || 0,
     };
+  };
+
+  const newMembersWithDetails = newMembers.map((member) => {
+    const character = newMemberCharacterMap.get(member.character_id);
+    return mergeMemberWithCharacter(member, character);
   });
 
   const leftMembersWithDetails = leftMembers.map((member) => {
     const character = leftMemberCharacterMap.get(member.character_id);
-    return {
-      ...member,
-      character_name: character?.name || member.character_name,
-      character_realm: character?.realm || "Unknown",
-      character_class: character?.class || "Unknown",
-      character_level: character?.level || 0,
-    };
+    return mergeMemberWithCharacter(member, character);
   });
 
   return {

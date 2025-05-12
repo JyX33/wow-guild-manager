@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, regionSchema, slugSchema, rankSchema } from './common.schema.js';
+import { idSchema, regionSchema, slugSchema, rankSchema, rankIdSchema } from './common.schema.js';
 
 /**
  * Guild-related validation schemas
@@ -20,7 +20,7 @@ export const guildByNameParamsSchema = z.object({
 // Guild rank parameter validation
 export const guildRankParamsSchema = z.object({
   guildId: idSchema('Guild ID must be a positive integer'),
-  rankId: rankSchema.or(z.string().regex(/^[0-9]$/).transform(Number)),
+  rankId: rankIdSchema,
 });
 
 // Update rank name validation

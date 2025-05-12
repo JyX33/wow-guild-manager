@@ -452,7 +452,6 @@ export class CharacterModel
             added++;
           }
         }
-
         // Return counts and the list of processed character IDs
         return {
           added,
@@ -675,6 +674,8 @@ export class CharacterModel
 }
 
 const characterModel = new CharacterModel();
+
+export { parseRegionFromHref }; // Export the helper function
 
 export const findById = characterModel.findById.bind(characterModel);
 export const findOne = characterModel.findOne.bind(characterModel);

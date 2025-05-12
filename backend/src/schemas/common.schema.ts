@@ -61,3 +61,12 @@ export const errorMessages = {
   tooLong: (max: number) => `Cannot exceed ${max} characters`,
   invalidOption: (options: string[]) => `Must be one of: ${options.join(', ')}`,
 };
+
+export const characterNameSchema = z.string()
+  .min(2, errorMessages.tooShort ? errorMessages.tooShort(2) : 'Must be at least 2 characters')
+  .max(32, errorMessages.tooLong ? errorMessages.tooLong(32) : 'Cannot exceed 32 characters');
+
+// Assuming rankSchema is something like z.number().int().min(0).max(9)
+export const rankIdSchema = rankSchema.or(z.string().regex(/^[0-9]$/).transform(Number));
+
+export const booleanDefault = (defaultValue: boolean) => z.boolean().optional().default(defaultValue);

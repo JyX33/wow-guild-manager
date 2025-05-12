@@ -1,0 +1,118 @@
+# WoW Guild Manager - Product Requirements Document
+
+## Project Overview
+
+WoW Guild Manager is a comprehensive web application designed to simplify the management of World of Warcraft guilds. It provides tools for guild leaders and members to organize events, track character information, and manage guild rosters, all while synchronizing with the Battle.net API to maintain up-to-date information.
+
+## User Personas
+
+1. **Guild Leader**
+   - Manages guild roster, ranks, and events
+   - Needs tools to efficiently organize guild activities
+   - Wants insights into character composition and member availability
+
+2. **Guild Officer**
+   - Assists in managing guild events and roster
+   - Needs permission-based access to administrative functions
+   - Wants to coordinate with other officers on guild activities
+
+3. **Guild Member**
+   - Joins events and updates availability
+   - Manages personal character information and alt relationships
+   - Wants to stay informed about upcoming guild activities
+
+## Core Features
+
+### Authentication and User Management
+
+- Battle.net OAuth integration for secure login
+- User profiles with role-based permissions (admin, guild leader, officer, member)
+- Discord account linking for notifications and reminders
+- Refresh token management for persistent authentication
+
+### Guild Management
+
+- Create and manage guilds with region, realm, and faction information
+- Synchronize guild roster with Battle.net API data
+- Manage guild ranks with customizable permissions
+- Track member join/leave history and availability
+
+### Character Management
+
+- Track character information (class, spec, level, gear)
+- Synchronize character data with Battle.net API
+- Designate main and alt character relationships
+- Track character activity and availability
+
+### Event Planning and Calendar
+
+- Create guild events (raids, dungeons, social activities)
+- Set event details (time, description, requirements)
+- Manage event participation and role assignments
+- Calendar view for upcoming events
+
+### Roster Management
+
+- Create and manage custom rosters for different guild activities
+- Assign players to specific roles within rosters
+- Track availability and attendance patterns
+- Set notifications for roster updates
+
+### Discord Integration
+
+- Send event reminders and notifications to Discord
+- Create event-specific threads for coordination
+- Automated thread cleanup for past events
+- Discord commands for common guild management tasks
+
+## Technical Requirements
+
+### Frontend
+
+- React application with TypeScript for type safety
+- Responsive design for desktop and mobile use
+- Modern component architecture with hooks and context
+- Form validation and error handling
+
+### Backend
+
+- Express.js API with TypeScript
+- RESTful endpoints with proper validation
+- Authentication middleware and role-based access
+- Rate limiting for Battle.net API integration
+
+### Database
+
+- PostgreSQL for relational data storage
+- Efficient schema design with proper indexing
+- JSON fields for flexible data storage
+- Transaction support for data integrity
+
+### External Integrations
+
+- Battle.net API for guild and character data
+- Discord API for notifications and bot functionality
+- Optional calendar integration (Google, iCal)
+
+## Performance Requirements
+
+- Fast page load times (<2s) for primary user flows
+- Efficient Battle.net API synchronization with rate limiting
+- Database query optimization for large guild rosters
+- Responsive UI for all device sizes
+
+## Future Enhancements
+
+- In-game addon integration for real-time data
+- Advanced analytics for guild composition and attendance
+- Raid progress tracking and reporting
+- Integration with raid logging services
+- Mobile application for on-the-go access
+
+## Success Metrics
+
+- User engagement (daily active users, session duration)
+- Guild retention and growth
+- Event participation rates
+- System performance and uptime
+- User satisfaction and feedback

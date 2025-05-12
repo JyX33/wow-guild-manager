@@ -85,12 +85,6 @@ app.use(session({
 }));
 
 // API Health check routes
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-  });
-});
-
 app.get("/api/healthcheck", (_req, res) => {
   res.json({
     status: "ok",

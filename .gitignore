@@ -84,3 +84,41 @@ temp/
 .aider*
 
 **/.claude/settings.local.json
+
+# Added by Claude Task Master
+logs
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+tasks.json
+tasks/ 
+.roo/rules/dev_workflow.md
+.roo/rules/roo_rules.md
+.roo/rules/self_improve.md
+.roo/rules/taskmaster.md
+.roo/rules-architect/architect-rules
+.roo/rules-ask/ask-rules
+.roo/rules-boomerang/boomerang-rules
+.roo/rules-code/code-rules
+.roo/rules-debug/debug-rules
+.roo/rules-test/test-rules
+.gitignore
+.taskmasterconfig
+.roomodes
+.windsurfrules
+.cursor/mcp.json
+.cursor/rules/cursor_rules.mdc
+.cursor/rules/dev_workflow.mdc
+.cursor/rules/self_improve.mdc
+.cursor/rules/taskmaster.mdc

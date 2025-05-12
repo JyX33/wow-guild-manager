@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { idSchema, regionSchema, slugSchema } from './common.schema.js';
+import { idSchema, regionSchema, slugSchema, characterNameSchema, booleanDefault } from './common.schema.js';
 
 /**
  * Character-related validation schemas
@@ -20,13 +20,12 @@ export const characterLookupParamsSchema = z.object({
 // Character sync request validation
 export const characterSyncSchema = z.object({
   characterId: idSchema('Character ID must be a positive integer'),
-  force: z.boolean().optional().default(false),
+  force: booleanDefault(false),
 });
 
 // Character creation/update validation
 export const characterSchema = z.object({
-  name: z.string().min(2, 'Character name must be at least 2 characters')
-    .max(32, 'Character name cannot exceed 32 characters'),
+  name: characterNameSchema,
   realm: z.string().min(2, 'Realm is required'),
   region: regionSchema,
   class: z.string().optional(),

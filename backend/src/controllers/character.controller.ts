@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { AppError, asyncHandler } from "../utils/error-handler.js";
 import * as characterModel from "../models/character.model.js";
 import logger from "../utils/logger.js"; // Import the logger
+import { success, failure } from "../utils/response.js";
+import { ensureExists, ensureOwnership } from "../utils/controller.helpers.js";
 
 export default {
   /**
@@ -17,12 +19,9 @@ export default {
     }, "Handling getUserCharacters request");
     if (!req.user) throw new AppError("Authentication required", 401);
     const userId = req.user.id;
-    const characters = await characterModel.findByUserId(userId);
+    const characters = await characterModel.findByUserId(userId as number);
 
-    res.json({
-      success: true,
-      data: characters,
-    });
+    success(res, characters);
   }),
 
   /**
@@ -40,19 +39,12 @@ export default {
     const characterId = parseInt(req.params.characterId);
     const character = await characterModel.findById(characterId);
 
-    if (!character) {
-      throw new AppError("Character not found", 404);
-    }
+    ensureExists(character, "Character");
 
     // Check if character belongs to the logged-in user
-    if (character.user_id !== req.user.id) {
-      throw new AppError("Unauthorized access to character", 403);
-    }
+    ensureOwnership(character, req.user?.id, "Character");
 
-    res.json({
-      success: true,
-      data: character,
-    });
+    success(res, character);
   }),
 
   /**
@@ -72,14 +64,9 @@ export default {
     // Use findByNameRealm instead of the non-existent findByNameRealmRegion
     const character = await characterModel.findByNameRealm(name, realm);
 
-    if (!character) {
-      throw new AppError("Character not found", 404);
-    }
+    ensureExists(character, "Character");
 
-    res.json({
-      success: true,
-      data: character,
-    });
+    success(res, character);
   }),
 
   /**
@@ -102,15 +89,9 @@ export default {
     // For now, just return the character
     const character = await characterModel.findById(characterId);
 
-    if (!character) {
-      throw new AppError("Character not found", 404);
-    }
+    ensureExists(character, "Character");
 
-    res.json({
-      success: true,
-      data: character,
-      message: "Character sync initiated",
-    });
+    success(res, character, 200);
   }),
 
   /**
@@ -131,10 +112,7 @@ export default {
 
     const newCharacter = await characterModel.create(characterData);
 
-    res.status(201).json({
-      success: true,
-      data: newCharacter,
-    });
+    success(res, newCharacter, 201);
   }),
 
   /**
@@ -154,20 +132,13 @@ export default {
     const characterId = parseInt(req.params.characterId);
     const character = await characterModel.findById(characterId);
 
-    if (!character) {
-      throw new AppError("Character not found", 404);
-    }
+    ensureExists(character, "Character");
 
     // Check if character belongs to the logged-in user
-    if (character.user_id !== req.user.id) {
-      throw new AppError("Unauthorized access to character", 403);
-    }
+    ensureOwnership(character, req.user?.id, "Character");
 
     const updatedCharacter = await characterModel.update(characterId, req.body);
 
-    res.json({
-      success: true,
-      data: updatedCharacter,
-    });
+    success(res, updatedCharacter);
   }),
 };

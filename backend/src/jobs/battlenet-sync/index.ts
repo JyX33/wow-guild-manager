@@ -9,7 +9,7 @@ import { GuildMemberModel } from "../../models/guild_member.model.js";
 import { RankModel } from "../../models/rank.model.js";
 import logger from "../../utils/logger.js";
 import { BattleNetApiClient } from "../../services/battlenet-api.client.js";
-import { CharacterModel } from "../../models/character.model.js";
+import { CharacterModel, parseRegionFromHref } from "../../models/character.model.js"; // Import parseRegionFromHref
 import { syncCharacter } from "./character-sync.js";
 
 import pLimit from "p-limit";
@@ -92,7 +92,7 @@ export async function orchestrateGuildSync(
         const dbCharacter = await findOrCreateCharacterForRosterMember(
           dependencies,
           member,
-        );
+          );
 
         // Check if the character needs syncing based on last_synced_at
         if (!dbCharacter.last_synced_at) {
@@ -194,24 +194,6 @@ export async function orchestrateGuildSync(
   }
 }
 
-// Helper function to parse region from URL (duplicated from character.model.ts for now)
-const parseRegionFromHref = (
-  href: string | undefined,
-): BattleNetRegion | null => {
-  if (!href) return null;
-  try {
-    const url = new URL(href);
-    const hostnameParts = url.hostname.split("."); // e.g., ['us', 'api', 'blizzard', 'com']
-    const regionCode = hostnameParts[0];
-    if (["us", "eu", "kr", "tw", "cn"].includes(regionCode)) {
-      return regionCode as BattleNetRegion;
-    }
-  } catch (e) {
-    // Invalid URL
-    logger.error(`[parseRegionFromHref] Error parsing URL: ${href}`, e);
-  }
-  return null;
-};
 
 /**
  * Finds an existing character by name and realm, or creates a new minimal record if not found.
