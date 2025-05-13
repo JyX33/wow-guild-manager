@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "pgmq Docs": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://pgmq.gitmcp.io/pgmq"
+      ],
+      "env": {}
+    },
+    "pg-net doc": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://gitmcp.io/supabase/pg_net"
+      ],
+      "env": {}
+    },
+    "pg_cron doc": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://gitmcp.io/citusdata/pg_cron"
+      ],
+      "env": {}
+    }
+  }
+}
